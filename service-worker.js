@@ -1,69 +1,71 @@
 // Service Worker for offline support - MarlApps v2.0
 
-const CACHE_NAME = 'marlapps-v15';
+const CACHE_NAME = 'marlapps-v17';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/favicon.ico',
+  './',
+  './index.html',
+  './manifest.json',
+  './favicon.ico',
 
   // Theme system
-  '/themes/tokens.css',
-  '/themes/dark.css',
-  '/themes/light.css',
+  './themes/tokens.css',
+  './themes/dark.css',
+  './themes/light.css',
+  './themes/app-common.css',
 
   // Launcher
-  '/launcher/launcher.css',
-  '/launcher/theme-manager.js',
-  '/launcher/app-loader.js',
-  '/launcher/search.js',
-  '/launcher/settings.js',
-  '/launcher/launcher.js',
+  './launcher/launcher.css',
+  './launcher/theme-manager.js',
+  './launcher/app-loader.js',
+  './launcher/search.js',
+  './launcher/settings.js',
+  './launcher/launcher.js',
+  './launcher/pwa-install.js',
 
   // App Registry
-  '/registry/apps.json',
+  './registry/apps.json',
 
   // Pomodoro Timer App
-  '/apps/pomodoro-timer/manifest.json',
-  '/apps/pomodoro-timer/index.html',
-  '/apps/pomodoro-timer/styles.css',
-  '/apps/pomodoro-timer/app.js',
-  '/apps/pomodoro-timer/icon.svg',
+  './apps/pomodoro-timer/manifest.json',
+  './apps/pomodoro-timer/index.html',
+  './apps/pomodoro-timer/styles.css',
+  './apps/pomodoro-timer/app.js',
+  './apps/pomodoro-timer/icon.svg',
 
   // Kanban Board App
-  '/apps/kanban-board/manifest.json',
-  '/apps/kanban-board/index.html',
-  '/apps/kanban-board/styles.css',
-  '/apps/kanban-board/app.js',
-  '/apps/kanban-board/icon.svg',
+  './apps/kanban-board/manifest.json',
+  './apps/kanban-board/index.html',
+  './apps/kanban-board/styles.css',
+  './apps/kanban-board/app.js',
+  './apps/kanban-board/icon.svg',
 
   // Todo List App
-  '/apps/todo-list/manifest.json',
-  '/apps/todo-list/index.html',
-  '/apps/todo-list/styles.css',
-  '/apps/todo-list/app.js',
-  '/apps/todo-list/icon.svg',
+  './apps/todo-list/manifest.json',
+  './apps/todo-list/index.html',
+  './apps/todo-list/styles.css',
+  './apps/todo-list/app.js',
+  './apps/todo-list/icon.svg',
 
   // Notes App
-  '/apps/notes/manifest.json',
-  '/apps/notes/index.html',
-  '/apps/notes/styles.css',
-  '/apps/notes/app.js',
-  '/apps/notes/icon.svg',
+  './apps/notes/manifest.json',
+  './apps/notes/index.html',
+  './apps/notes/styles.css',
+  './apps/notes/app.js',
+  './apps/notes/icon.svg',
 
   // Habits App
-  '/apps/habits/manifest.json',
-  '/apps/habits/index.html',
-  '/apps/habits/styles.css',
-  '/apps/habits/app.js',
-  '/apps/habits/icon.svg',
+  './apps/habits/manifest.json',
+  './apps/habits/index.html',
+  './apps/habits/styles.css',
+  './apps/habits/app.js',
+  './apps/habits/icon.svg',
 
   // Mirror App
-  '/apps/mirror/manifest.json',
-  '/apps/mirror/index.html',
-  '/apps/mirror/styles.css',
-  '/apps/mirror/app.js',
-  '/apps/mirror/icon.svg'
+  './apps/mirror/manifest.json',
+  './apps/mirror/index.html',
+  './apps/mirror/styles.css',
+  './apps/mirror/app.js',
+  './apps/mirror/icon.svg'
 ];
 
 // Install event - cache resources
@@ -131,7 +133,7 @@ self.addEventListener('fetch', (event) => {
         }).catch((error) => {
           console.log('MarlApps: Fetch failed, returning cached index:', error);
           // Return the main app for navigation requests
-          return caches.match('/index.html');
+          return caches.match('./index.html');
         });
       })
   );

@@ -6,6 +6,19 @@ class KanbanBoard {
     this.currentColumnId = null;
     this.editingTaskId = null;
 
+    // Touch drag state
+    this.touchDragState = {
+      isDragging: false,
+      taskId: null,
+      taskEl: null,
+      clone: null,
+      startX: 0,
+      startY: 0,
+      offsetX: 0,
+      offsetY: 0,
+      longPressTimer: null
+    };
+
     this.initElements();
     this.renderBoard();
     this.attachEventListeners();
@@ -150,11 +163,160 @@ class KanbanBoard {
       this.deleteTask(task.id);
     });
 
-    // Drag events
+    // Drag events (desktop)
     taskEl.addEventListener('dragstart', (e) => this.handleDragStart(e));
     taskEl.addEventListener('dragend', (e) => this.handleDragEnd(e));
 
+    // Touch events (mobile)
+    taskEl.addEventListener('touchstart', (e) => this.handleTouchStart(e, taskEl, task.id), { passive: false });
+    taskEl.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+    taskEl.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+    taskEl.addEventListener('touchcancel', (e) => this.handleTouchEnd(e));
+
     return taskEl;
+  }
+
+  // Touch drag handlers
+  handleTouchStart(e, taskEl, taskId) {
+    // Don't interfere with delete button
+    if (e.target.classList.contains('task-delete')) return;
+
+    const touch = e.touches[0];
+    const rect = taskEl.getBoundingClientRect();
+
+    this.touchDragState.startX = touch.clientX;
+    this.touchDragState.startY = touch.clientY;
+    this.touchDragState.offsetX = touch.clientX - rect.left;
+    this.touchDragState.offsetY = touch.clientY - rect.top;
+    this.touchDragState.taskEl = taskEl;
+    this.touchDragState.taskId = taskId;
+
+    // Long press to start dragging
+    this.touchDragState.longPressTimer = setTimeout(() => {
+      this.startTouchDrag(taskEl, touch);
+    }, 200);
+  }
+
+  startTouchDrag(taskEl, touch) {
+    this.touchDragState.isDragging = true;
+
+    // Create clone for visual feedback
+    const rect = taskEl.getBoundingClientRect();
+    const clone = taskEl.cloneNode(true);
+    clone.classList.add('touch-dragging');
+    clone.style.width = rect.width + 'px';
+    clone.style.left = (touch.clientX - this.touchDragState.offsetX) + 'px';
+    clone.style.top = (touch.clientY - this.touchDragState.offsetY) + 'px';
+    document.body.appendChild(clone);
+    this.touchDragState.clone = clone;
+
+    // Mark original as placeholder
+    taskEl.classList.add('touch-placeholder');
+
+    // Haptic feedback if available
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+  }
+
+  handleTouchMove(e) {
+    if (!this.touchDragState.taskEl) return;
+
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - this.touchDragState.startX);
+    const deltaY = Math.abs(touch.clientY - this.touchDragState.startY);
+
+    // Cancel long press if moved too much before drag started
+    if (!this.touchDragState.isDragging && (deltaX > 10 || deltaY > 10)) {
+      clearTimeout(this.touchDragState.longPressTimer);
+      this.resetTouchDragState();
+      return;
+    }
+
+    if (!this.touchDragState.isDragging) return;
+
+    e.preventDefault();
+
+    // Move clone
+    if (this.touchDragState.clone) {
+      this.touchDragState.clone.style.left = (touch.clientX - this.touchDragState.offsetX) + 'px';
+      this.touchDragState.clone.style.top = (touch.clientY - this.touchDragState.offsetY) + 'px';
+    }
+
+    // Highlight target column
+    this.highlightDropTarget(touch.clientX, touch.clientY);
+  }
+
+  handleTouchEnd(e) {
+    clearTimeout(this.touchDragState.longPressTimer);
+
+    if (this.touchDragState.isDragging) {
+      // Find drop target
+      const touch = e.changedTouches[0];
+      const targetColumn = this.findColumnAtPoint(touch.clientX, touch.clientY);
+
+      if (targetColumn && this.touchDragState.taskId) {
+        this.moveTask(this.touchDragState.taskId, targetColumn);
+      }
+
+      // Clean up
+      this.clearDropHighlights();
+    }
+
+    // Remove clone
+    if (this.touchDragState.clone) {
+      this.touchDragState.clone.remove();
+    }
+
+    // Remove placeholder class
+    if (this.touchDragState.taskEl) {
+      this.touchDragState.taskEl.classList.remove('touch-placeholder');
+    }
+
+    this.resetTouchDragState();
+  }
+
+  resetTouchDragState() {
+    this.touchDragState = {
+      isDragging: false,
+      taskId: null,
+      taskEl: null,
+      clone: null,
+      startX: 0,
+      startY: 0,
+      offsetX: 0,
+      offsetY: 0,
+      longPressTimer: null
+    };
+  }
+
+  highlightDropTarget(x, y) {
+    this.clearDropHighlights();
+
+    const columns = document.querySelectorAll('.tasks');
+    columns.forEach(col => {
+      const rect = col.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        col.classList.add('drag-over');
+      }
+    });
+  }
+
+  clearDropHighlights() {
+    document.querySelectorAll('.tasks.drag-over').forEach(el => {
+      el.classList.remove('drag-over');
+    });
+  }
+
+  findColumnAtPoint(x, y) {
+    const columns = document.querySelectorAll('.tasks');
+    for (const col of columns) {
+      const rect = col.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        return col.dataset.columnId;
+      }
+    }
+    return null;
   }
 
   handleDragStart(e) {

@@ -1,70 +1,15 @@
-/* Pomodoro Timer - Self-contained styles */
+/* Pomodoro Timer - Uses shared theme from /themes/app-common.css */
+@import url('../../themes/app-common.css');
 
+/* App-specific accent color */
 :root {
-  /* Theme-aware colors with fallbacks */
-  --pomo-bg-primary: #1a1a2e;
-  --pomo-bg-secondary: #16213e;
-  --pomo-text-primary: rgba(255, 255, 255, 0.95);
-  --pomo-text-secondary: rgba(255, 255, 255, 0.7);
-  --pomo-accent: #e74c3c;
-  --pomo-accent-hover: #c0392b;
-  --pomo-success: #27ae60;
-  --pomo-border-color: rgba(255, 255, 255, 0.1);
-  --pomo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --pomo-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
-  --border-radius: 12px;
-  --spacing-unit: 8px;
-}
-
-/* Light theme support */
-@media (prefers-color-scheme: light) {
-  :root {
-    --pomo-bg-primary: #f5f5f7;
-    --pomo-bg-secondary: #ffffff;
-    --pomo-text-primary: rgba(0, 0, 0, 0.9);
-    --pomo-text-secondary: rgba(0, 0, 0, 0.6);
-    --pomo-border-color: rgba(0, 0, 0, 0.1);
-    --pomo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --pomo-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
-  }
-}
-
-/* Dark theme override */
-[data-theme="dark"] {
-  --pomo-bg-primary: #1a1a2e;
-  --pomo-bg-secondary: #16213e;
-  --pomo-text-primary: rgba(255, 255, 255, 0.95);
-  --pomo-text-secondary: rgba(255, 255, 255, 0.7);
-  --pomo-border-color: rgba(255, 255, 255, 0.1);
-  --pomo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --pomo-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-/* Light theme override */
-[data-theme="light"] {
-  --pomo-bg-primary: #f5f5f7;
-  --pomo-bg-secondary: #ffffff;
-  --pomo-text-primary: rgba(0, 0, 0, 0.9);
-  --pomo-text-secondary: rgba(0, 0, 0, 0.6);
-  --pomo-border-color: rgba(0, 0, 0, 0.1);
-  --pomo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --pomo-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  --app-accent: #e74c3c;
+  --app-accent-hover: #c0392b;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: var(--pomo-bg-primary);
-  color: var(--pomo-text-primary);
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .app-container {
@@ -80,13 +25,13 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: calc(var(--spacing-unit) * 4);
-  gap: calc(var(--spacing-unit) * 4);
+  padding: var(--space-8);
+  gap: var(--space-8);
 }
 
 /* Timer Display */
 .timer-display {
-  background-color: var(--pomo-bg-secondary);
+  background: var(--app-bg-secondary);
   border-radius: 50%;
   width: 320px;
   height: 320px;
@@ -94,9 +39,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--pomo-shadow-md);
-  transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
-  border: 1px solid var(--pomo-border-color);
+  box-shadow: var(--app-shadow-lg);
+  transition: transform var(--transition-normal), background-color var(--transition-normal);
+  border: 1px solid var(--app-border-color);
 }
 
 .timer-display:hover {
@@ -105,103 +50,86 @@ body {
 
 .session-type {
   font-size: 1.2rem;
-  color: var(--pomo-accent);
+  color: var(--app-accent);
   font-weight: 600;
-  margin-bottom: calc(var(--spacing-unit) * 2);
+  margin-bottom: var(--space-4);
 }
 
 .timer {
   font-size: 4rem;
   font-weight: bold;
-  color: var(--pomo-text-primary);
+  color: var(--app-text-primary);
   font-variant-numeric: tabular-nums;
-  margin-bottom: calc(var(--spacing-unit) * 2);
+  margin-bottom: var(--space-4);
 }
 
 .pomodoro-count {
   font-size: 1rem;
-  color: var(--pomo-text-secondary);
+  color: var(--app-text-secondary);
 }
 
 /* Controls */
 .controls {
   display: flex;
-  gap: calc(var(--spacing-unit) * 2);
+  gap: var(--space-4);
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .btn {
-  padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 4);
+  padding: var(--space-4) var(--space-8);
   font-size: 1.1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--pomo-shadow-sm);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  box-shadow: var(--app-shadow-sm);
 }
 
 .btn:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.btn:not(:disabled):active {
-  transform: translateY(0);
+  box-shadow: var(--app-shadow-md);
 }
 
 .btn-primary {
-  background-color: var(--pomo-success);
-  color: white;
+  background: var(--app-success);
 }
 
-.btn-primary:not(:disabled):hover {
-  background-color: #2ecc71;
-}
-
-.btn-secondary {
-  background-color: #6b7280;
-  color: white;
-}
-
-.btn-secondary:not(:disabled):hover {
-  background-color: #7c8591;
+.btn-primary:hover:not(:disabled) {
+  background: var(--app-success-hover);
 }
 
 /* Settings Button */
 .btn-settings {
-  background-color: transparent;
-  color: var(--pomo-accent);
-  border: 2px solid var(--pomo-accent);
-  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 3);
+  background: transparent;
+  color: var(--app-accent);
+  border: 2px solid var(--app-accent);
+  padding: var(--space-3) var(--space-6);
   font-size: 1rem;
   font-weight: 600;
-  border-radius: var(--border-radius);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-normal);
+  min-height: var(--input-min-height);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .btn-settings:hover {
-  background-color: var(--pomo-accent);
+  background: var(--app-accent);
   color: white;
+}
+
+.btn-settings:active {
+  transform: scale(0.98);
 }
 
 /* Settings Panel */
 .settings-panel {
-  background-color: var(--pomo-bg-secondary);
-  border-radius: var(--border-radius);
-  padding: calc(var(--spacing-unit) * 3);
-  box-shadow: var(--pomo-shadow-sm);
+  background: var(--app-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  box-shadow: var(--app-shadow-sm);
   max-width: 400px;
   width: 100%;
   display: none;
-  border: 1px solid var(--pomo-border-color);
+  border: 1px solid var(--app-border-color);
 }
 
 .settings-panel.active {
@@ -209,36 +137,23 @@ body {
 }
 
 .settings-panel h3 {
-  margin-bottom: calc(var(--spacing-unit) * 3);
-  color: var(--pomo-accent);
+  margin-bottom: var(--space-6);
+  color: var(--app-accent);
   font-size: 1.2rem;
 }
 
 .setting-item {
-  margin-bottom: calc(var(--spacing-unit) * 2);
+  margin-bottom: var(--space-4);
 }
 
 .setting-item label {
   display: block;
-  margin-bottom: calc(var(--spacing-unit) * 1);
+  margin-bottom: var(--space-2);
   font-weight: 600;
-  color: var(--pomo-text-primary);
-}
-
-.setting-item input[type="number"] {
-  width: 100%;
-  padding: calc(var(--spacing-unit) * 1.5);
-  border: 2px solid var(--pomo-border-color);
-  border-radius: var(--border-radius);
-  font-size: 1rem;
-  background-color: var(--pomo-bg-primary);
-  color: var(--pomo-text-primary);
-  transition: border-color 0.2s ease;
 }
 
 .setting-item input[type="number"]:focus {
-  outline: none;
-  border-color: var(--pomo-accent);
+  border-color: var(--app-accent);
 }
 
 .setting-item.checkbox {
@@ -249,16 +164,19 @@ body {
 .setting-item.checkbox label {
   display: flex;
   align-items: center;
-  gap: calc(var(--spacing-unit) * 1);
+  gap: var(--space-2);
   margin-bottom: 0;
   cursor: pointer;
+  min-height: var(--input-min-height);
+  padding: var(--space-2) 0;
 }
 
 .setting-item.checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--pomo-accent);
+  width: 24px;
+  height: 24px;
+  accent-color: var(--app-accent);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Responsive Design */
@@ -273,7 +191,7 @@ body {
   }
 
   .pomodoro-main {
-    padding: calc(var(--spacing-unit) * 2);
+    padding: var(--space-4);
   }
 }
 
@@ -318,11 +236,11 @@ body {
 
 /* Break state */
 .timer-display.break {
-  border-color: var(--pomo-success);
+  border-color: var(--app-success);
 }
 
 .timer-display.break .session-type {
-  color: var(--pomo-success);
+  color: var(--app-success);
 }
 
 .timer-display.break.active {

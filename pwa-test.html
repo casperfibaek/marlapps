@@ -187,7 +187,7 @@
 
         async function testManifestFetch() {
             try {
-                const response = await fetch('/manifest.json');
+                const response = await fetch('./manifest.json');
                 if (response.ok) {
                     const manifest = await response.json();
                     addResult('✓', 'Manifest file fetched successfully', 'pass');
@@ -220,7 +220,7 @@
 
             for (const size of iconSizes) {
                 try {
-                    const response = await fetch(`/icons/icon-${size}.png`);
+                    const response = await fetch(`./icons/icon-${size}.png`);
                     if (response.ok) {
                         addResult('✓', `Critical icon ${size} exists`, 'pass');
                     } else {

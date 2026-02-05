@@ -8,21 +8,21 @@
   <title>MarlApps</title>
 
   <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
+  <link rel="icon" type="image/x-icon" href="./favicon.ico">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192x192.png">
 
   <!-- PWA -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MarlApps">
-  <link rel="apple-touch-icon" href="/icons/icon-152x152.png">
+  <link rel="apple-touch-icon" href="./icons/icon-152x152.png">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="/themes/tokens.css">
-  <link rel="stylesheet" href="/themes/dark.css">
-  <link rel="stylesheet" href="/themes/light.css">
-  <link rel="stylesheet" href="/launcher/launcher.css">
+  <link rel="stylesheet" href="./themes/tokens.css">
+  <link rel="stylesheet" href="./themes/dark.css">
+  <link rel="stylesheet" href="./themes/light.css">
+  <link rel="stylesheet" href="./launcher/launcher.css">
 </head>
 <body>
   <!-- Background Layer -->
@@ -340,11 +340,33 @@
     </div>
   </div>
 
+  <!-- PWA Install Banner -->
+  <div class="pwa-install-banner hidden" id="pwaInstallBanner">
+    <div class="pwa-install-content">
+      <div class="pwa-install-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7,10 12,15 17,10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </div>
+      <div class="pwa-install-text">
+        <strong>Install MarlApps</strong>
+        <span>Add to home screen for the best experience</span>
+      </div>
+    </div>
+    <div class="pwa-install-actions">
+      <button class="pwa-install-dismiss" id="pwaInstallDismiss">Not now</button>
+      <button class="pwa-install-btn" id="pwaInstallBtn">Install</button>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="/launcher/theme-manager.js"></script>
-  <script src="/launcher/app-loader.js"></script>
-  <script src="/launcher/search.js"></script>
-  <script src="/launcher/settings.js"></script>
-  <script src="/launcher/launcher.js"></script>
+  <script src="./launcher/pwa-install.js"></script>
+  <script src="./launcher/theme-manager.js"></script>
+  <script src="./launcher/app-loader.js"></script>
+  <script src="./launcher/search.js"></script>
+  <script src="./launcher/settings.js"></script>
+  <script src="./launcher/launcher.js"></script>
 </body>
 </html>

@@ -1,87 +1,16 @@
-/* Notes App - Self-contained styles */
+/* Notes App - Uses shared theme from /themes/app-common.css */
+@import url('../../themes/app-common.css');
 
+/* App-specific accent color */
 :root {
-  /* Theme-aware colors with fallbacks */
-  --notes-bg-primary: #1a1a2e;
-  --notes-bg-secondary: #16213e;
-  --notes-bg-tertiary: #1e2a4a;
-  --notes-text-primary: rgba(255, 255, 255, 0.95);
-  --notes-text-secondary: rgba(255, 255, 255, 0.7);
-  --notes-text-tertiary: rgba(255, 255, 255, 0.5);
-  --notes-accent: #F39C12;
-  --notes-accent-hover: #E67E22;
-  --notes-accent-light: rgba(243, 156, 18, 0.15);
-  --notes-danger: #E74C3C;
-  --notes-border-color: rgba(255, 255, 255, 0.1);
-  --notes-border-light: rgba(255, 255, 255, 0.05);
-  --notes-bg-hover: rgba(255, 255, 255, 0.05);
-  --notes-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --notes-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
-}
-
-/* Light theme support */
-@media (prefers-color-scheme: light) {
-  :root {
-    --notes-bg-primary: #f5f5f7;
-    --notes-bg-secondary: #ffffff;
-    --notes-bg-tertiary: #fafafa;
-    --notes-text-primary: rgba(0, 0, 0, 0.9);
-    --notes-text-secondary: rgba(0, 0, 0, 0.6);
-    --notes-text-tertiary: rgba(0, 0, 0, 0.4);
-    --notes-accent-light: rgba(243, 156, 18, 0.1);
-    --notes-border-color: rgba(0, 0, 0, 0.1);
-    --notes-border-light: rgba(0, 0, 0, 0.05);
-    --notes-bg-hover: rgba(0, 0, 0, 0.03);
-    --notes-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --notes-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
-  }
-}
-
-/* Dark theme override */
-[data-theme="dark"] {
-  --notes-bg-primary: #1a1a2e;
-  --notes-bg-secondary: #16213e;
-  --notes-bg-tertiary: #1e2a4a;
-  --notes-text-primary: rgba(255, 255, 255, 0.95);
-  --notes-text-secondary: rgba(255, 255, 255, 0.7);
-  --notes-text-tertiary: rgba(255, 255, 255, 0.5);
-  --notes-accent-light: rgba(243, 156, 18, 0.15);
-  --notes-border-color: rgba(255, 255, 255, 0.1);
-  --notes-border-light: rgba(255, 255, 255, 0.05);
-  --notes-bg-hover: rgba(255, 255, 255, 0.05);
-  --notes-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --notes-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
-}
-
-/* Light theme override */
-[data-theme="light"] {
-  --notes-bg-primary: #f5f5f7;
-  --notes-bg-secondary: #ffffff;
-  --notes-bg-tertiary: #fafafa;
-  --notes-text-primary: rgba(0, 0, 0, 0.9);
-  --notes-text-secondary: rgba(0, 0, 0, 0.6);
-  --notes-text-tertiary: rgba(0, 0, 0, 0.4);
-  --notes-accent-light: rgba(243, 156, 18, 0.1);
-  --notes-border-color: rgba(0, 0, 0, 0.1);
-  --notes-border-light: rgba(0, 0, 0, 0.05);
-  --notes-bg-hover: rgba(0, 0, 0, 0.03);
-  --notes-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --notes-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  --app-accent: #F39C12;
+  --app-accent-hover: #E67E22;
+  --app-accent-light: rgba(243, 156, 18, 0.15);
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: var(--notes-bg-primary);
-  color: var(--notes-text-primary);
   height: 100vh;
   overflow: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .app-container {
@@ -91,49 +20,21 @@ body {
 }
 
 .app-header {
-  background: var(--notes-bg-secondary);
-  padding: 1rem 1.5rem;
-  box-shadow: var(--notes-shadow-sm);
+  background: var(--app-bg-secondary);
+  padding: var(--space-4) var(--space-6);
+  box-shadow: var(--app-shadow-sm);
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
   flex-shrink: 0;
-  border-bottom: 1px solid var(--notes-border-color);
+  border-bottom: 1px solid var(--app-border-color);
 }
 
 .app-title {
   font-size: 1.3rem;
   flex: 1;
   font-weight: 600;
-  color: var(--notes-accent);
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: var(--notes-accent);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--notes-accent-hover);
-}
-
-.btn-danger {
-  background: var(--notes-danger);
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #c0392b;
+  color: var(--app-accent);
 }
 
 .notes-main {
@@ -148,63 +49,51 @@ body {
 }
 
 .notes-sidebar {
-  background: var(--notes-bg-secondary);
-  border-right: 1px solid var(--notes-border-color);
+  background: var(--app-bg-secondary);
+  border-right: 1px solid var(--app-border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .search-container {
-  padding: 1rem;
-  border-bottom: 1px solid var(--notes-border-color);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--app-border-color);
 }
 
 #searchInput {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--notes-border-color);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  background: var(--notes-bg-primary);
-  color: var(--notes-text-primary);
-  transition: border-color 0.2s ease;
-}
-
-#searchInput::placeholder {
-  color: var(--notes-text-tertiary);
-}
-
-#searchInput:focus {
-  outline: none;
-  border-color: var(--notes-accent);
 }
 
 .notes-list {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .note-item {
-  padding: 1rem;
-  border-bottom: 1px solid var(--notes-border-light);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--app-border-light);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-normal);
+  min-height: 64px;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.note-item:hover {
-  background: var(--notes-bg-hover);
+.note-item:hover,
+.note-item:active {
+  background: var(--app-bg-hover);
 }
 
 .note-item.active {
-  background: var(--notes-accent-light);
-  border-left: 3px solid var(--notes-accent);
+  background: var(--app-accent-light);
+  border-left: 3px solid var(--app-accent);
 }
 
 .note-item-title {
   font-weight: 600;
-  margin-bottom: 0.25rem;
-  color: var(--notes-text-primary);
+  margin-bottom: var(--space-1);
+  color: var(--app-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -213,7 +102,7 @@ body {
 
 .note-item-preview {
   font-size: 0.85rem;
-  color: var(--notes-text-secondary);
+  color: var(--app-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -221,65 +110,41 @@ body {
 
 .note-item-date {
   font-size: 0.75rem;
-  color: var(--notes-text-tertiary);
-  margin-top: 0.25rem;
+  color: var(--app-text-tertiary);
+  margin-top: var(--space-1);
 }
 
 .note-editor-container {
   display: flex;
   flex-direction: column;
-  background: var(--notes-bg-tertiary);
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--notes-text-tertiary);
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.empty-state h2 {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-  color: var(--notes-text-secondary);
-}
-
-.empty-state p {
-  font-size: 0.9rem;
+  background: var(--app-bg-tertiary);
 }
 
 .note-editor {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--notes-bg-secondary);
-  margin: 1rem;
-  border-radius: 10px;
-  box-shadow: var(--notes-shadow-md);
+  background: var(--app-bg-secondary);
+  margin: var(--space-4);
+  border-radius: var(--radius-md);
+  box-shadow: var(--app-shadow-md);
   overflow: hidden;
-  border: 1px solid var(--notes-border-color);
+  border: 1px solid var(--app-border-color);
 }
 
 .note-title-input {
-  padding: 1.5rem;
+  padding: var(--space-6);
   border: none;
   font-size: 1.4rem;
   font-weight: 600;
-  border-bottom: 1px solid var(--notes-border-light);
-  background: var(--notes-bg-secondary);
-  color: var(--notes-text-primary);
+  border-bottom: 1px solid var(--app-border-light);
+  background: var(--app-bg-secondary);
+  color: var(--app-text-primary);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .note-title-input::placeholder {
-  color: var(--notes-text-tertiary);
+  color: var(--app-text-tertiary);
 }
 
 .note-title-input:focus {
@@ -288,18 +153,20 @@ body {
 
 .note-content-input {
   flex: 1;
-  padding: 1.5rem;
+  padding: var(--space-6);
   border: none;
   font-size: 1rem;
   line-height: 1.7;
   resize: none;
   font-family: inherit;
-  background: var(--notes-bg-secondary);
-  color: var(--notes-text-primary);
+  background: var(--app-bg-secondary);
+  color: var(--app-text-primary);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-overflow-scrolling: touch;
 }
 
 .note-content-input::placeholder {
-  color: var(--notes-text-tertiary);
+  color: var(--app-text-tertiary);
 }
 
 .note-content-input:focus {
@@ -307,17 +174,17 @@ body {
 }
 
 .note-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--notes-border-light);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--app-border-light);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--notes-bg-tertiary);
+  background: var(--app-bg-tertiary);
 }
 
 .note-date {
   font-size: 0.85rem;
-  color: var(--notes-text-secondary);
+  color: var(--app-text-secondary);
 }
 
 /* Responsive design */
@@ -341,6 +208,38 @@ body {
   }
 
   .note-editor {
-    margin: 0.5rem;
+    margin: var(--space-2);
+  }
+
+  /* Mobile back button */
+  .mobile-back-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    background: none;
+    border: none;
+    color: var(--app-accent);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: var(--space-2);
+    min-height: var(--touch-target-min);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-back-btn:active {
+    opacity: 0.7;
+  }
+
+  /* Mobile notes button in header */
+  .mobile-notes-btn {
+    display: flex;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-back-btn,
+  .mobile-notes-btn {
+    display: none;
   }
 }

@@ -1,0 +1,298 @@
+/* App Common Theme - Shared styles for all MarlApps apps */
+/* Apps should import this file instead of defining their own theme variables */
+
+/* Default to dark theme, matches system preference, or explicit data-theme attribute */
+:root {
+  /* App-specific semantic color mappings from main theme tokens */
+  --app-bg-primary: #1a1a2e;
+  --app-bg-secondary: #16213e;
+  --app-bg-tertiary: #1e2a4a;
+  --app-text-primary: rgba(255, 255, 255, 0.95);
+  --app-text-secondary: rgba(255, 255, 255, 0.7);
+  --app-text-tertiary: rgba(255, 255, 255, 0.5);
+  --app-border-color: rgba(255, 255, 255, 0.1);
+  --app-border-light: rgba(255, 255, 255, 0.05);
+  --app-bg-hover: rgba(255, 255, 255, 0.05);
+  --app-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --app-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --app-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+
+  /* Semantic colors */
+  --app-success: #2ECC71;
+  --app-success-hover: #27ae60;
+  --app-success-light: rgba(46, 204, 113, 0.15);
+  --app-warning: #F39C12;
+  --app-warning-hover: #E67E22;
+  --app-warning-light: rgba(243, 156, 18, 0.15);
+  --app-danger: #E74C3C;
+  --app-danger-hover: #c0392b;
+  --app-danger-light: rgba(231, 76, 60, 0.15);
+  --app-info: #3498db;
+  --app-info-light: rgba(52, 152, 219, 0.15);
+
+  /* Spacing scale (8px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 120ms ease;
+  --transition-normal: 200ms ease;
+
+  /* Touch-friendly minimum sizes */
+  --touch-target-min: 44px;
+  --input-min-height: 48px;
+}
+
+/* Light theme support via prefers-color-scheme */
+@media (prefers-color-scheme: light) {
+  :root {
+    --app-bg-primary: #f5f5f7;
+    --app-bg-secondary: #ffffff;
+    --app-bg-tertiary: #fafafa;
+    --app-text-primary: rgba(0, 0, 0, 0.9);
+    --app-text-secondary: rgba(0, 0, 0, 0.6);
+    --app-text-tertiary: rgba(0, 0, 0, 0.4);
+    --app-border-color: rgba(0, 0, 0, 0.1);
+    --app-border-light: rgba(0, 0, 0, 0.05);
+    --app-bg-hover: rgba(0, 0, 0, 0.03);
+    --app-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --app-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+    --app-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* Dark theme override (explicit) */
+[data-theme="dark"] {
+  --app-bg-primary: #1a1a2e;
+  --app-bg-secondary: #16213e;
+  --app-bg-tertiary: #1e2a4a;
+  --app-text-primary: rgba(255, 255, 255, 0.95);
+  --app-text-secondary: rgba(255, 255, 255, 0.7);
+  --app-text-tertiary: rgba(255, 255, 255, 0.5);
+  --app-border-color: rgba(255, 255, 255, 0.1);
+  --app-border-light: rgba(255, 255, 255, 0.05);
+  --app-bg-hover: rgba(255, 255, 255, 0.05);
+  --app-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --app-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --app-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Light theme override (explicit) */
+[data-theme="light"] {
+  --app-bg-primary: #f5f5f7;
+  --app-bg-secondary: #ffffff;
+  --app-bg-tertiary: #fafafa;
+  --app-text-primary: rgba(0, 0, 0, 0.9);
+  --app-text-secondary: rgba(0, 0, 0, 0.6);
+  --app-text-tertiary: rgba(0, 0, 0, 0.4);
+  --app-border-color: rgba(0, 0, 0, 0.1);
+  --app-border-light: rgba(0, 0, 0, 0.05);
+  --app-bg-hover: rgba(0, 0, 0, 0.03);
+  --app-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --app-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --app-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== Common Base Styles ===== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--app-bg-primary);
+  color: var(--app-text-primary);
+  min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Common Button Styles ===== */
+
+.btn {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all var(--transition-normal);
+  min-height: var(--touch-target-min);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--app-accent, var(--app-success));
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--app-accent-hover, var(--app-success-hover));
+}
+
+.btn-secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #7c8591;
+}
+
+.btn-danger {
+  background: var(--app-danger);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--app-danger-hover);
+}
+
+/* ===== Common Input Styles ===== */
+
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+textarea,
+select {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--app-border-color);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--app-bg-primary);
+  color: var(--app-text-primary);
+  transition: border-color var(--transition-normal);
+  min-height: var(--input-min-height);
+  -webkit-tap-highlight-color: transparent;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--app-text-tertiary);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--app-accent, var(--app-info));
+}
+
+/* ===== Common Modal Styles ===== */
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.active,
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: var(--app-bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  max-width: 500px;
+  width: 90%;
+  box-shadow: var(--app-shadow-lg);
+  border: 1px solid var(--app-border-color);
+}
+
+/* ===== Common Empty State ===== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--app-text-tertiary);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.empty-state h2 {
+  font-size: 1.5rem;
+  margin-bottom: var(--space-2);
+  color: var(--app-text-secondary);
+}
+
+/* ===== Touch Device Optimizations ===== */
+
+@media (hover: none) and (pointer: coarse) {
+  /* Make hover states show on active for touch */
+  .btn:active {
+    transform: scale(0.98);
+  }
+}
+
+/* ===== Reduced Motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== Momentum Scrolling ===== */
+
+.scrollable {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}

@@ -4,8 +4,8 @@
 
 class AppLoader {
   constructor() {
-    this.registryPath = '/registry/apps.json';
-    this.appsBasePath = '/apps';
+    this.registryPath = './registry/apps.json';
+    this.appsBasePath = './apps';
     this.apps = [];
     this.registry = null;
     this.recentsKey = 'marlapps-recents';
