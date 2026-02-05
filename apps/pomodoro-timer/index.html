@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#E74C3C">
+  <title>Pomodoro Timer - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <main class="pomodoro-main">
+      <div class="timer-display" id="timerDisplay">
+        <div class="session-type" id="sessionType">Work Session</div>
+        <div class="timer" id="timer">25:00</div>
+        <div class="pomodoro-count" id="pomodoroCount">Pomodoro 1 of 4</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" id="startBtn">Start</button>
+        <button class="btn btn-secondary" id="pauseBtn" disabled>Pause</button>
+        <button class="btn btn-secondary" id="resetBtn">Reset</button>
+      </div>
+
+      <button class="btn-settings" id="settingsToggle">Settings</button>
+
+      <div class="settings-panel" id="settingsPanel">
+        <h3>Timer Settings</h3>
+        <div class="setting-item">
+          <label for="workDuration">Work Duration (minutes)</label>
+          <input type="number" id="workDuration" min="1" max="60" value="25">
+        </div>
+        <div class="setting-item">
+          <label for="shortBreakDuration">Short Break (minutes)</label>
+          <input type="number" id="shortBreakDuration" min="1" max="30" value="5">
+        </div>
+        <div class="setting-item">
+          <label for="longBreakDuration">Long Break (minutes)</label>
+          <input type="number" id="longBreakDuration" min="1" max="60" value="15">
+        </div>
+        <div class="setting-item checkbox">
+          <label>
+            <input type="checkbox" id="autoStartBreaks">
+            <span>Auto-start breaks</span>
+          </label>
+        </div>
+        <div class="setting-item checkbox">
+          <label>
+            <input type="checkbox" id="soundEnabled" checked>
+            <span>Enable sound notifications</span>
+          </label>
+        </div>
+        <button class="btn btn-primary" id="saveSettings">Save Settings</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

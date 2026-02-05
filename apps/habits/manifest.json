@@ -1,0 +1,10 @@
+{
+  "id": "habits",
+  "name": "Habit Tracker",
+  "description": "Daily habit tracking with streaks",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Personal", "Planning"],
+  "version": "1.0.0",
+  "author": "MarlApps"
+}

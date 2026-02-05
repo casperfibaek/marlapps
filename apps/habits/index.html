@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#9B59B6">
+  <title>Habit Tracker - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1 class="app-title">Habit Tracker</h1>
+      <button id="newHabitBtn" class="btn btn-primary">+ New Habit</button>
+    </header>
+
+    <main class="habits-main">
+      <div class="date-navigation">
+        <button id="prevWeekBtn" class="nav-btn">&larr;</button>
+        <span id="weekDisplay" class="week-display"></span>
+        <button id="nextWeekBtn" class="nav-btn">&rarr;</button>
+        <button id="todayBtn" class="btn btn-secondary">Today</button>
+      </div>
+
+      <div class="habits-container">
+        <div class="habits-grid" id="habitsGrid">
+          <!-- Habits will be dynamically added here -->
+        </div>
+
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">🎯</div>
+          <h2>No habits yet</h2>
+          <p>Create your first habit to start tracking your progress</p>
+        </div>
+      </div>
+
+      <div class="stats-section" id="statsSection">
+        <h3>Statistics</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="totalHabits">0</div>
+            <div class="stat-label">Total Habits</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="completedToday">0</div>
+            <div class="stat-label">Completed Today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="currentStreak">0</div>
+            <div class="stat-label">Current Streak</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="completionRate">0%</div>
+            <div class="stat-label">This Week</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- New Habit Modal -->
+  <div class="modal" id="habitModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>New Habit</h2>
+        <button class="close-btn" id="closeModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input
+          type="text"
+          id="habitNameInput"
+          placeholder="Habit name (e.g., Drink 8 glasses of water)"
+          maxlength="50"
+          autocomplete="off"
+        >
+        <div class="color-picker">
+          <label>Choose a color:</label>
+          <div class="color-options">
+            <button class="color-option" data-color="#4A90E2" style="background: #4A90E2;"></button>
+            <button class="color-option" data-color="#2ECC71" style="background: #2ECC71;"></button>
+            <button class="color-option" data-color="#E74C3C" style="background: #E74C3C;"></button>
+            <button class="color-option" data-color="#F39C12" style="background: #F39C12;"></button>
+            <button class="color-option" data-color="#9B59B6" style="background: #9B59B6;"></button>
+            <button class="color-option" data-color="#1ABC9C" style="background: #1ABC9C;"></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveHabitBtn">Save Habit</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

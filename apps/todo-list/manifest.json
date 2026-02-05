@@ -1,0 +1,10 @@
+{
+  "id": "todo-list",
+  "name": "Todo List",
+  "description": "Simple task management with filters",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Planning", "Tools"],
+  "version": "1.0.0",
+  "author": "MarlApps"
+}

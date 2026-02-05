@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2024-01-01T00:00:00.000Z",
+  "apps": [
+    {
+      "id": "pomodoro-timer",
+      "folder": "pomodoro-timer",
+      "pinned": true,
+      "hidden": false,
+      "order": 1
+    },
+    {
+      "id": "kanban-board",
+      "folder": "kanban-board",
+      "pinned": false,
+      "hidden": false,
+      "order": 2
+    },
+    {
+      "id": "todo-list",
+      "folder": "todo-list",
+      "pinned": false,
+      "hidden": false,
+      "order": 3
+    },
+    {
+      "id": "notes",
+      "folder": "notes",
+      "pinned": false,
+      "hidden": false,
+      "order": 4
+    },
+    {
+      "id": "habits",
+      "folder": "habits",
+      "pinned": false,
+      "hidden": false,
+      "order": 5
+    },
+    {
+      "id": "mirror",
+      "folder": "mirror",
+      "pinned": false,
+      "hidden": false,
+      "order": 6
+    }
+  ]
+}

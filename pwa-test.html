@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Installation Test - MarlApps</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #4A90E2;
+            margin-top: 0;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+        }
+        .pass {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .fail {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .warn {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+        }
+        button {
+            background: #4A90E2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #357ABD;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .error-box {
+            background: #ffe6e6;
+            border: 2px solid #e74c3c;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .success-box {
+            background: #e6ffe6;
+            border: 2px solid #27ae60;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .info-box {
+            background: #e6f3ff;
+            border: 2px solid #4A90E2;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        #testResults {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 PWA Installation Test</h1>
+        <p>Test the PWA installability of MarlApps</p>
+
+        <div class="info-box">
+            <strong>How to use:</strong>
+            <ol>
+                <li>Open this page in Chrome or Edge browser</li>
+                <li>Click "Run Tests" to check PWA requirements</li>
+                <li>Check the Chrome DevTools (F12) → Application → Manifest</li>
+                <li>Look for any errors or warnings</li>
+            </ol>
+        </div>
+
+        <button onclick="runTests()">Run PWA Tests</button>
+        <button onclick="openDevTools()">Open MarlApps</button>
+        <button onclick="testInstallPrompt()">Test Install Prompt</button>
+
+        <div id="testResults"></div>
+
+        <div class="test-section">
+            <h3>Manual Checks in Chrome DevTools:</h3>
+            <ol>
+                <li>Press <code>F12</code> to open DevTools</li>
+                <li>Go to <strong>Application</strong> tab</li>
+                <li>Check <strong>Manifest</strong> section - should show no errors</li>
+                <li>Check <strong>Service Workers</strong> section - should show registered worker</li>
+                <li>Look for <strong>Install</strong> button in address bar (+ icon)</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+
+        async function runTests() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<h3>Running tests...</h3>';
+            testResults = [];
+
+            // Test 1: Check manifest
+            await testManifest();
+
+            // Test 2: Check service worker support
+            await testServiceWorker();
+
+            // Test 3: Check manifest fetch
+            await testManifestFetch();
+
+            // Test 4: Check icons
+            await testIcons();
+
+            // Test 5: Check HTTPS
+            testHTTPS();
+
+            // Test 6: Check install prompt
+            testInstallability();
+
+            displayResults();
+        }
+
+        async function testManifest() {
+            const links = document.querySelectorAll('link[rel="manifest"]');
+            if (links.length > 0) {
+                addResult('✓', 'Manifest link found in HTML', 'pass');
+            } else {
+                addResult('✗', 'Manifest link NOT found in HTML', 'fail');
+            }
+        }
+
+        async function testServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                addResult('✓', 'Service Worker API supported', 'pass');
+
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    if (registrations.length > 0) {
+                        addResult('✓', `Service Worker registered (${registrations.length})`, 'pass');
+                    } else {
+                        addResult('⚠', 'Service Worker not yet registered', 'warn');
+                    }
+                } catch (error) {
+                    addResult('✗', 'Error checking Service Worker: ' + error.message, 'fail');
+                }
+            } else {
+                addResult('✗', 'Service Worker not supported in this browser', 'fail');
+            }
+        }
+
+        async function testManifestFetch() {
+            try {
+                const response = await fetch('/manifest.json');
+                if (response.ok) {
+                    const manifest = await response.json();
+                    addResult('✓', 'Manifest file fetched successfully', 'pass');
+
+                    if (manifest.name) {
+                        addResult('✓', `Manifest name: "${manifest.name}"`, 'pass');
+                    }
+                    if (manifest.start_url) {
+                        addResult('✓', `Start URL: "${manifest.start_url}"`, 'pass');
+                    }
+                    if (manifest.display) {
+                        addResult('✓', `Display mode: "${manifest.display}"`, 'pass');
+                    }
+                    if (manifest.icons && manifest.icons.length > 0) {
+                        addResult('✓', `${manifest.icons.length} icons declared in manifest`, 'pass');
+                    } else {
+                        addResult('✗', 'No icons declared in manifest', 'fail');
+                    }
+                } else {
+                    addResult('✗', 'Failed to fetch manifest: HTTP ' + response.status, 'fail');
+                }
+            } catch (error) {
+                addResult('✗', 'Error fetching manifest: ' + error.message, 'fail');
+            }
+        }
+
+        async function testIcons() {
+            const iconSizes = ['192x192', '512x512'];
+            const criticalIcons = [];
+
+            for (const size of iconSizes) {
+                try {
+                    const response = await fetch(`/icons/icon-${size}.png`);
+                    if (response.ok) {
+                        addResult('✓', `Critical icon ${size} exists`, 'pass');
+                    } else {
+                        addResult('✗', `CRITICAL: Icon ${size} missing (HTTP ${response.status})`, 'fail');
+                        criticalIcons.push(size);
+                    }
+                } catch (error) {
+                    addResult('✗', `Error checking icon ${size}: ${error.message}`, 'fail');
+                    criticalIcons.push(size);
+                }
+            }
+
+            if (criticalIcons.length > 0) {
+                addResult('✗', `Missing ${criticalIcons.length} critical icons - PWA NOT installable`, 'fail');
+            }
+        }
+
+        function testHTTPS() {
+            if (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                addResult('✓', 'Served over secure context (HTTPS or localhost)', 'pass');
+            } else {
+                addResult('⚠', 'Not HTTPS - PWA may not be installable in production', 'warn');
+            }
+        }
+
+        function testInstallability() {
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                addResult('✓', 'App is running in standalone mode (already installed)', 'pass');
+            } else {
+                addResult('⚠', 'App is running in browser mode', 'warn');
+            }
+        }
+
+        function addResult(icon, message, status) {
+            testResults.push({ icon, message, status });
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('testResults');
+            let html = '<div class="test-section"><h3>Test Results:</h3>';
+
+            const failures = testResults.filter(r => r.status === 'fail').length;
+            const warnings = testResults.filter(r => r.status === 'warn').length;
+            const passes = testResults.filter(r => r.status === 'pass').length;
+
+            testResults.forEach(result => {
+                const className = result.status === 'pass' ? 'pass' : result.status === 'fail' ? 'fail' : 'warn';
+                html += `<div class="test-item"><span class="${className}">${result.icon} ${result.message}</span></div>`;
+            });
+
+            html += '</div>';
+
+            if (failures > 0) {
+                html += `<div class="error-box">
+                    <h3>❌ PWA NOT Installable</h3>
+                    <p><strong>${failures}</strong> critical issues found that prevent installation.</p>
+                    <p>Most common issue: Missing icon files (192x192 and 512x512 are required)</p>
+                </div>`;
+            } else if (warnings > 0) {
+                html += `<div class="info-box">
+                    <h3>⚠️ PWA May Be Installable</h3>
+                    <p><strong>${warnings}</strong> warnings found. Check Chrome DevTools for details.</p>
+                </div>`;
+            } else {
+                html += `<div class="success-box">
+                    <h3>✅ PWA Should Be Installable!</h3>
+                    <p>All basic requirements passed. Look for the install button in your browser.</p>
+                </div>`;
+            }
+
+            html += `<p><strong>Summary:</strong> ${passes} passed, ${warnings} warnings, ${failures} failures</p>`;
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function openDevTools() {
+            window.open('http://localhost:8080', '_blank');
+        }
+
+        function testInstallPrompt() {
+            alert('To test the install prompt:\n\n1. Open http://localhost:8080 in Chrome\n2. Look for "+ Install" button in address bar\n3. Or look for "Install App" button on the page\n4. Check Console for beforeinstallprompt event');
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 500);
+        });
+    </script>
+</body>
+</html>

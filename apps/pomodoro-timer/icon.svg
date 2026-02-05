@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Tomato body -->
+  <ellipse cx="32" cy="36" rx="24" ry="22" fill="#E74C3C"/>
+  <!-- Tomato highlight -->
+  <ellipse cx="24" cy="30" rx="8" ry="6" fill="#EC7063" opacity="0.6"/>
+  <!-- Stem -->
+  <path d="M32 14 L32 20" stroke="#27AE60" stroke-width="4" stroke-linecap="round"/>
+  <!-- Leaf -->
+  <path d="M32 16 Q40 10 44 16 Q40 18 32 16" fill="#27AE60"/>
+  <path d="M32 16 Q24 10 20 16 Q24 18 32 16" fill="#2ECC71"/>
+  <!-- Timer face suggestion -->
+  <circle cx="32" cy="36" r="12" stroke="#fff" stroke-width="2" opacity="0.3"/>
+  <path d="M32 28 L32 36 L38 36" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+</svg>

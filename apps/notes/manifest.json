@@ -1,0 +1,10 @@
+{
+  "id": "notes",
+  "name": "Notes",
+  "description": "Quick note-taking with search",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Notes", "Tools"],
+  "version": "1.0.0",
+  "author": "MarlApps"
+}

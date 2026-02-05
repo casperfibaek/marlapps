@@ -1,0 +1,10 @@
+{
+  "id": "mirror",
+  "name": "Mirror",
+  "description": "Webcam mirror with filters and capture",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Personal", "Tools"],
+  "version": "1.0.0",
+  "author": "MarlApps"
+}

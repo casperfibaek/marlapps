@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#50C878">
+  <title>Todo List - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <main class="todo-main">
+      <div class="todo-container">
+        <div class="add-task-section">
+          <form id="addTaskForm">
+            <input
+              type="text"
+              id="newTaskInput"
+              placeholder="What needs to be done?"
+              autocomplete="off"
+              required
+            >
+            <button type="submit" class="btn btn-primary">Add</button>
+          </form>
+        </div>
+
+        <div class="filters">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="active">Active</button>
+          <button class="filter-btn" data-filter="completed">Completed</button>
+        </div>
+
+        <div class="task-list" id="taskList">
+          <!-- Tasks will be dynamically added here -->
+        </div>
+
+        <div class="footer-actions">
+          <span class="task-counter" id="taskCounter">0 tasks remaining</span>
+          <button class="btn btn-secondary" id="clearCompletedBtn">Clear Completed</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

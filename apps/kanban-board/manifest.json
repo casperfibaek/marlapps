@@ -1,0 +1,10 @@
+{
+  "id": "kanban-board",
+  "name": "Kanban Board",
+  "description": "Visual task management with drag-and-drop",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Planning", "Tools"],
+  "version": "1.0.0",
+  "author": "MarlApps"
+}

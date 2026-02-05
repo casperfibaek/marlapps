@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4A90E2">
+  <title>Kanban Board - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <main class="kanban-main">
+      <div class="board" id="board">
+        <!-- Columns will be dynamically generated -->
+      </div>
+    </main>
+
+    <!-- Task Modal -->
+    <div class="modal" id="taskModal">
+      <div class="modal-content">
+        <h2 id="modalTitle">Add Task</h2>
+        <form id="taskForm">
+          <div class="form-group">
+            <label for="taskTitle">Task Title:</label>
+            <input type="text" id="taskTitle" required placeholder="Enter task title">
+          </div>
+          <div class="form-group">
+            <label for="taskDescription">Description (optional):</label>
+            <textarea id="taskDescription" rows="4" placeholder="Enter task description"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Task</button>
+            <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

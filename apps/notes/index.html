@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#F39C12">
+  <title>Notes - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1 class="app-title">Notes</h1>
+      <button id="newNoteBtn" class="btn btn-primary">+ New Note</button>
+    </header>
+
+    <main class="notes-main">
+      <div class="notes-layout">
+        <aside class="notes-sidebar">
+          <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search notes..." autocomplete="off">
+          </div>
+          <div class="notes-list" id="notesList">
+            <!-- Notes list will be dynamically added here -->
+          </div>
+        </aside>
+
+        <div class="note-editor-container">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">📝</div>
+            <h2>No note selected</h2>
+            <p>Select a note from the list or create a new one</p>
+          </div>
+
+          <div class="note-editor" id="noteEditor" style="display: none;">
+            <input
+              type="text"
+              id="noteTitleInput"
+              class="note-title-input"
+              placeholder="Note title..."
+              autocomplete="off"
+            >
+            <textarea
+              id="noteContentInput"
+              class="note-content-input"
+              placeholder="Start typing your note..."
+            ></textarea>
+            <div class="note-footer">
+              <span class="note-date" id="noteDate"></span>
+              <button id="deleteNoteBtn" class="btn btn-danger">Delete Note</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

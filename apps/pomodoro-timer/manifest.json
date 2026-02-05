@@ -1,0 +1,15 @@
+{
+  "id": "pomodoro-timer",
+  "name": "Pomodoro Timer",
+  "description": "Focus timer with work/break intervals",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Focus", "Tools"],
+  "version": "1.0.0",
+  "author": "MarlApps",
+  "permissions": ["notifications"],
+  "capabilities": {
+    "notifications": true,
+    "audio": true
+  }
+}

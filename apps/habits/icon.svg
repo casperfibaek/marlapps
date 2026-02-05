@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="habitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9B59B6"/>
+      <stop offset="100%" style="stop-color:#8E44AD"/>
+    </linearGradient>
+  </defs>
+  <!-- Target background -->
+  <circle cx="50" cy="50" r="42" fill="url(#habitGrad)"/>
+  <!-- Target rings -->
+  <circle cx="50" cy="50" r="34" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
+  <circle cx="50" cy="50" r="24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+  <circle cx="50" cy="50" r="14" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="3"/>
+  <!-- Bullseye center -->
+  <circle cx="50" cy="50" r="6" fill="white"/>
+  <!-- Checkmark on center -->
+  <path d="M45 50 L48 54 L56 44" fill="none" stroke="#9B59B6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Streak flame -->
+  <path d="M75 25 Q78 20 76 15 Q82 18 80 26 Q85 22 82 30 Q80 35 75 32 Q73 30 75 25" fill="#F39C12"/>
+</svg>
