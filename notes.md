@@ -4,6 +4,7 @@
 * It is not possible to select other notes than the active one in mobile view
 * The search functionality should show with the results shown in a seperate window. It should not use the current lists of items.
 * The scrollbar in the dark modes (dark, futuristic) does not really follow the theme, if possible in a reasonable manner, please make it follow the theme.
+* Category being shown to the right of the app in the list, should be the category not the current display theme being shown.
 
 ----
 
