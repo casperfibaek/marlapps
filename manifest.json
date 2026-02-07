@@ -159,6 +159,19 @@
           "type": "image/svg+xml"
         }
       ]
+    },
+    {
+      "name": "Soundscape",
+      "short_name": "Soundscape",
+      "description": "Mix white and brown noise for focus and relaxation",
+      "url": "./index.html?app=soundscape",
+      "icons": [
+        {
+          "src": "./apps/soundscape/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }

@@ -1,6 +1,6 @@
 Add: Noise mixer
 Add: Fancy calculator
-Add: Converter 
+Add: Converter
 Add: Timezones
 Add: Coordinates
 Add: Notes, advanced

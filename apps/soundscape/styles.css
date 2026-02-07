@@ -1,0 +1,229 @@
+@import url('../../themes/app-common.css');
+
+:root {
+  --app-accent: #8B5CF6;
+  --app-accent-hover: #7C3AED;
+  --app-accent-light: rgba(139, 92, 246, 0.15);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6);
+}
+
+/* ===== Header ===== */
+
+.app-header {
+  margin-bottom: var(--space-6);
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--app-text-primary);
+  margin-bottom: var(--space-4);
+}
+
+.master-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--app-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--app-border-color);
+}
+
+.master-toggle {
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-5);
+}
+
+.master-volume {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.master-volume label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-text-secondary);
+  flex-shrink: 0;
+}
+
+/* ===== Volume Slider ===== */
+
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--app-bg-tertiary);
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--app-accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--app-bg-primary);
+  box-shadow: var(--app-shadow-sm);
+  transition: transform var(--transition-fast);
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--app-accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--app-bg-primary);
+  box-shadow: var(--app-shadow-sm);
+}
+
+/* ===== Sound Grid ===== */
+
+.sound-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+/* ===== Sound Card ===== */
+
+.sound-card {
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.sound-card.active {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 12px var(--app-accent-light);
+}
+
+.sound-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sound-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--app-accent-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.sound-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sound-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+
+.sound-desc {
+  font-size: 0.8rem;
+  color: var(--app-text-secondary);
+  margin-top: 2px;
+}
+
+.sound-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--app-bg-tertiary);
+  border: 1px solid var(--app-border-color);
+  color: var(--app-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.sound-toggle:hover {
+  background: var(--app-accent-light);
+  border-color: var(--app-accent);
+  color: var(--app-accent);
+}
+
+.sound-card.active .sound-toggle {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: white;
+}
+
+.sound-volume {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sound-volume .volume-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--app-text-tertiary);
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 480px) {
+  .app-container {
+    padding: var(--space-4);
+  }
+
+  .sound-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .master-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .master-volume {
+    width: 100%;
+  }
+}

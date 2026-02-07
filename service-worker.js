@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v28';
+const CACHE_NAME = 'marlapps-v29';
 const urlsToCache = [
   './',
   './index.html',
@@ -79,7 +79,13 @@ const urlsToCache = [
   './apps/timer/index.html',
   './apps/timer/styles.css',
   './apps/timer/app.js',
-  './apps/timer/icon.svg'
+  './apps/timer/icon.svg',
+
+  './apps/soundscape/manifest.json',
+  './apps/soundscape/index.html',
+  './apps/soundscape/styles.css',
+  './apps/soundscape/app.js',
+  './apps/soundscape/icon.svg'
   // AUTO:APP-CACHE-END
 ];
 

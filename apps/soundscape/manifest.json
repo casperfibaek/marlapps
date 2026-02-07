@@ -1,0 +1,16 @@
+{
+  "id": "soundscape",
+  "name": "Soundscape",
+  "shortName": "Soundscape",
+  "description": "Mix white and brown noise for focus and relaxation",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Focus", "Tools"],
+  "order": 9,
+  "storageKeys": ["marlapps-soundscape"],
+  "version": "1.0.0",
+  "author": "MarlApps",
+  "capabilities": {
+    "audio": true
+  }
+}

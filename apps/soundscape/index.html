@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#8B5CF6">
+  <title>Soundscape - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1 class="app-title">Soundscape</h1>
+      <div class="master-controls">
+        <button class="btn btn-primary master-toggle" id="masterToggle">Play All</button>
+        <div class="master-volume">
+          <label for="masterVolume">Master</label>
+          <input type="range" id="masterVolume" min="0" max="100" value="80" class="volume-slider">
+        </div>
+      </div>
+    </header>
+
+    <div class="sound-grid" id="soundGrid">
+      <!-- Sound cards are rendered by app.js -->
+    </div>
+
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <div class="empty-icon">&#127925;</div>
+      <h2>No Sounds Available</h2>
+      <p>Something went wrong loading sounds.</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

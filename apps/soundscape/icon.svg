@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Sound waves emanating outward -->
+  <path d="M32 12 v40" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round"/>
+  <path d="M24 18 v28" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+  <path d="M40 18 v28" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+  <path d="M16 24 v16" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+  <path d="M48 24 v16" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+  <path d="M8 28 v8" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" opacity="0.35"/>
+  <path d="M56 28 v8" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" opacity="0.35"/>
+</svg>
