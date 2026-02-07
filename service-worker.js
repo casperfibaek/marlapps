@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v26';
+const CACHE_NAME = 'marlapps-v27';
 const urlsToCache = [
   './',
   './index.html',
@@ -73,7 +73,13 @@ const urlsToCache = [
   './apps/weight-tracker/index.html',
   './apps/weight-tracker/styles.css',
   './apps/weight-tracker/app.js',
-  './apps/weight-tracker/icon.svg'
+  './apps/weight-tracker/icon.svg',
+
+  './apps/timer/manifest.json',
+  './apps/timer/index.html',
+  './apps/timer/styles.css',
+  './apps/timer/app.js',
+  './apps/timer/icon.svg'
   // AUTO:APP-CACHE-END
 ];
 

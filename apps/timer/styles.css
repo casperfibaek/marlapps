@@ -1,0 +1,535 @@
+/* Timer App - Uses shared theme from /themes/app-common.css */
+@import url('../../themes/app-common.css');
+
+/* App-specific accent color */
+:root {
+  --app-accent: #3B82F6;
+  --app-accent-hover: #2563EB;
+  --app-accent-light: rgba(59, 130, 246, 0.15);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== Tab Bar ===== */
+
+.tab-bar {
+  display: flex;
+  background: var(--app-bg-secondary);
+  border-bottom: 1px solid var(--app-border-color);
+  flex-shrink: 0;
+}
+
+.tab {
+  flex: 1;
+  padding: var(--space-4);
+  background: none;
+  border: none;
+  color: var(--app-text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  border-bottom: 3px solid transparent;
+  min-height: var(--touch-target-min);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.tab:hover {
+  color: var(--app-text-primary);
+  background: var(--app-bg-hover);
+}
+
+.tab.active {
+  color: var(--app-accent);
+  border-bottom-color: var(--app-accent);
+}
+
+/* ===== Tab Content ===== */
+
+.tab-content {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  padding: var(--space-6);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-content.active {
+  display: flex;
+}
+
+/* ===== Alarm Tab ===== */
+
+.alarm-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.alarm-input-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.alarm-time-input {
+  width: auto;
+  flex: 0 0 auto;
+  min-width: 140px;
+  font-size: 1.1rem;
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--app-border-color);
+  border-radius: var(--radius-md);
+  background: var(--app-bg-primary);
+  color: var(--app-text-primary);
+  font-family: inherit;
+  min-height: var(--input-min-height);
+  color-scheme: dark;
+}
+
+[data-theme="light"] .alarm-time-input,
+[data-theme="amalfi"] .alarm-time-input {
+  color-scheme: light;
+}
+
+.alarm-time-input:focus {
+  outline: none;
+  border-color: var(--app-accent);
+}
+
+.alarm-label-input {
+  flex: 1;
+}
+
+.alarm-days {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.day-btn {
+  flex: 1;
+  padding: var(--space-2);
+  background: var(--app-bg-secondary);
+  color: var(--app-text-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+  min-height: 36px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.day-btn:hover {
+  background: var(--app-bg-hover);
+}
+
+.day-btn.active {
+  background: var(--app-accent);
+  color: white;
+  border-color: var(--app-accent);
+}
+
+.alarm-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.alarm-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--app-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--app-border-color);
+  transition: opacity var(--transition-normal);
+}
+
+.alarm-item.disabled {
+  opacity: 0.5;
+}
+
+.alarm-info {
+  flex: 1;
+}
+
+.alarm-time {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-primary);
+}
+
+.alarm-label {
+  font-size: 0.9rem;
+  color: var(--app-text-secondary);
+  margin-top: 2px;
+}
+
+.alarm-repeat {
+  font-size: 0.8rem;
+  color: var(--app-text-tertiary);
+  margin-top: 2px;
+}
+
+.alarm-toggle {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.alarm-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.alarm-toggle .slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--app-bg-tertiary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background var(--transition-normal);
+  border: 1px solid var(--app-border-color);
+}
+
+.alarm-toggle .slider::before {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  left: 2px;
+  top: 2px;
+  background: var(--app-text-secondary);
+  border-radius: 50%;
+  transition: transform var(--transition-normal), background var(--transition-normal);
+}
+
+.alarm-toggle input:checked + .slider {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.alarm-toggle input:checked + .slider::before {
+  transform: translateX(20px);
+  background: white;
+}
+
+.alarm-delete {
+  background: none;
+  border: none;
+  color: var(--app-text-tertiary);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.alarm-delete:hover {
+  color: var(--app-danger);
+  background: var(--app-danger-light);
+}
+
+/* ===== Intervals Tab ===== */
+
+.interval-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  margin-bottom: var(--space-6);
+  background: var(--app-bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--app-border-color);
+  box-shadow: var(--app-shadow-sm);
+  transition: border-color var(--transition-normal);
+}
+
+.interval-display.work {
+  border-color: var(--app-accent);
+}
+
+.interval-display.rest {
+  border-color: var(--app-success);
+}
+
+.interval-phase {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--app-text-secondary);
+  margin-bottom: var(--space-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.interval-display.work .interval-phase {
+  color: var(--app-accent);
+}
+
+.interval-display.rest .interval-phase {
+  color: var(--app-success);
+}
+
+.interval-timer {
+  font-size: 4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-primary);
+  line-height: 1;
+  margin-bottom: var(--space-3);
+}
+
+.interval-progress {
+  font-size: 1rem;
+  color: var(--app-text-secondary);
+}
+
+.interval-settings {
+  margin-top: var(--space-6);
+  background: var(--app-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  border: 1px solid var(--app-border-color);
+}
+
+.interval-settings h3 {
+  margin-bottom: var(--space-4);
+  color: var(--app-accent);
+  font-size: 1.1rem;
+}
+
+.setting-item {
+  margin-bottom: var(--space-4);
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+}
+
+.setting-item label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ===== Timer (Countdown) Tab ===== */
+
+.countdown-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  margin-bottom: var(--space-6);
+  background: var(--app-bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--app-border-color);
+  box-shadow: var(--app-shadow-sm);
+  transition: border-color var(--transition-normal);
+}
+
+.countdown-display.running {
+  border-color: var(--app-accent);
+}
+
+.countdown-display.done {
+  border-color: var(--app-success);
+}
+
+.countdown-timer {
+  font-size: 5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-primary);
+  line-height: 1;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.preset-btn {
+  padding: var(--space-3) var(--space-4);
+  background: var(--app-bg-secondary);
+  color: var(--app-text-primary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+  min-height: var(--touch-target-min);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.preset-btn:hover {
+  background: var(--app-accent-light);
+  border-color: var(--app-accent);
+  color: var(--app-accent);
+}
+
+.preset-btn:active {
+  transform: scale(0.97);
+}
+
+.custom-time-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.custom-time-input {
+  width: 80px;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.time-separator {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--app-text-secondary);
+}
+
+/* ===== Shared Controls ===== */
+
+.controls {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-bottom: var(--space-4);
+}
+
+.controls .btn {
+  padding: var(--space-3) var(--space-6);
+  font-size: 1.05rem;
+  box-shadow: var(--app-shadow-sm);
+}
+
+.controls .btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--app-shadow-md);
+}
+
+/* ===== Alarm Modal ===== */
+
+.alarm-modal-content {
+  text-align: center;
+}
+
+.alarm-ringing-icon {
+  font-size: 4rem;
+  animation: ring 0.5s ease-in-out infinite alternate;
+  margin-bottom: var(--space-4);
+}
+
+.alarm-modal-content h2 {
+  margin-bottom: var(--space-2);
+  font-size: 1.5rem;
+}
+
+.alarm-modal-content p {
+  color: var(--app-text-secondary);
+  margin-bottom: var(--space-6);
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.alarm-modal-content .btn {
+  width: 100%;
+  padding: var(--space-4);
+  font-size: 1.1rem;
+}
+
+@keyframes ring {
+  0% { transform: rotate(-15deg); }
+  100% { transform: rotate(15deg); }
+}
+
+/* ===== Running Animation ===== */
+
+.interval-display.active {
+  animation: borderPulse 2s ease-in-out infinite;
+}
+
+.countdown-display.running {
+  animation: borderPulse 2s ease-in-out infinite;
+}
+
+@keyframes borderPulse {
+  0%, 100% {
+    box-shadow: var(--app-shadow-sm);
+  }
+  50% {
+    box-shadow: var(--app-shadow-md), 0 0 12px var(--app-accent-light);
+  }
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 480px) {
+  .tab-content {
+    padding: var(--space-4);
+  }
+
+  .interval-timer {
+    font-size: 3rem;
+  }
+
+  .countdown-timer {
+    font-size: 3.5rem;
+  }
+
+  .preset-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .alarm-input-row {
+    flex-direction: column;
+  }
+
+  .alarm-time-input {
+    width: 100%;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

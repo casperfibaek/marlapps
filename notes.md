@@ -1,8 +1,3 @@
-Create update button
-
-
-----
-Add: Timer (Alarm, Intervals, Timer)
 Add: Noise mixer
 Add: Fancy calculator
 Add: Converter 

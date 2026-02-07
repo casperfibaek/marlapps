@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Clock body -->
+  <circle cx="32" cy="36" r="24" stroke="#3B82F6" stroke-width="3" fill="none"/>
+  <!-- Inner ring -->
+  <circle cx="32" cy="36" r="20" stroke="#3B82F6" stroke-width="1.5" opacity="0.3" fill="none"/>
+  <!-- Clock hands -->
+  <line x1="32" y1="36" x2="32" y2="22" stroke="#3B82F6" stroke-width="3" stroke-linecap="round"/>
+  <line x1="32" y1="36" x2="42" y2="36" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Center dot -->
+  <circle cx="32" cy="36" r="2.5" fill="#3B82F6"/>
+  <!-- Top button / crown -->
+  <rect x="29" y="8" width="6" height="6" rx="1.5" fill="#3B82F6"/>
+  <!-- Bell arcs (alarm indicator) -->
+  <path d="M14 18 Q10 14 14 10" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <path d="M50 18 Q54 14 50 10" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <!-- Hour markers -->
+  <line x1="32" y1="14" x2="32" y2="17" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+  <line x1="32" y1="55" x2="32" y2="58" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+  <line x1="10" y1="36" x2="13" y2="36" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+  <line x1="51" y1="36" x2="54" y2="36" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+</svg>

@@ -146,6 +146,19 @@
           "type": "image/svg+xml"
         }
       ]
+    },
+    {
+      "name": "Timer",
+      "short_name": "Timer",
+      "description": "Alarms, interval timer, and countdown",
+      "url": "./index.html?app=timer",
+      "icons": [
+        {
+          "src": "./apps/timer/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }

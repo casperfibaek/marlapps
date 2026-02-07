@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "lastUpdated": "2026-02-07T21:55:00.732Z",
+  "lastUpdated": "2026-02-07T22:02:53.326Z",
   "apps": [
     {
       "id": "pomodoro-timer",
@@ -50,6 +50,13 @@
       "pinned": false,
       "hidden": false,
       "order": 7
+    },
+    {
+      "id": "timer",
+      "folder": "timer",
+      "pinned": false,
+      "hidden": false,
+      "order": 8
     }
   ]
 }

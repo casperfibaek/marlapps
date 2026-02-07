@@ -1,0 +1,18 @@
+{
+  "id": "timer",
+  "name": "Timer",
+  "shortName": "Timer",
+  "description": "Alarms, interval timer, and countdown",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Tools", "Focus"],
+  "order": 8,
+  "storageKeys": ["marlapps-timer"],
+  "version": "1.0.0",
+  "author": "MarlApps",
+  "permissions": ["notifications"],
+  "capabilities": {
+    "notifications": true,
+    "audio": true
+  }
+}

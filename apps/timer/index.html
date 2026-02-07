@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3B82F6">
+  <title>Timer - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Tab Navigation -->
+    <nav class="tab-bar">
+      <button class="tab active" data-tab="alarm">Alarm</button>
+      <button class="tab" data-tab="intervals">Intervals</button>
+      <button class="tab" data-tab="timer">Timer</button>
+    </nav>
+
+    <!-- Alarm Tab -->
+    <section class="tab-content active" id="alarm-tab">
+      <div class="alarm-form">
+        <div class="alarm-input-row">
+          <input type="time" id="alarmTime" class="alarm-time-input">
+          <input type="text" id="alarmLabel" placeholder="Label (optional)" class="alarm-label-input">
+        </div>
+        <div class="alarm-days">
+          <button class="day-btn" data-day="0">Su</button>
+          <button class="day-btn" data-day="1">Mo</button>
+          <button class="day-btn" data-day="2">Tu</button>
+          <button class="day-btn" data-day="3">We</button>
+          <button class="day-btn" data-day="4">Th</button>
+          <button class="day-btn" data-day="5">Fr</button>
+          <button class="day-btn" data-day="6">Sa</button>
+        </div>
+        <button class="btn btn-primary" id="addAlarmBtn">Add Alarm</button>
+      </div>
+      <div class="alarm-list" id="alarmList"></div>
+      <div class="empty-state" id="alarmEmpty">
+        <div class="empty-icon">&#9200;</div>
+        <h2>No Alarms</h2>
+        <p>Set a time above to create an alarm</p>
+      </div>
+    </section>
+
+    <!-- Intervals Tab -->
+    <section class="tab-content" id="intervals-tab">
+      <div class="interval-display" id="intervalDisplay">
+        <div class="interval-phase" id="intervalPhase">Ready</div>
+        <div class="interval-timer" id="intervalTimer">00:00</div>
+        <div class="interval-progress" id="intervalProgress">Round 0 / 0</div>
+      </div>
+      <div class="controls">
+        <button class="btn btn-primary" id="intervalStartBtn">Start</button>
+        <button class="btn btn-secondary" id="intervalPauseBtn" disabled>Pause</button>
+        <button class="btn btn-secondary" id="intervalResetBtn">Reset</button>
+      </div>
+      <div class="interval-settings">
+        <h3>Interval Settings</h3>
+        <div class="setting-item">
+          <label for="intervalWork">Work (seconds)</label>
+          <input type="number" id="intervalWork" min="5" max="3600" value="30">
+        </div>
+        <div class="setting-item">
+          <label for="intervalRest">Rest (seconds)</label>
+          <input type="number" id="intervalRest" min="5" max="3600" value="10">
+        </div>
+        <div class="setting-item">
+          <label for="intervalRounds">Rounds</label>
+          <input type="number" id="intervalRounds" min="1" max="99" value="8">
+        </div>
+      </div>
+    </section>
+
+    <!-- Timer (Countdown) Tab -->
+    <section class="tab-content" id="timer-tab">
+      <div class="countdown-display" id="countdownDisplay">
+        <div class="countdown-timer" id="countdownTimer">00:00</div>
+      </div>
+      <div class="preset-grid">
+        <button class="preset-btn" data-seconds="60">1 min</button>
+        <button class="preset-btn" data-seconds="180">3 min</button>
+        <button class="preset-btn" data-seconds="300">5 min</button>
+        <button class="preset-btn" data-seconds="600">10 min</button>
+        <button class="preset-btn" data-seconds="900">15 min</button>
+        <button class="preset-btn" data-seconds="1800">30 min</button>
+      </div>
+      <div class="custom-time-row">
+        <input type="number" id="customMinutes" min="0" max="1440" placeholder="Min" class="custom-time-input">
+        <span class="time-separator">:</span>
+        <input type="number" id="customSeconds" min="0" max="59" placeholder="Sec" class="custom-time-input">
+        <button class="btn btn-primary" id="customSetBtn">Set</button>
+      </div>
+      <div class="controls">
+        <button class="btn btn-primary" id="countdownStartBtn">Start</button>
+        <button class="btn btn-secondary" id="countdownPauseBtn" disabled>Pause</button>
+        <button class="btn btn-secondary" id="countdownResetBtn">Reset</button>
+      </div>
+    </section>
+
+    <!-- Alarm Ringing Modal -->
+    <div class="modal" id="alarmModal">
+      <div class="modal-content alarm-modal-content">
+        <div class="alarm-ringing-icon">&#128276;</div>
+        <h2 id="alarmModalLabel">Alarm</h2>
+        <p id="alarmModalTime"></p>
+        <button class="btn btn-primary" id="dismissAlarmBtn">Dismiss</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
