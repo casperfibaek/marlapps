@@ -75,7 +75,15 @@
     <!-- Timer (Countdown) Tab -->
     <section class="tab-content" id="timer-tab">
       <div class="countdown-display" id="countdownDisplay">
-        <div class="countdown-timer" id="countdownTimer">00:00</div>
+        <div class="countdown-ring" id="countdownRing">
+          <div class="countdown-timer" id="countdownTimer">00:00</div>
+        </div>
+        <div class="countdown-subtitle" id="countdownSubtitle">Ready</div>
+      </div>
+      <div class="countdown-actions">
+        <button class="btn btn-secondary" id="countdownAdd60Btn">+1 min</button>
+        <button class="btn btn-secondary" id="countdownAdd300Btn">+5 min</button>
+        <button class="btn btn-secondary" id="countdownRepeatBtn" disabled>Repeat</button>
       </div>
       <div class="preset-grid">
         <button class="preset-btn" data-seconds="60">1 min</button>
@@ -90,6 +98,10 @@
         <span class="time-separator">:</span>
         <input type="number" id="customSeconds" min="0" max="59" placeholder="Sec" class="custom-time-input">
         <button class="btn btn-primary" id="customSetBtn">Set</button>
+      </div>
+      <div class="recent-timers">
+        <div class="recent-title">Recent timers</div>
+        <div class="recent-list" id="recentTimerList"></div>
       </div>
       <div class="controls">
         <button class="btn btn-primary" id="countdownStartBtn">Start</button>

@@ -8,6 +8,8 @@ class TimerApp {
     this.ringingOscillator = null;
     this.lastAlarmCheckAt = Date.now();
     this.notificationPermissionRequested = false;
+    this.lastCompletedCountdown = 0;
+    this.wakeLock = null;
 
     // Interval timer state (not persisted while running - too fast)
     this.intervalState = {
@@ -35,6 +37,7 @@ class TimerApp {
     this.startAlarmChecker();
     this.updateIntervalDisplay();
     this.updateCountdownDisplay();
+    this.renderRecentCountdowns();
   }
 
   // ===== Data Persistence =====
@@ -44,7 +47,8 @@ class TimerApp {
     const defaults = {
       alarms: [],
       intervalSettings: { work: 30, rest: 10, rounds: 8 },
-      activeTab: 'alarm'
+      activeTab: 'alarm',
+      recentCountdowns: [60, 180, 300, 600]
     };
     if (!saved) return defaults;
     const parsed = JSON.parse(saved);
@@ -107,13 +111,19 @@ class TimerApp {
 
     // Countdown
     this.countdownDisplay = document.getElementById('countdownDisplay');
+    this.countdownRing = document.getElementById('countdownRing');
     this.countdownTimerEl = document.getElementById('countdownTimer');
+    this.countdownSubtitle = document.getElementById('countdownSubtitle');
     this.countdownStartBtn = document.getElementById('countdownStartBtn');
     this.countdownPauseBtn = document.getElementById('countdownPauseBtn');
     this.countdownResetBtn = document.getElementById('countdownResetBtn');
+    this.countdownAdd60Btn = document.getElementById('countdownAdd60Btn');
+    this.countdownAdd300Btn = document.getElementById('countdownAdd300Btn');
+    this.countdownRepeatBtn = document.getElementById('countdownRepeatBtn');
     this.customMinutes = document.getElementById('customMinutes');
     this.customSeconds = document.getElementById('customSeconds');
     this.customSetBtn = document.getElementById('customSetBtn');
+    this.recentTimerList = document.getElementById('recentTimerList');
 
     // Set default alarm time to now
     const now = new Date();
@@ -158,20 +168,15 @@ class TimerApp {
     this.countdownPauseBtn.addEventListener('click', () => this.pauseCountdown());
     this.countdownResetBtn.addEventListener('click', () => this.resetCountdown());
     this.customSetBtn.addEventListener('click', () => this.setCustomCountdown());
+    this.countdownAdd60Btn.addEventListener('click', () => this.addCountdownTime(60));
+    this.countdownAdd300Btn.addEventListener('click', () => this.addCountdownTime(300));
+    this.countdownRepeatBtn.addEventListener('click', () => this.repeatLastCountdown());
+    document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
 
     document.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const seconds = parseInt(btn.dataset.seconds);
-        this.countdownState.timeRemaining = seconds;
-        this.countdownState.totalTime = seconds;
-        this.countdownState.running = false;
-        this.countdownState.paused = false;
-        this.countdownState.endAt = null;
-        this.countdownStartBtn.disabled = false;
-        this.countdownPauseBtn.disabled = true;
-        clearInterval(this.countdownInterval);
-        this.countdownDisplay.classList.remove('running', 'done');
-        this.updateCountdownDisplay();
+        this.setCountdownDuration(seconds);
       });
     });
   }
@@ -544,16 +549,79 @@ class TimerApp {
     const total = mins * 60 + secs;
     if (total <= 0) return;
 
-    this.countdownState.timeRemaining = total;
-    this.countdownState.totalTime = total;
+    this.setCountdownDuration(total);
+  }
+
+  setCountdownDuration(totalSeconds) {
+    this.countdownState.timeRemaining = totalSeconds;
+    this.countdownState.totalTime = totalSeconds;
     this.countdownState.running = false;
     this.countdownState.paused = false;
     this.countdownState.endAt = null;
     this.countdownStartBtn.disabled = false;
     this.countdownPauseBtn.disabled = true;
+    this.countdownRepeatBtn.disabled = this.lastCompletedCountdown <= 0;
     clearInterval(this.countdownInterval);
+    this.releaseWakeLock();
     this.countdownDisplay.classList.remove('running', 'done');
+    this.addRecentCountdown(totalSeconds);
     this.updateCountdownDisplay();
+  }
+
+  addRecentCountdown(seconds) {
+    const normalized = Math.max(1, Math.floor(seconds));
+    const withoutDupes = this.data.recentCountdowns.filter(s => s !== normalized);
+    this.data.recentCountdowns = [normalized, ...withoutDupes].slice(0, 8);
+    this.saveData();
+    this.renderRecentCountdowns();
+  }
+
+  renderRecentCountdowns() {
+    if (!this.recentTimerList) return;
+    this.recentTimerList.innerHTML = '';
+
+    if (!this.data.recentCountdowns || this.data.recentCountdowns.length === 0) {
+      this.recentTimerList.textContent = 'No recent timers yet';
+      return;
+    }
+
+    this.data.recentCountdowns.forEach(seconds => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'recent-btn';
+      btn.textContent = this.formatShortDuration(seconds);
+      btn.addEventListener('click', () => this.setCountdownDuration(seconds));
+      this.recentTimerList.appendChild(btn);
+    });
+  }
+
+  formatShortDuration(totalSeconds) {
+    if (totalSeconds < 60) return `${totalSeconds}s`;
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return secs === 0 ? `${mins}m` : `${mins}m ${secs}s`;
+  }
+
+  addCountdownTime(seconds) {
+    if (seconds <= 0) return;
+
+    this.countdownState.timeRemaining += seconds;
+    this.countdownState.totalTime += seconds;
+
+    if (this.countdownState.running && this.countdownState.endAt) {
+      this.countdownState.endAt += seconds * 1000;
+    }
+
+    this.updateCountdownDisplay();
+    if (!this.countdownState.running) {
+      this.countdownStartBtn.disabled = false;
+    }
+  }
+
+  repeatLastCountdown() {
+    if (this.lastCompletedCountdown <= 0) return;
+    this.setCountdownDuration(this.lastCompletedCountdown);
+    this.startCountdown();
   }
 
   startCountdown() {
@@ -565,11 +633,13 @@ class TimerApp {
     this.countdownState.endAt = Date.now() + (this.countdownState.timeRemaining * 1000);
     this.countdownStartBtn.disabled = true;
     this.countdownPauseBtn.disabled = false;
+    this.countdownRepeatBtn.disabled = true;
     this.countdownDisplay.classList.add('running');
     this.countdownDisplay.classList.remove('done');
 
     clearInterval(this.countdownInterval);
     this.countdownInterval = setInterval(() => this.tickCountdown(), 250);
+    this.acquireWakeLock();
     this.tickCountdown();
   }
 
@@ -590,15 +660,19 @@ class TimerApp {
       clearInterval(this.countdownInterval);
       this.countdownState.running = false;
       this.countdownState.endAt = null;
+      this.lastCompletedCountdown = this.countdownState.totalTime;
       this.countdownStartBtn.disabled = true;
       this.countdownPauseBtn.disabled = true;
+      this.countdownRepeatBtn.disabled = false;
       this.countdownDisplay.classList.remove('running');
       this.countdownDisplay.classList.add('done');
       this.playBeep(880, 0.3);
       setTimeout(() => this.playBeep(1046, 0.4), 400);
+      this.vibrate([200, 120, 240]);
       this.showNotification('Countdown finished', {
         body: 'Your timer has reached zero.'
       });
+      this.releaseWakeLock();
       document.title = 'Timer - MarlApps';
     }
   }
@@ -615,8 +689,10 @@ class TimerApp {
     this.countdownState.endAt = null;
     this.countdownStartBtn.disabled = false;
     this.countdownPauseBtn.disabled = true;
+    this.countdownRepeatBtn.disabled = this.lastCompletedCountdown <= 0;
     this.countdownDisplay.classList.remove('running');
     clearInterval(this.countdownInterval);
+    this.releaseWakeLock();
     this.updateCountdownDisplay();
   }
 
@@ -628,13 +704,33 @@ class TimerApp {
     this.countdownState.endAt = null;
     this.countdownStartBtn.disabled = this.countdownState.totalTime <= 0;
     this.countdownPauseBtn.disabled = true;
+    this.countdownRepeatBtn.disabled = this.lastCompletedCountdown <= 0;
     this.countdownDisplay.classList.remove('running', 'done');
+    this.releaseWakeLock();
     this.updateCountdownDisplay();
     document.title = 'Timer - MarlApps';
   }
 
   updateCountdownDisplay() {
     this.countdownTimerEl.textContent = this.formatTime(this.countdownState.timeRemaining);
+    const total = Math.max(1, this.countdownState.totalTime);
+    const elapsed = Math.max(0, total - this.countdownState.timeRemaining);
+    const progress = Math.max(0, Math.min(100, Math.round((elapsed / total) * 100)));
+    if (this.countdownRing) {
+      this.countdownRing.style.setProperty('--countdown-progress', `${progress}%`);
+    }
+
+    if (this.countdownSubtitle) {
+      if (this.countdownState.running) {
+        this.countdownSubtitle.textContent = `Running - ${progress}% complete`;
+      } else if (this.countdownDisplay.classList.contains('done')) {
+        this.countdownSubtitle.textContent = 'Finished';
+      } else if (this.countdownState.timeRemaining > 0) {
+        this.countdownSubtitle.textContent = 'Ready';
+      } else {
+        this.countdownSubtitle.textContent = 'Set a timer';
+      }
+    }
   }
 
   // ===== Shared Helpers =====
@@ -661,6 +757,41 @@ class TimerApp {
       osc.stop(ctx.currentTime + duration);
       setTimeout(() => ctx.close().catch(() => {}), (duration + 0.1) * 1000);
     } catch (e) {}
+  }
+
+  vibrate(pattern) {
+    if (!('vibrate' in navigator)) return;
+    try {
+      navigator.vibrate(pattern);
+    } catch (e) {}
+  }
+
+  async acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    if (!this.countdownState.running) return;
+    if (document.visibilityState !== 'visible') return;
+    if (this.wakeLock) return;
+
+    try {
+      this.wakeLock = await navigator.wakeLock.request('screen');
+      this.wakeLock.addEventListener('release', () => {
+        this.wakeLock = null;
+      });
+    } catch (e) {}
+  }
+
+  releaseWakeLock() {
+    if (!this.wakeLock) return;
+    this.wakeLock.release().catch(() => {});
+    this.wakeLock = null;
+  }
+
+  handleVisibilityChange() {
+    if (document.visibilityState === 'visible' && this.countdownState.running) {
+      this.acquireWakeLock();
+    } else if (document.visibilityState !== 'visible') {
+      this.releaseWakeLock();
+    }
   }
 
   maybeRequestNotificationPermission() {
