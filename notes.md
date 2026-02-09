@@ -1,5 +1,6 @@
-Make sure apps (such as timer, works when window is not in focus or minimized)
-Enable the apps to create notifications
+app get version and updates is broken after an update to the service-worker and manifest?
+Wave noise is too smooth in its transition, needs to be more bouncy.
+Fan noise is too low in volume compared to the others, can also be more droning
 
 Add: Fancy calculator
 Add: Converter
