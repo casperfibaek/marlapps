@@ -20,6 +20,20 @@ class SoundscapeApp {
         description: 'Deep, rumbling low-frequency noise',
         icon: '\u{1F30A}',
         generator: (ctx) => this.createBrownNoise(ctx)
+      },
+      {
+        id: 'fan-noise',
+        name: 'Fan',
+        description: 'Steady airflow hum with soft turbulence',
+        icon: '\u{1F32C}',
+        generator: (ctx) => this.createFanNoise(ctx)
+      },
+      {
+        id: 'wave-noise',
+        name: 'Waves',
+        description: 'Gentle ocean wash with rolling motion',
+        icon: '\u{1F30A}',
+        generator: (ctx) => this.createWaveNoise(ctx)
       }
     ];
 
@@ -109,6 +123,101 @@ class SoundscapeApp {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
+    return source;
+  }
+
+  createFanNoise(ctx) {
+    const source = this.createWhiteNoise(ctx);
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 1200;
+    lowpass.Q.value = 0.7;
+
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 80;
+    highpass.Q.value = 0.5;
+
+    const hum = ctx.createOscillator();
+    hum.type = 'sine';
+    hum.frequency.value = 95;
+    const humGain = ctx.createGain();
+    humGain.gain.value = 0.08;
+
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.18;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 120;
+
+    lfo.connect(lfoGain);
+    lfoGain.connect(lowpass.frequency);
+    lfo.start();
+
+    source.connect(lowpass);
+    lowpass.connect(highpass);
+    highpass.connect(humGain);
+    hum.connect(humGain);
+
+    hum.start();
+
+    const output = ctx.createGain();
+    output.gain.value = 0.85;
+    humGain.connect(output);
+
+    const originalStop = source.stop.bind(source);
+    source.stop = (...args) => {
+      try { hum.stop(...args); } catch (e) {}
+      try { lfo.stop(...args); } catch (e) {}
+      originalStop(...args);
+    };
+    source.connect = output.connect.bind(output);
+    source.disconnect = output.disconnect.bind(output);
+
+    return source;
+  }
+
+  createWaveNoise(ctx) {
+    const source = this.createBrownNoise(ctx);
+
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 120;
+    highpass.Q.value = 0.6;
+
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 1800;
+    lowpass.Q.value = 0.8;
+
+    const swell = ctx.createGain();
+    swell.gain.value = 0.4;
+
+    const motion = ctx.createOscillator();
+    motion.type = 'sine';
+    motion.frequency.value = 0.12;
+    const motionGain = ctx.createGain();
+    motionGain.gain.value = 0.25;
+    motion.connect(motionGain);
+    motionGain.connect(swell.gain);
+    motion.start();
+
+    source.connect(highpass);
+    highpass.connect(lowpass);
+    lowpass.connect(swell);
+
+    const output = ctx.createGain();
+    output.gain.value = 0.9;
+    swell.connect(output);
+
+    const originalStop = source.stop.bind(source);
+    source.stop = (...args) => {
+      try { motion.stop(...args); } catch (e) {}
+      originalStop(...args);
+    };
+    source.connect = output.connect.bind(output);
+    source.disconnect = output.disconnect.bind(output);
+
     return source;
   }
 
