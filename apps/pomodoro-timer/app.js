@@ -6,6 +6,7 @@ class PomodoroTimer {
     this.settings = this.loadSettings();
     this.state = this.loadState();
     this.timerInterval = null;
+    this.notificationPermissionRequested = false;
 
     this.initElements();
     this.attachEventListeners();
@@ -100,7 +101,8 @@ class PomodoroTimer {
       sessionType: 'work',
       pomodoroCount: 1,
       isActive: false,
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
+      targetEndAt: null
     };
 
     const data = this.loadData();
@@ -108,12 +110,14 @@ class PomodoroTimer {
 
     const state = data.state;
 
-    if (state.isActive) {
+    if (state.isActive && typeof state.targetEndAt === 'number') {
+      state.timeRemaining = Math.max(0, Math.ceil((state.targetEndAt - Date.now()) / 1000));
+    } else if (state.isActive) {
       const elapsed = Math.floor((Date.now() - state.lastUpdated) / 1000);
       state.timeRemaining = Math.max(0, state.timeRemaining - elapsed);
     }
 
-    return state;
+    return { ...defaultState, ...state };
   }
 
   saveData() {
@@ -166,7 +170,11 @@ class PomodoroTimer {
   }
 
   startTimer() {
+    this.maybeRequestNotificationPermission();
     this.state.isActive = true;
+    if (!this.state.targetEndAt) {
+      this.state.targetEndAt = Date.now() + (this.state.timeRemaining * 1000);
+    }
     this.startBtn.disabled = true;
     this.pauseBtn.disabled = false;
     this.timerDisplay.classList.add('active');
@@ -175,21 +183,31 @@ class PomodoroTimer {
       this.timerDisplay.classList.add('break');
     }
 
-    this.timerInterval = setInterval(() => {
-      this.state.timeRemaining--;
-      this.updateDisplay();
-      this.saveState();
-
-      if (this.state.timeRemaining <= 0) {
-        this.completeSession();
-      }
-    }, 1000);
+    clearInterval(this.timerInterval);
+    this.timerInterval = setInterval(() => this.tickTimer(), 1000);
+    this.tickTimer();
 
     this.saveState();
   }
 
+  tickTimer() {
+    if (!this.state.isActive || !this.state.targetEndAt) return;
+
+    this.state.timeRemaining = Math.max(0, Math.ceil((this.state.targetEndAt - Date.now()) / 1000));
+    this.updateDisplay();
+    this.saveState();
+
+    if (this.state.timeRemaining <= 0) {
+      this.completeSession();
+    }
+  }
+
   pauseTimer() {
     this.state.isActive = false;
+    if (this.state.targetEndAt) {
+      this.state.timeRemaining = Math.max(0, Math.ceil((this.state.targetEndAt - Date.now()) / 1000));
+    }
+    this.state.targetEndAt = null;
     this.startBtn.disabled = false;
     this.pauseBtn.disabled = true;
     this.timerDisplay.classList.remove('active');
@@ -201,12 +219,14 @@ class PomodoroTimer {
   resetTimer() {
     this.pauseTimer();
     this.state.timeRemaining = this.getDurationForSession() * 60;
+    this.state.targetEndAt = null;
     this.updateDisplay();
     this.saveState();
   }
 
   completeSession() {
     this.pauseTimer();
+    this.showBrowserNotification();
     this.playNotification();
 
     if (this.state.sessionType === 'work') {
@@ -286,6 +306,34 @@ class PomodoroTimer {
     } catch (e) {
       // Audio notification not available - fail silently
     }
+  }
+
+  maybeRequestNotificationPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'default') return;
+    if (this.notificationPermissionRequested) return;
+
+    this.notificationPermissionRequested = true;
+    Notification.requestPermission().catch(() => {});
+  }
+
+  showBrowserNotification() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    const sessionNames = {
+      work: 'Work session complete',
+      shortBreak: 'Short break complete',
+      longBreak: 'Long break complete'
+    };
+
+    try {
+      const notification = new Notification('Pomodoro Timer', {
+        body: sessionNames[this.state.sessionType] || 'Session complete',
+        tag: 'marlapps-pomodoro'
+      });
+      setTimeout(() => notification.close(), 10000);
+    } catch (e) {}
   }
 }
 
