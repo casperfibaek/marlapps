@@ -89,7 +89,38 @@ class HabitTrackerApp {
 
   loadHabits() {
     const saved = localStorage.getItem('marlapps-habits');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed
+        .map(habit => {
+          if (!habit || typeof habit !== 'object') return null;
+          if (typeof habit.id !== 'string' || typeof habit.name !== 'string') return null;
+
+          const completions = {};
+          if (habit.completions && typeof habit.completions === 'object' && !Array.isArray(habit.completions)) {
+            Object.entries(habit.completions).forEach(([dateKey, completed]) => {
+              if (/^\d{4}-\d{2}-\d{2}$/.test(dateKey) && completed) {
+                completions[dateKey] = true;
+              }
+            });
+          }
+
+          return {
+            id: habit.id,
+            name: habit.name,
+            color: typeof habit.color === 'string' ? habit.color : '#9B59B6',
+            completions,
+            createdAt: typeof habit.createdAt === 'string' ? habit.createdAt : new Date().toISOString()
+          };
+        })
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 
   saveHabitsToStorage() {
@@ -152,9 +183,12 @@ class HabitTrackerApp {
 
   getWeekStart(date) {
     const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
     const day = d.getDay();
     const diff = d.getDate() - day;
-    return new Date(d.setDate(diff));
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
   }
 
   getWeekDays() {
@@ -162,6 +196,7 @@ class HabitTrackerApp {
     for (let i = 0; i < 7; i++) {
       const date = new Date(this.currentWeekStart);
       date.setDate(date.getDate() + i);
+      date.setHours(0, 0, 0, 0);
       days.push(date);
     }
     return days;
@@ -179,8 +214,14 @@ class HabitTrackerApp {
     this.render();
   }
 
+  toDateKey(date) {
+    return date.getFullYear() + '-' +
+      String(date.getMonth() + 1).padStart(2, '0') + '-' +
+      String(date.getDate()).padStart(2, '0');
+  }
+
   formatDate(date) {
-    return date.toISOString().split('T')[0];
+    return this.toDateKey(date);
   }
 
   isToday(date) {
@@ -217,6 +258,7 @@ class HabitTrackerApp {
     // Calculate current streak
     let currentStreak = 0;
     const checkDate = new Date();
+    checkDate.setHours(0, 0, 0, 0);
 
     while (true) {
       const dateStr = this.formatDate(checkDate);

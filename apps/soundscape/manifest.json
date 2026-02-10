@@ -8,6 +8,7 @@
   "categories": ["Focus", "Tools"],
   "order": 9,
   "storageKeys": ["marlapps-soundscape"],
+  "keepAliveOnClose": true,
   "version": "1.0.0",
   "author": "MarlApps",
   "capabilities": {

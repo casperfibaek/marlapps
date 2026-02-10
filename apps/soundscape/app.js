@@ -67,7 +67,45 @@ class SoundscapeApp {
       sounds: {}
     };
     if (!saved) return defaults;
-    return { ...defaults, ...JSON.parse(saved) };
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return defaults;
+      }
+
+      const masterVolumeRaw = Number.parseInt(parsed.masterVolume, 10);
+      const masterVolume = Number.isFinite(masterVolumeRaw)
+        ? Math.min(100, Math.max(0, masterVolumeRaw))
+        : defaults.masterVolume;
+
+      const sounds = {};
+      if (parsed.sounds && typeof parsed.sounds === 'object' && !Array.isArray(parsed.sounds)) {
+        Object.entries(parsed.sounds).forEach(([id, state]) => {
+          if (!state || typeof state !== 'object') return;
+          const nextState = {};
+
+          if (typeof state.active === 'boolean') {
+            nextState.active = state.active;
+          }
+
+          if (state.volume !== undefined) {
+            const volume = Number.parseInt(state.volume, 10);
+            if (Number.isFinite(volume)) {
+              nextState.volume = Math.min(100, Math.max(0, volume));
+            }
+          }
+
+          if (Object.keys(nextState).length > 0) {
+            sounds[id] = nextState;
+          }
+        });
+      }
+
+      return { masterVolume, sounds };
+    } catch {
+      return defaults;
+    }
   }
 
   saveData() {

@@ -268,7 +268,27 @@ class MirrorApp {
 
   loadPhotos() {
     const saved = localStorage.getItem('marlapps-mirror');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed
+        .map(photo => {
+          if (!photo || typeof photo !== 'object') return null;
+          if (typeof photo.id !== 'string' || typeof photo.dataUrl !== 'string') return null;
+
+          return {
+            id: photo.id,
+            dataUrl: photo.dataUrl,
+            timestamp: typeof photo.timestamp === 'string' ? photo.timestamp : new Date().toISOString()
+          };
+        })
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 
   savePhotos() {

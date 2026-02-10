@@ -76,7 +76,51 @@ class KanbanBoard {
     };
 
     const saved = localStorage.getItem('marlapps-kanban-board');
-    return saved ? JSON.parse(saved) : defaultBoard;
+    if (!saved) return defaultBoard;
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.columns)) {
+        return defaultBoard;
+      }
+
+      const columns = parsed.columns
+        .map((column, columnIndex) => {
+          if (!column || typeof column !== 'object') return null;
+
+          const fallback = defaultBoard.columns[columnIndex];
+          const id = typeof column.id === 'string'
+            ? column.id
+            : (fallback ? fallback.id : `column-${columnIndex}`);
+          const name = typeof column.name === 'string' && column.name.trim()
+            ? column.name
+            : (fallback ? fallback.name : `Column ${columnIndex + 1}`);
+
+          const tasks = Array.isArray(column.tasks)
+            ? column.tasks
+              .map((task, taskIndex) => {
+                if (!task || typeof task !== 'object') return null;
+                if (typeof task.title !== 'string' || !task.title.trim()) return null;
+
+                return {
+                  id: typeof task.id === 'string'
+                    ? task.id
+                    : `${id}-task-${taskIndex}`,
+                  title: task.title,
+                  description: typeof task.description === 'string' ? task.description : ''
+                };
+              })
+              .filter(Boolean)
+            : [];
+
+          return { id, name, tasks };
+        })
+        .filter(Boolean);
+
+      return { columns: columns.length > 0 ? columns : defaultBoard.columns };
+    } catch {
+      return defaultBoard;
+    }
   }
 
   saveBoard() {
@@ -132,7 +176,7 @@ class KanbanBoard {
 
     const tasksContainer = columnEl.querySelector('.tasks');
     column.tasks.forEach(task => {
-      const taskEl = this.createTaskElement(task);
+      const taskEl = this.createTaskElement(task, column.id);
       tasksContainer.appendChild(taskEl);
     });
 
@@ -151,10 +195,11 @@ class KanbanBoard {
     return columnEl;
   }
 
-  createTaskElement(task) {
+  createTaskElement(task, columnId) {
     const taskEl = document.createElement('div');
     taskEl.className = 'task';
     taskEl.draggable = true;
+    taskEl.tabIndex = 0;
     taskEl.dataset.taskId = task.id;
 
     taskEl.innerHTML = `
@@ -181,6 +226,17 @@ class KanbanBoard {
     taskEl.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
     taskEl.addEventListener('touchend', (e) => this.handleTouchEnd(e));
     taskEl.addEventListener('touchcancel', (e) => this.handleTouchEnd(e));
+
+    // Click/keyboard opens edit modal for existing tasks.
+    taskEl.addEventListener('click', (e) => {
+      if (e.target.closest('.task-delete')) return;
+      this.openModal(columnId, task.id);
+    });
+    taskEl.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      this.openModal(columnId, task.id);
+    });
 
     return taskEl;
   }

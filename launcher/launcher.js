@@ -7,6 +7,8 @@ class Launcher {
     this.currentCategory = 'all';
     this.currentSort = 'recent';
     this.currentApp = null;
+    this.keepAliveFrames = new Map();
+    this.keepAliveContainer = null;
   }
 
   async init() {
@@ -443,11 +445,54 @@ class Launcher {
     container.innerHTML = cardsHtml;
   }
 
+  shouldKeepAliveApp(app) {
+    return Boolean(app && app.keepAliveOnClose);
+  }
+
+  getKeepAliveContainer() {
+    if (this.keepAliveContainer && document.body.contains(this.keepAliveContainer)) {
+      return this.keepAliveContainer;
+    }
+
+    let container = document.getElementById('keepAliveWorkspace');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'keepAliveWorkspace';
+      container.setAttribute('aria-hidden', 'true');
+      container.style.position = 'absolute';
+      container.style.width = '0';
+      container.style.height = '0';
+      container.style.overflow = 'hidden';
+      container.style.opacity = '0';
+      container.style.pointerEvents = 'none';
+      document.body.appendChild(container);
+    }
+
+    this.keepAliveContainer = container;
+    return container;
+  }
+
+  createAppIframe(app) {
+    const iframe = document.createElement('iframe');
+    iframe.src = this.appLoader.getAppEntryUrl(app);
+    iframe.className = 'app-iframe';
+    iframe.title = app.name;
+    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads');
+    return iframe;
+  }
+
   openApp(appId) {
     const app = this.appLoader.getAppById(appId);
     if (!app) {
       console.warn(`App not found: ${appId}`);
       return;
+    }
+
+    if (this.currentApp && this.currentApp.id === appId) {
+      return;
+    }
+    if (this.currentApp && this.currentApp.id !== appId) {
+      this.closeApp();
     }
 
     this.appLoader.recordAppOpen(appId);
@@ -458,17 +503,17 @@ class Launcher {
     const mainContent = document.getElementById('mainContent');
     if (!workspace || !content || !mainContent) return;
 
-    content.innerHTML = `
-      <iframe
-        src="${this.appLoader.getAppEntryUrl(app)}"
-        class="app-iframe"
-        title="${this.escapeHtml(app.name)}"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-      ></iframe>
-    `;
+    content.innerHTML = '';
+    let iframe = this.keepAliveFrames.get(app.id);
 
-    const iframe = content.querySelector('.app-iframe');
     if (iframe) {
+      this.keepAliveFrames.delete(app.id);
+      content.appendChild(iframe);
+      this.syncThemeToIframe(iframe);
+      iframe.classList.add('loaded');
+    } else {
+      iframe = this.createAppIframe(app);
+      content.appendChild(iframe);
       iframe.addEventListener('load', () => {
         this.syncThemeToIframe(iframe);
         iframe.classList.add('loaded');
@@ -487,10 +532,20 @@ class Launcher {
     const mainContent = document.getElementById('mainContent');
     if (!workspace || !content || !mainContent) return;
 
+    const app = this.currentApp;
+    const iframe = content.querySelector('.app-iframe');
+
+    if (app && iframe && this.shouldKeepAliveApp(app)) {
+      const keepAliveContainer = this.getKeepAliveContainer();
+      this.keepAliveFrames.set(app.id, iframe);
+      keepAliveContainer.appendChild(iframe);
+    } else {
+      content.innerHTML = '';
+    }
+
     workspace.classList.add('hidden');
     mainContent.classList.remove('hidden');
     document.body.classList.remove('app-open');
-    content.innerHTML = '';
     this.currentApp = null;
     document.title = 'MarlApps';
     this.renderRecents();

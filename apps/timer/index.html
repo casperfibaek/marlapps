@@ -80,6 +80,12 @@
         </div>
         <div class="countdown-subtitle" id="countdownSubtitle">Ready</div>
       </div>
+      <div class="custom-time-row">
+        <input type="number" id="customMinutes" min="0" max="1440" placeholder="Min" class="custom-time-input">
+        <span class="time-separator">:</span>
+        <input type="number" id="customSeconds" min="0" max="59" placeholder="Sec" class="custom-time-input">
+        <button class="btn btn-primary" id="customSetBtn">Set</button>
+      </div>
       <div class="countdown-actions">
         <button class="btn btn-secondary" id="countdownAdd60Btn">+1 min</button>
         <button class="btn btn-secondary" id="countdownAdd300Btn">+5 min</button>
@@ -87,17 +93,8 @@
       </div>
       <div class="preset-grid">
         <button class="preset-btn" data-seconds="60">1 min</button>
-        <button class="preset-btn" data-seconds="180">3 min</button>
         <button class="preset-btn" data-seconds="300">5 min</button>
         <button class="preset-btn" data-seconds="600">10 min</button>
-        <button class="preset-btn" data-seconds="900">15 min</button>
-        <button class="preset-btn" data-seconds="1800">30 min</button>
-      </div>
-      <div class="custom-time-row">
-        <input type="number" id="customMinutes" min="0" max="1440" placeholder="Min" class="custom-time-input">
-        <span class="time-separator">:</span>
-        <input type="number" id="customSeconds" min="0" max="59" placeholder="Sec" class="custom-time-input">
-        <button class="btn btn-primary" id="customSetBtn">Set</button>
       </div>
       <div class="recent-timers">
         <div class="recent-title">Recent timers</div>

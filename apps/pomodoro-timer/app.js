@@ -78,8 +78,22 @@ class PomodoroTimer {
     const oldState = localStorage.getItem('pomodoroState');
     if (oldSettings || oldState) {
       const merged = {};
-      if (oldSettings) merged.settings = JSON.parse(oldSettings);
-      if (oldState) merged.state = JSON.parse(oldState);
+      if (oldSettings) {
+        try {
+          const parsedSettings = JSON.parse(oldSettings);
+          if (parsedSettings && typeof parsedSettings === 'object' && !Array.isArray(parsedSettings)) {
+            merged.settings = parsedSettings;
+          }
+        } catch {}
+      }
+      if (oldState) {
+        try {
+          const parsedState = JSON.parse(oldState);
+          if (parsedState && typeof parsedState === 'object' && !Array.isArray(parsedState)) {
+            merged.state = parsedState;
+          }
+        } catch {}
+      }
       localStorage.setItem('marlapps-pomodoro-timer', JSON.stringify(merged));
       localStorage.removeItem('pomodoroSettings');
       localStorage.removeItem('pomodoroState');
@@ -88,7 +102,17 @@ class PomodoroTimer {
 
   loadData() {
     const saved = localStorage.getItem('marlapps-pomodoro-timer');
-    return saved ? JSON.parse(saved) : {};
+    if (!saved) return {};
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return {};
+      }
+      return parsed;
+    } catch {
+      return {};
+    }
   }
 
   loadSettings() {
@@ -102,7 +126,11 @@ class PomodoroTimer {
     };
 
     const data = this.loadData();
-    return data.settings ? { ...defaultSettings, ...data.settings } : defaultSettings;
+    if (!data.settings || typeof data.settings !== 'object' || Array.isArray(data.settings)) {
+      return defaultSettings;
+    }
+
+    return { ...defaultSettings, ...data.settings };
   }
 
   loadState() {
@@ -117,7 +145,9 @@ class PomodoroTimer {
     };
 
     const data = this.loadData();
-    if (!data.state) return defaultState;
+    if (!data.state || typeof data.state !== 'object' || Array.isArray(data.state)) {
+      return defaultState;
+    }
 
     const state = data.state;
 
@@ -141,7 +171,7 @@ class PomodoroTimer {
 
   loadHistory() {
     const data = this.loadData();
-    if (!data.history || typeof data.history !== 'object') return {};
+    if (!data.history || typeof data.history !== 'object' || Array.isArray(data.history)) return {};
     return data.history;
   }
 

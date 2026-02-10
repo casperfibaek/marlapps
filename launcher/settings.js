@@ -34,12 +34,16 @@ class SettingsManager {
   }
 
   buildStorageMaps() {
+    const uniqueKeys = new Set(this.storageKeys);
+
     for (const app of this.appLoader.apps) {
       if (app.storageKeys && app.storageKeys.length) {
         this.appStorageMap[app.id] = { name: app.name, keys: app.storageKeys };
-        this.storageKeys.push(...app.storageKeys);
+        app.storageKeys.forEach(key => uniqueKeys.add(key));
       }
     }
+
+    this.storageKeys = [...uniqueKeys];
   }
 
   populateDeleteDropdown() {
@@ -160,12 +164,57 @@ class SettingsManager {
     });
   }
 
+  sanitizeRecents(recents) {
+    if (!Array.isArray(recents)) return [];
+
+    return recents
+      .map(item => {
+        if (!item || typeof item !== 'object') return null;
+        const id = typeof item.id === 'string' ? item.id : null;
+        const timestamp = Number.parseInt(item.timestamp, 10);
+        if (!id || !Number.isFinite(timestamp)) return null;
+        return { id, timestamp };
+      })
+      .filter(Boolean)
+      .slice(0, 20);
+  }
+
+  getImportableAppKeys() {
+    return new Set(
+      this.storageKeys.filter(key => key !== 'marlapps-theme' && key !== 'marlapps-recents')
+    );
+  }
+
+  normalizeImportedAppValue(value) {
+    let normalized = value;
+
+    if (typeof normalized === 'string') {
+      try {
+        normalized = JSON.parse(normalized);
+      } catch {
+        return undefined;
+      }
+    }
+
+    if (!normalized || typeof normalized !== 'object') {
+      return undefined;
+    }
+
+    return normalized;
+  }
+
   exportData() {
+    let recents = [];
+    try {
+      const parsedRecents = JSON.parse(localStorage.getItem('marlapps-recents') || '[]');
+      recents = this.sanitizeRecents(parsedRecents);
+    } catch {}
+
     const data = {
       version: '2.0.0',
       exportedAt: new Date().toISOString(),
       theme: this.themeManager.getTheme(),
-      recents: JSON.parse(localStorage.getItem('marlapps-recents') || '[]'),
+      recents,
       appData: {}
     };
 
@@ -202,20 +251,57 @@ class SettingsManager {
       const text = await file.text();
       const data = JSON.parse(text);
 
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error('Invalid backup file format');
+      }
+
       if (!data.version || !data.exportedAt) {
         throw new Error('Invalid backup file format');
       }
 
-      const changes = [];
-      if (data.theme) changes.push(`Theme: ${data.theme}`);
-      if (data.recents?.length) changes.push(`Recent apps: ${data.recents.length}`);
-      if (data.appData) {
-        const appDataCount = Object.keys(data.appData).length;
-        if (appDataCount > 0) changes.push(`App data entries: ${appDataCount}`);
+      const exportedAt = new Date(data.exportedAt);
+      if (Number.isNaN(exportedAt.getTime())) {
+        throw new Error('Invalid export timestamp');
       }
 
+      if (data.appData && (typeof data.appData !== 'object' || Array.isArray(data.appData))) {
+        throw new Error('Invalid app data payload');
+      }
+
+      const importableKeys = this.getImportableAppKeys();
+      const importedEntries = [];
+      let skippedEntries = 0;
+
+      if (data.appData) {
+        for (const [key, rawValue] of Object.entries(data.appData)) {
+          if (!importableKeys.has(key)) {
+            skippedEntries++;
+            continue;
+          }
+          const normalized = this.normalizeImportedAppValue(rawValue);
+          if (normalized === undefined) {
+            skippedEntries++;
+            continue;
+          }
+          importedEntries.push([key, normalized]);
+        }
+      }
+
+      const safeRecents = this.sanitizeRecents(data.recents);
+      const hasRecentsPayload = Object.prototype.hasOwnProperty.call(data, 'recents');
+      const safeTheme = typeof data.theme === 'string' &&
+        this.themeManager.supportedThemes.includes(data.theme)
+        ? data.theme
+        : null;
+
+      const changes = [];
+      if (safeTheme) changes.push(`Theme: ${safeTheme}`);
+      if (hasRecentsPayload) changes.push(`Recent apps: ${safeRecents.length}`);
+      if (importedEntries.length > 0) changes.push(`App data entries: ${importedEntries.length}`);
+      if (skippedEntries > 0) changes.push(`Skipped invalid entries: ${skippedEntries}`);
+
       const message = [
-        `Import data from ${new Date(data.exportedAt).toLocaleDateString()}?`,
+        `Import data from ${exportedAt.toLocaleDateString()}?`,
         '',
         'This will overwrite your current data:',
         ...changes.map(c => `• ${c}`),
@@ -225,22 +311,22 @@ class SettingsManager {
 
       if (!confirm(message)) return;
 
-      if (data.theme) {
-        this.themeManager.apply(data.theme);
+      if (safeTheme) {
+        this.themeManager.apply(safeTheme);
       }
 
-      if (data.recents) {
-        localStorage.setItem('marlapps-recents', JSON.stringify(data.recents));
+      if (hasRecentsPayload) {
+        localStorage.setItem('marlapps-recents', JSON.stringify(safeRecents));
       }
 
-      if (data.appData) {
-        Object.entries(data.appData).forEach(([key, value]) => {
-          const serialized = typeof value === 'string' ? value : JSON.stringify(value);
-          localStorage.setItem(key, serialized);
-        });
-      }
+      importedEntries.forEach(([key, value]) => {
+        localStorage.setItem(key, JSON.stringify(value));
+      });
 
-      this.showNotification('Data imported successfully. Reloading...');
+      const importMessage = skippedEntries > 0
+        ? `Data imported (${skippedEntries} invalid entries skipped). Reloading...`
+        : 'Data imported successfully. Reloading...';
+      this.showNotification(importMessage);
       setTimeout(() => location.reload(), 1500);
 
     } catch (error) {
@@ -441,39 +527,56 @@ class SettingsManager {
         return;
       }
 
-      // Force the browser to check for a new service worker
-      await reg.update();
+      let newWorker = reg.waiting;
 
-      // Wait for the new SW to be found and installed
-      const newWorker = await new Promise((resolve, reject) => {
-        if (reg.installing) {
-          resolve(reg.installing);
-          return;
-        }
+      if (!newWorker) {
+        // Force the browser to check for a new service worker
+        await reg.update();
 
-        reg.addEventListener('updatefound', () => {
-          resolve(reg.installing);
-        }, { once: true });
+        // Wait for the new SW to be found and installed
+        newWorker = await new Promise((resolve, reject) => {
+          if (reg.waiting) {
+            resolve(reg.waiting);
+            return;
+          }
+          if (reg.installing) {
+            resolve(reg.installing);
+            return;
+          }
 
-        // Timeout after 15s
-        setTimeout(() => reject(new Error('Update check timed out')), 15000);
-      });
+          reg.addEventListener('updatefound', () => {
+            if (reg.installing) {
+              resolve(reg.installing);
+            } else if (reg.waiting) {
+              resolve(reg.waiting);
+            } else {
+              reject(new Error('No installing worker found'));
+            }
+          }, { once: true });
+
+          // Timeout after 15s
+          setTimeout(() => reject(new Error('Update check timed out')), 15000);
+        });
+      }
 
       // Wait for it to finish installing
-      await new Promise((resolve, reject) => {
-        if (newWorker.state === 'installed') {
-          resolve();
-          return;
-        }
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed') resolve();
-          if (newWorker.state === 'redundant') reject(new Error('Update failed'));
+      if (newWorker.state !== 'installed') {
+        await new Promise((resolve, reject) => {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed') resolve();
+            if (newWorker.state === 'redundant') reject(new Error('Update failed'));
+          });
+          setTimeout(() => reject(new Error('Install timed out')), 30000);
         });
-        setTimeout(() => reject(new Error('Install timed out')), 30000);
-      });
+      }
+
+      const waitingWorker = reg.waiting || newWorker;
+      if (!waitingWorker) {
+        throw new Error('No waiting service worker');
+      }
 
       // Tell the new SW to activate immediately
-      newWorker.postMessage({ type: 'SKIP_WAITING' });
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
 
       // Reload once the new SW takes over
       navigator.serviceWorker.addEventListener('controllerchange', () => {

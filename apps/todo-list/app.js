@@ -71,7 +71,30 @@ class TodoList {
 
   loadTasks() {
     const saved = localStorage.getItem('marlapps-todo-list');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed
+        .map((task, index) => {
+          if (!task || typeof task !== 'object') return null;
+          if (typeof task.text !== 'string') return null;
+
+          return {
+            id: typeof task.id === 'string'
+              ? task.id
+              : `task-${index}-${Date.now()}`,
+            text: task.text,
+            completed: Boolean(task.completed),
+            createdAt: Number.isFinite(task.createdAt) ? task.createdAt : Date.now()
+          };
+        })
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 
   saveTasks() {

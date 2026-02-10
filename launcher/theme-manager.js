@@ -7,12 +7,27 @@ class ThemeManager {
   }
 
   init() {
-    const saved = localStorage.getItem(this.storageKey);
+    const saved = this.getStoredTheme();
     const osPreference = this.getOSPreference();
     const theme = saved || osPreference || this.defaultTheme;
-    this.apply(theme);
+    // Do not persist when theme comes from OS/default - this keeps OS-follow behavior.
+    this.apply(theme, { persist: false });
     this.watchOSPreference();
     return this;
+  }
+
+  getStoredTheme() {
+    const saved = localStorage.getItem(this.storageKey);
+    if (!saved) return null;
+    if (!this.supportedThemes.includes(saved)) {
+      localStorage.removeItem(this.storageKey);
+      return null;
+    }
+    return saved;
+  }
+
+  hasUserPreference() {
+    return Boolean(this.getStoredTheme());
   }
 
   getOSPreference() {
@@ -25,19 +40,23 @@ class ThemeManager {
   watchOSPreference() {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', (e) => {
-      if (!localStorage.getItem(this.storageKey)) {
-        this.apply(e.matches ? 'dark' : 'light');
+      if (!this.hasUserPreference()) {
+        this.apply(e.matches ? 'dark' : 'light', { persist: false });
       }
     });
   }
 
-  apply(theme) {
+  apply(theme, options = {}) {
+    const persist = options.persist !== false;
+
     if (!this.supportedThemes.includes(theme)) {
       theme = this.defaultTheme;
     }
 
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(this.storageKey, theme);
+    if (persist) {
+      localStorage.setItem(this.storageKey, theme);
+    }
     this.currentTheme = theme;
 
     const themeColors = {
@@ -58,7 +77,7 @@ class ThemeManager {
   reset() {
     localStorage.removeItem(this.storageKey);
     const theme = this.getOSPreference() || this.defaultTheme;
-    this.apply(theme);
+    this.apply(theme, { persist: false });
     return this;
   }
 

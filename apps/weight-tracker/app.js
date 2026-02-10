@@ -20,9 +20,39 @@ class WeightTrackerApp {
     const saved = localStorage.getItem(this.STORAGE_KEY);
     const defaults = { entries: [], unit: 'imperial' };
     if (!saved) return defaults;
+
     try {
       const parsed = JSON.parse(saved);
-      return { ...defaults, ...parsed };
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return defaults;
+      }
+
+      const unit = parsed.unit === 'metric' || parsed.unit === 'imperial'
+        ? parsed.unit
+        : defaults.unit;
+
+      const entries = Array.isArray(parsed.entries)
+        ? parsed.entries
+          .map((entry, index) => {
+            if (!entry || typeof entry !== 'object') return null;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) return null;
+
+            const weight = Number.parseFloat(entry.weight);
+            if (!Number.isFinite(weight) || weight <= 0) return null;
+
+            return {
+              id: typeof entry.id === 'string'
+                ? entry.id
+                : `${entry.date}-${index}`,
+              date: entry.date,
+              weight: Math.round(weight * 10) / 10,
+              note: typeof entry.note === 'string' ? entry.note : ''
+            };
+          })
+          .filter(Boolean)
+        : [];
+
+      return { entries, unit };
     } catch {
       return defaults;
     }
@@ -162,6 +192,12 @@ class WeightTrackerApp {
       String(d.getDate()).padStart(2, '0');
   }
 
+  toLocalDateKey(date) {
+    return date.getFullYear() + '-' +
+      String(date.getMonth() + 1).padStart(2, '0') + '-' +
+      String(date.getDate()).padStart(2, '0');
+  }
+
   // --- CRUD ---
 
   saveEntry() {
@@ -209,7 +245,7 @@ class WeightTrackerApp {
   }
 
   getEntriesInRange(sorted, startDate) {
-    const start = startDate.toISOString().slice(0, 10);
+    const start = this.toLocalDateKey(startDate);
     return sorted.filter(e => e.date >= start);
   }
 
@@ -333,7 +369,7 @@ class WeightTrackerApp {
     if (this.chartRange > 0 && entries.length > 0) {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - this.chartRange);
-      const cutoffStr = cutoff.toISOString().slice(0, 10);
+      const cutoffStr = this.toLocalDateKey(cutoff);
       entries = entries.filter(e => e.date >= cutoffStr);
     }
 

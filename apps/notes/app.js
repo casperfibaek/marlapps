@@ -96,7 +96,29 @@ class NotesApp {
 
   loadNotes() {
     const saved = localStorage.getItem('marlapps-notes');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed
+        .map(note => {
+          if (!note || typeof note !== 'object') return null;
+          if (typeof note.id !== 'string') return null;
+
+          return {
+            id: note.id,
+            title: typeof note.title === 'string' ? note.title : 'Untitled Note',
+            content: typeof note.content === 'string' ? note.content : '',
+            createdAt: typeof note.createdAt === 'string' ? note.createdAt : new Date().toISOString(),
+            updatedAt: typeof note.updatedAt === 'string' ? note.updatedAt : new Date().toISOString()
+          };
+        })
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 
   saveNotes() {

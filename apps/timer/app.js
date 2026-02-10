@@ -48,11 +48,79 @@ class TimerApp {
       alarms: [],
       intervalSettings: { work: 30, rest: 10, rounds: 8 },
       activeTab: 'timer',
-      recentCountdowns: [60, 180, 300, 600]
+      recentCountdowns: [60, 300, 600]
     };
     if (!saved) return defaults;
-    const parsed = JSON.parse(saved);
-    return { ...defaults, ...parsed };
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return defaults;
+      }
+
+      const toBoundedInt = (value, min, max, fallback) => {
+        const parsedInt = Number.parseInt(value, 10);
+        if (!Number.isFinite(parsedInt)) return fallback;
+        return Math.min(max, Math.max(min, parsedInt));
+      };
+
+      const alarms = Array.isArray(parsed.alarms)
+        ? parsed.alarms
+          .map((alarm, index) => {
+            if (!alarm || typeof alarm !== 'object') return null;
+            if (typeof alarm.time !== 'string' || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(alarm.time)) {
+              return null;
+            }
+
+            const days = Array.isArray(alarm.days)
+              ? [...new Set(
+                alarm.days
+                  .map(day => Number.parseInt(day, 10))
+                  .filter(day => day >= 0 && day <= 6)
+              )]
+              : [];
+
+            return {
+              id: typeof alarm.id === 'string' ? alarm.id : `alarm-${index}`,
+              time: alarm.time,
+              label: typeof alarm.label === 'string' ? alarm.label : '',
+              days,
+              enabled: alarm.enabled !== false,
+              lastTriggered: Number.isFinite(alarm.lastTriggered) ? alarm.lastTriggered : null
+            };
+          })
+          .filter(Boolean)
+        : defaults.alarms;
+
+      const intervalSettingsRaw = parsed.intervalSettings && typeof parsed.intervalSettings === 'object' && !Array.isArray(parsed.intervalSettings)
+        ? parsed.intervalSettings
+        : {};
+      const intervalSettings = {
+        work: toBoundedInt(intervalSettingsRaw.work, 1, 180, defaults.intervalSettings.work),
+        rest: toBoundedInt(intervalSettingsRaw.rest, 1, 180, defaults.intervalSettings.rest),
+        rounds: toBoundedInt(intervalSettingsRaw.rounds, 1, 99, defaults.intervalSettings.rounds)
+      };
+
+      const activeTab = ['timer', 'intervals', 'countdown'].includes(parsed.activeTab)
+        ? parsed.activeTab
+        : defaults.activeTab;
+
+      const recentCountdowns = Array.isArray(parsed.recentCountdowns)
+        ? parsed.recentCountdowns
+          .map(seconds => Number.parseInt(seconds, 10))
+          .filter(seconds => Number.isFinite(seconds) && seconds > 0)
+          .slice(0, 8)
+        : defaults.recentCountdowns;
+
+      return {
+        alarms,
+        intervalSettings,
+        activeTab,
+        recentCountdowns: recentCountdowns.length > 0 ? recentCountdowns : defaults.recentCountdowns
+      };
+    } catch {
+      return defaults;
+    }
   }
 
   saveData() {
