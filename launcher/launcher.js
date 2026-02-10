@@ -207,6 +207,12 @@ class Launcher {
       this.backgroundHost.forEachFrame((frame) => this.syncThemeToIframe(frame));
     });
 
+    const notifyUnload = () => {
+      this.notifyManagedAppVisibility(false, 'launcher-unload');
+    };
+    window.addEventListener('pagehide', notifyUnload);
+    window.addEventListener('beforeunload', notifyUnload);
+
     const topbarSettingsBtn = document.getElementById('topbarSettingsBtn');
     if (topbarSettingsBtn) {
       topbarSettingsBtn.addEventListener('click', () => {
@@ -536,6 +542,12 @@ class Launcher {
     } catch (e) {
       // Ignore
     }
+  }
+
+  notifyManagedAppVisibility(visible, reason = '') {
+    const activeIframe = document.querySelector('#workspaceContent .app-iframe');
+    if (activeIframe) this.notifyAppVisibility(activeIframe, visible, reason);
+    this.backgroundHost.forEachFrame((frame) => this.notifyAppVisibility(frame, visible, reason));
   }
 
   invalidateAppInstance(appId) {

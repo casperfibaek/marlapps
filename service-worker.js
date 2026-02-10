@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v46';
+const CACHE_NAME = 'marlapps-v48';
 const urlsToCache = [
   './',
   './index.html',
@@ -21,6 +21,7 @@ const urlsToCache = [
   './themes/futuristic.css',
   './themes/amalfi.css',
   './themes/app-common.css',
+  './themes/theme-bootstrap.js',
 
   './launcher/launcher.css',
   './launcher/theme-manager.js',

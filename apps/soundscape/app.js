@@ -4,6 +4,7 @@ class SoundscapeApp {
     this.masterGain = null;
     this.sounds = new Map();
     this.data = this.loadData();
+    this.pendingAutoRestore = false;
 
     // Sound definitions — add new generated sounds here
     this.soundDefs = [
@@ -123,6 +124,9 @@ class SoundscapeApp {
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'theme-change') {
         this.applyTheme(event.data.theme);
+      }
+      if (event.data && event.data.type === 'app-visibility') {
+        this.handleAppVisibility(Boolean(event.data.visible));
       }
     });
   }
@@ -672,6 +676,16 @@ class SoundscapeApp {
         label.textContent = `${vol}%`;
       }
     });
+
+    const resumeOnGesture = () => {
+      this.resumeAudioContext();
+      if (this.pendingAutoRestore) {
+        this.restoreActiveSounds();
+      }
+    };
+    document.addEventListener('pointerdown', resumeOnGesture, { passive: true });
+    document.addEventListener('keydown', resumeOnGesture);
+    document.addEventListener('touchstart', resumeOnGesture, { passive: true });
   }
 
   // ===== Sound Control =====
@@ -761,6 +775,47 @@ class SoundscapeApp {
     this.masterToggleBtn.textContent = anyPlaying ? 'Stop All' : 'Play All';
   }
 
+  resumeAudioContext() {
+    if (!this.audioCtx) return;
+    if (this.audioCtx.state !== 'suspended') return;
+    this.audioCtx.resume().catch(() => {});
+  }
+
+  getSavedActiveSoundIds() {
+    return this.soundDefs
+      .filter(def => this.data.sounds[def.id]?.active === true)
+      .map(def => def.id);
+  }
+
+  restoreActiveSounds() {
+    const activeIds = this.getSavedActiveSoundIds();
+    if (activeIds.length === 0) {
+      this.pendingAutoRestore = false;
+      this.updateMasterButton();
+      return;
+    }
+
+    activeIds.forEach((id) => {
+      if (this.sounds.has(id)) return;
+      try {
+        this.startSound(id);
+      } catch (e) {
+        // Ignore and retry after a user gesture if needed.
+      }
+    });
+
+    this.pendingAutoRestore = activeIds.some(id => !this.sounds.has(id));
+    this.updateMasterButton();
+  }
+
+  handleAppVisibility(visible) {
+    if (!visible) return;
+    this.resumeAudioContext();
+    if (this.pendingAutoRestore) {
+      this.restoreActiveSounds();
+    }
+  }
+
   // ===== Restore State =====
 
   restoreState() {
@@ -775,7 +830,7 @@ class SoundscapeApp {
         }
       }
     });
-    // Note: we don't auto-play on load — browsers block autoplay without user gesture
+    this.restoreActiveSounds();
   }
 }
 

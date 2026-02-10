@@ -48,11 +48,17 @@ class PomodoroTimer {
     this.historyToggle.addEventListener('click', () => this.toggleHistory());
     this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
     this.historyDateInput.addEventListener('change', () => this.updateHistoryDisplay());
+    document.addEventListener('visibilitychange', () => this.handleDocumentVisibility());
+    window.addEventListener('pagehide', () => this.saveState());
+    window.addEventListener('beforeunload', () => this.saveState());
 
     // Listen for theme changes from parent
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'theme-change') {
         this.applyTheme(event.data.theme);
+      }
+      if (event.data && event.data.type === 'app-visibility') {
+        this.handleAppVisibility(Boolean(event.data.visible));
       }
     });
   }
@@ -205,6 +211,42 @@ class PomodoroTimer {
   saveState() {
     this.state.lastUpdated = Date.now();
     this.saveData();
+  }
+
+  syncStateWithClock() {
+    if (!this.state.isActive) return;
+
+    if (typeof this.state.targetEndAt === 'number') {
+      this.state.timeRemaining = Math.max(0, Math.ceil((this.state.targetEndAt - Date.now()) / 1000));
+    } else {
+      const elapsed = Math.max(0, Math.floor((Date.now() - this.state.lastUpdated) / 1000));
+      this.state.timeRemaining = Math.max(0, this.state.timeRemaining - elapsed);
+      this.state.targetEndAt = Date.now() + (this.state.timeRemaining * 1000);
+    }
+
+    if (this.state.timeRemaining <= 0) {
+      this.completeSession();
+      return;
+    }
+
+    this.updateDisplay();
+    this.saveState();
+  }
+
+  handleDocumentVisibility() {
+    if (document.visibilityState === 'hidden') {
+      this.saveState();
+      return;
+    }
+    this.syncStateWithClock();
+  }
+
+  handleAppVisibility(visible) {
+    if (!visible) {
+      this.saveState();
+      return;
+    }
+    this.syncStateWithClock();
   }
 
   updateSettingsDisplay() {
