@@ -18,7 +18,7 @@ class Launcher {
     this.searchManager = new SearchManager(this.appLoader, this);
     this.searchManager.init();
 
-    this.settingsManager = new SettingsManager(this.themeManager, this.appLoader);
+    this.settingsManager = new SettingsManager(this.themeManager, this.appLoader, this);
     this.settingsManager.init();
 
     this.bindEvents();
@@ -472,10 +472,45 @@ class Launcher {
     return container;
   }
 
+  discardKeptAliveFrame(appId) {
+    const iframe = this.keepAliveFrames.get(appId);
+    if (!iframe) return false;
+
+    this.keepAliveFrames.delete(appId);
+    if (iframe.parentNode) {
+      iframe.parentNode.removeChild(iframe);
+    }
+    return true;
+  }
+
+  invalidateAppInstance(appId) {
+    const app = this.appLoader.getAppById(appId);
+    if (!app) return false;
+
+    this.discardKeptAliveFrame(appId);
+
+    if (!this.currentApp || this.currentApp.id !== appId) {
+      return false;
+    }
+
+    const content = document.getElementById('workspaceContent');
+    if (!content) return false;
+
+    content.innerHTML = '';
+    const iframe = this.createAppIframe(app);
+    content.appendChild(iframe);
+    iframe.addEventListener('load', () => {
+      this.syncThemeToIframe(iframe);
+      iframe.classList.add('loaded');
+    });
+    return true;
+  }
+
   createAppIframe(app) {
     const iframe = document.createElement('iframe');
     iframe.src = this.appLoader.getAppEntryUrl(app);
     iframe.className = 'app-iframe';
+    iframe.dataset.appId = app.id;
     iframe.title = app.name;
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads');
     return iframe;

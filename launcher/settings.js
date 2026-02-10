@@ -1,7 +1,8 @@
 class SettingsManager {
-  constructor(themeManager, appLoader) {
+  constructor(themeManager, appLoader, launcher = null) {
     this.themeManager = themeManager;
     this.appLoader = appLoader;
+    this.launcher = launcher;
     this.drawer = null;
     this.overlay = null;
     this.isOpen = false;
@@ -38,7 +39,11 @@ class SettingsManager {
 
     for (const app of this.appLoader.apps) {
       if (app.storageKeys && app.storageKeys.length) {
-        this.appStorageMap[app.id] = { name: app.name, keys: app.storageKeys };
+        this.appStorageMap[app.id] = {
+          name: app.name,
+          keys: app.storageKeys,
+          folder: app.folder
+        };
         app.storageKeys.forEach(key => uniqueKeys.add(key));
       }
     }
@@ -335,18 +340,68 @@ class SettingsManager {
     }
   }
 
-  deleteAppData(appId) {
+  async clearCachedAppFiles(appFolder) {
+    if (!appFolder || !('caches' in window)) return 0;
+
+    const folderPath = `/apps/${appFolder}/`;
+    let removedCount = 0;
+
+    try {
+      const cacheNames = await caches.keys();
+
+      for (const cacheName of cacheNames) {
+        const cache = await caches.open(cacheName);
+        const requests = await cache.keys();
+
+        for (const request of requests) {
+          let pathname = '';
+          try {
+            pathname = new URL(request.url).pathname;
+          } catch {
+            continue;
+          }
+
+          if (!pathname.includes(folderPath)) continue;
+
+          const removed = await cache.delete(request, { ignoreSearch: true });
+          if (removed) removedCount++;
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to clear cache for app ${appFolder}:`, error);
+    }
+
+    return removedCount;
+  }
+
+  invalidateAppRuntime(appId) {
+    const launcher = this.launcher || window.launcher;
+    if (!launcher || typeof launcher.invalidateAppInstance !== 'function') {
+      return false;
+    }
+
+    try {
+      return launcher.invalidateAppInstance(appId);
+    } catch (error) {
+      console.warn(`Failed to invalidate app runtime for ${appId}:`, error);
+      return false;
+    }
+  }
+
+  async deleteAppData(appId) {
     const appInfo = this.appStorageMap[appId];
     if (!appInfo) return;
 
     if (!confirm(`Delete all data for ${appInfo.name}? This cannot be undone.`)) return;
 
     appInfo.keys.forEach(key => localStorage.removeItem(key));
+    await this.clearCachedAppFiles(appInfo.folder);
+    this.invalidateAppRuntime(appId);
 
     const select = document.getElementById('deleteAppSelect');
     if (select) select.value = '';
 
-    this.showNotification(`${appInfo.name} data deleted.`);
+    this.showNotification(`${appInfo.name} data and cached files deleted.`);
   }
 
   resetData() {
