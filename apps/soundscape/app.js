@@ -5,6 +5,7 @@ class SoundscapeApp {
     this.sounds = new Map();
     this.data = this.loadData();
     this.pendingAutoRestore = false;
+    this.lastReportedBackgroundActivity = null;
 
     // Sound definitions — add new generated sounds here
     this.soundDefs = [
@@ -57,6 +58,7 @@ class SoundscapeApp {
     this.attachEventListeners();
     this.syncThemeWithParent();
     this.restoreState();
+    this.reportBackgroundActivity();
   }
 
   // ===== Data Persistence =====
@@ -725,6 +727,7 @@ class SoundscapeApp {
     const card = this.soundGrid.querySelector(`[data-sound-id="${id}"]`).closest('.sound-card');
     card.classList.add('active');
     card.querySelector('.toggle-icon').textContent = '\u23F8';
+    this.reportBackgroundActivity();
   }
 
   stopSound(id) {
@@ -744,6 +747,7 @@ class SoundscapeApp {
     const card = this.soundGrid.querySelector(`[data-sound-id="${id}"]`).closest('.sound-card');
     card.classList.remove('active');
     card.querySelector('.toggle-icon').textContent = '\u25B6';
+    this.reportBackgroundActivity();
   }
 
   setSoundVolume(id, vol) {
@@ -792,6 +796,7 @@ class SoundscapeApp {
     if (activeIds.length === 0) {
       this.pendingAutoRestore = false;
       this.updateMasterButton();
+      this.reportBackgroundActivity();
       return;
     }
 
@@ -806,6 +811,7 @@ class SoundscapeApp {
 
     this.pendingAutoRestore = activeIds.some(id => !this.sounds.has(id));
     this.updateMasterButton();
+    this.reportBackgroundActivity();
   }
 
   handleAppVisibility(visible) {
@@ -813,6 +819,28 @@ class SoundscapeApp {
     this.resumeAudioContext();
     if (this.pendingAutoRestore) {
       this.restoreActiveSounds();
+    }
+  }
+
+  hasActiveBackgroundWork() {
+    return this.sounds.size > 0;
+  }
+
+  reportBackgroundActivity() {
+    const active = this.hasActiveBackgroundWork();
+    if (this.lastReportedBackgroundActivity === active) return;
+    this.lastReportedBackgroundActivity = active;
+
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'app-background-activity',
+          appId: 'soundscape',
+          active
+        }, '*');
+      }
+    } catch (e) {
+      // Ignore postMessage failures.
     }
   }
 

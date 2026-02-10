@@ -83,6 +83,7 @@ class Launcher {
     this.currentSort = 'recent';
     this.currentApp = null;
     this.backgroundHost = new BackgroundAppHost();
+    this.backgroundActivity = new Map();
     this.activeAppStorageKey = 'marlapps-active-app';
   }
 
@@ -339,6 +340,10 @@ class Launcher {
       const iframe = document.querySelector('#workspaceContent .app-iframe');
       if (iframe) this.syncThemeToIframe(iframe);
       this.backgroundHost.forEachFrame((frame) => this.syncThemeToIframe(frame));
+    });
+
+    window.addEventListener('message', (event) => {
+      this.handleAppBackgroundActivityMessage(event);
     });
 
     const notifyUnload = () => {
@@ -703,7 +708,7 @@ class Launcher {
   }
 
   isAppRunningInBackground(appId) {
-    return this.backgroundHost.hasFrame(appId);
+    return this.backgroundHost.hasFrame(appId) && this.backgroundActivity.get(appId) === true;
   }
 
   getLauncherItemAriaLabel(appName, isBackgroundRunning = false) {
@@ -722,7 +727,55 @@ class Launcher {
 
       item.classList.toggle('is-background-running', isBackgroundRunning);
       item.setAttribute('aria-label', this.getLauncherItemAriaLabel(appName, isBackgroundRunning));
+
+      if (item.classList.contains('recent-tile')) {
+        const recentMeta = item.querySelector('.recent-meta');
+        if (recentMeta) {
+          const lastOpened = this.appLoader.recents.find(entry => entry.id === appId)?.timestamp || 0;
+          const relativeTime = lastOpened > 0 ? this.formatRelativeTime(lastOpened) : 'recently';
+          recentMeta.textContent = isBackgroundRunning
+            ? `Running in background, last opened ${relativeTime}`
+            : `Last opened ${relativeTime}`;
+        }
+      }
     });
+  }
+
+  getAppIdForContentWindow(contentWindow) {
+    if (!contentWindow) return null;
+
+    const activeIframe = document.querySelector('#workspaceContent .app-iframe');
+    if (activeIframe && activeIframe.contentWindow === contentWindow) {
+      return activeIframe.dataset.appId || null;
+    }
+
+    let matchedAppId = null;
+    this.backgroundHost.forEachFrame((frame, appId) => {
+      if (!matchedAppId && frame.contentWindow === contentWindow) {
+        matchedAppId = appId;
+      }
+    });
+
+    return matchedAppId;
+  }
+
+  setAppBackgroundActivity(appId, isActive) {
+    if (!appId || !this.appLoader.getAppById(appId)) return;
+    this.backgroundActivity.set(appId, Boolean(isActive));
+    this.refreshBackgroundIndicators();
+  }
+
+  handleAppBackgroundActivityMessage(event) {
+    const data = event && event.data;
+    if (!data || data.type !== 'app-background-activity') return;
+
+    const sourceAppId = this.getAppIdForContentWindow(event.source);
+    const messageAppId = typeof data.appId === 'string' ? data.appId : null;
+    const appId = sourceAppId || messageAppId;
+    if (!appId) return;
+    if (sourceAppId && messageAppId && sourceAppId !== messageAppId) return;
+
+    this.setAppBackgroundActivity(appId, data.active === true);
   }
 
   notifyAppVisibility(iframe, visible, reason = '') {
@@ -750,6 +803,9 @@ class Launcher {
     if (!app) return false;
 
     const removedBackgroundFrame = this.backgroundHost.discardFrame(appId);
+    if (removedBackgroundFrame) {
+      this.backgroundActivity.delete(appId);
+    }
 
     if (!this.currentApp || this.currentApp.id !== appId) {
       if (removedBackgroundFrame) this.refreshBackgroundIndicators();
@@ -778,6 +834,7 @@ class Launcher {
     iframe.dataset.appId = app.id;
     iframe.title = app.name;
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads');
+    this.backgroundActivity.set(app.id, false);
     return iframe;
   }
 
@@ -905,6 +962,7 @@ class Launcher {
     } else {
       if (iframe) this.notifyAppVisibility(iframe, false, closeReason);
       content.innerHTML = '';
+      if (app) this.backgroundActivity.delete(app.id);
     }
 
     workspace.classList.add('hidden');

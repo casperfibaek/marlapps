@@ -22,7 +22,16 @@
     <section class="tab-content" id="alarm-tab">
       <div class="alarm-form">
         <div class="alarm-input-row">
-          <input type="time" id="alarmTime" class="alarm-time-input">
+          <input
+            type="text"
+            id="alarmTime"
+            class="alarm-time-input"
+            inputmode="numeric"
+            maxlength="5"
+            placeholder="HH:MM"
+            aria-label="Alarm time in 24-hour format"
+            autocomplete="off"
+          >
           <input type="text" id="alarmLabel" placeholder="Label (optional)" class="alarm-label-input">
         </div>
         <div class="alarm-days">

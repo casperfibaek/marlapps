@@ -12,6 +12,7 @@ class TimerApp {
     this.lastRuntimeSaveAt = 0;
     this.wakeLock = null;
     this.appVisible = true;
+    this.lastReportedBackgroundActivity = null;
 
     // Interval timer runtime state
     this.intervalState = {
@@ -41,6 +42,7 @@ class TimerApp {
     this.restoreRuntimeState();
     this.updateIntervalDisplay();
     this.updateCountdownDisplay();
+    this.reportBackgroundActivity();
   }
 
   // ===== Data Persistence =====
@@ -311,6 +313,7 @@ class TimerApp {
     }
 
     this.persistRuntimeData(true);
+    this.reportBackgroundActivity();
   }
 
   // ===== Theme =====
@@ -408,6 +411,15 @@ class TimerApp {
       btn.addEventListener('click', () => btn.classList.toggle('active'));
     });
     this.dismissAlarmBtn.addEventListener('click', () => this.dismissAlarm());
+    this.alarmTimeInput.addEventListener('input', () => {
+      this.alarmTimeInput.setCustomValidity('');
+    });
+    this.alarmTimeInput.addEventListener('blur', () => {
+      const normalized = this.normalizeAlarmTimeInput(this.alarmTimeInput.value);
+      if (normalized) {
+        this.alarmTimeInput.value = normalized;
+      }
+    });
 
     // Intervals
     this.intervalStartBtn.addEventListener('click', () => this.startInterval());
@@ -452,8 +464,14 @@ class TimerApp {
   // ===== Alarm Functions =====
 
   addAlarm() {
-    const time = this.alarmTimeInput.value;
-    if (!time) return;
+    const time = this.normalizeAlarmTimeInput(this.alarmTimeInput.value);
+    if (!time) {
+      this.alarmTimeInput.setCustomValidity('Use 24-hour format (HH:MM).');
+      this.alarmTimeInput.reportValidity();
+      return;
+    }
+    this.alarmTimeInput.setCustomValidity('');
+    this.alarmTimeInput.value = time;
 
     this.maybeRequestNotificationPermission();
 
@@ -531,6 +549,38 @@ class TimerApp {
     const [h, m] = time24.split(':').map(Number);
     if (Number.isNaN(h) || Number.isNaN(m)) return time24;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  normalizeAlarmTimeInput(rawTime) {
+    if (typeof rawTime !== 'string') return null;
+    const value = rawTime.trim();
+    if (!value) return null;
+
+    let hours = null;
+    let minutes = null;
+
+    const hhmmMatch = value.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/);
+    if (hhmmMatch) {
+      hours = Number.parseInt(hhmmMatch[1], 10);
+      minutes = Number.parseInt(hhmmMatch[2], 10);
+    } else {
+      const compactMatch = value.match(/^(\d{3,4})$/);
+      if (compactMatch) {
+        const digits = compactMatch[1];
+        if (digits.length === 3) {
+          hours = Number.parseInt(digits.slice(0, 1), 10);
+          minutes = Number.parseInt(digits.slice(1), 10);
+        } else {
+          hours = Number.parseInt(digits.slice(0, 2), 10);
+          minutes = Number.parseInt(digits.slice(2), 10);
+        }
+      }
+    }
+
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
 
   sortDaysMondayFirst(days) {
@@ -726,6 +776,7 @@ class TimerApp {
     this.intervalTimerInterval = setInterval(() => this.tickInterval(), 250);
     this.tickInterval();
     this.persistRuntimeData(true);
+    this.reportBackgroundActivity();
   }
 
   tickInterval(options = {}) {
@@ -790,6 +841,7 @@ class TimerApp {
     this.intervalDisplay.classList.remove('active');
     clearInterval(this.intervalTimerInterval);
     this.persistRuntimeData(true);
+    this.reportBackgroundActivity();
   }
 
   resetInterval(options = {}) {
@@ -808,6 +860,7 @@ class TimerApp {
     this.intervalDisplay.classList.remove('active', 'work', 'rest');
     this.updateIntervalDisplay();
     if (persist) this.persistRuntimeData(true);
+    this.reportBackgroundActivity();
   }
 
   updateIntervalDisplay() {
@@ -855,6 +908,7 @@ class TimerApp {
     this.addRecentCountdown(totalSeconds);
     this.updateCountdownDisplay();
     this.persistRuntimeData(true);
+    this.reportBackgroundActivity();
   }
 
   addRecentCountdown(seconds) {
@@ -932,6 +986,7 @@ class TimerApp {
     this.acquireWakeLock();
     this.tickCountdown();
     this.persistRuntimeData(true);
+    this.reportBackgroundActivity();
   }
 
   tickCountdown(options = {}) {
@@ -970,6 +1025,7 @@ class TimerApp {
       this.releaseWakeLock();
       document.title = 'Timer - MarlApps';
       if (persist) this.persistRuntimeData(true);
+      this.reportBackgroundActivity();
     }
   }
 
@@ -991,6 +1047,7 @@ class TimerApp {
     this.releaseWakeLock();
     this.updateCountdownDisplay();
     this.persistRuntimeData(true);
+    this.reportBackgroundActivity();
   }
 
   resetCountdown() {
@@ -1007,6 +1064,7 @@ class TimerApp {
     this.updateCountdownDisplay();
     document.title = 'Timer - MarlApps';
     this.persistRuntimeData(true);
+    this.reportBackgroundActivity();
   }
 
   updateCountdownDisplay() {
@@ -1028,6 +1086,28 @@ class TimerApp {
       } else {
         this.countdownSubtitle.textContent = 'Set a timer';
       }
+    }
+  }
+
+  hasActiveBackgroundWork() {
+    return this.intervalState.running || this.countdownState.running;
+  }
+
+  reportBackgroundActivity() {
+    const active = this.hasActiveBackgroundWork();
+    if (this.lastReportedBackgroundActivity === active) return;
+    this.lastReportedBackgroundActivity = active;
+
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'app-background-activity',
+          appId: 'timer',
+          active
+        }, '*');
+      }
+    } catch (e) {
+      // Ignore postMessage failures.
     }
   }
 

@@ -8,6 +8,7 @@ class PomodoroTimer {
     this.history = this.loadHistory();
     this.timerInterval = null;
     this.notificationPermissionRequested = false;
+    this.lastReportedBackgroundActivity = null;
 
     this.initElements();
     this.attachEventListeners();
@@ -20,6 +21,8 @@ class PomodoroTimer {
     if (this.state.isActive) {
       this.startTimer();
     }
+
+    this.reportBackgroundActivity();
   }
 
   initElements() {
@@ -313,6 +316,7 @@ class PomodoroTimer {
     this.tickTimer();
 
     this.saveState();
+    this.reportBackgroundActivity();
   }
 
   tickTimer() {
@@ -339,6 +343,7 @@ class PomodoroTimer {
 
     clearInterval(this.timerInterval);
     this.saveState();
+    this.reportBackgroundActivity();
   }
 
   resetTimer() {
@@ -405,6 +410,28 @@ class PomodoroTimer {
 
     // Update page title
     document.title = `${this.timerEl.textContent} - ${sessionNames[this.state.sessionType]}`;
+  }
+
+  hasActiveBackgroundWork() {
+    return this.state.isActive === true;
+  }
+
+  reportBackgroundActivity() {
+    const active = this.hasActiveBackgroundWork();
+    if (this.lastReportedBackgroundActivity === active) return;
+    this.lastReportedBackgroundActivity = active;
+
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'app-background-activity',
+          appId: 'pomodoro-timer',
+          active
+        }, '*');
+      }
+    } catch (e) {
+      // Ignore postMessage failures.
+    }
   }
 
   getDateKey(date = new Date()) {
