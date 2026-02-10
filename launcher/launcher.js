@@ -107,9 +107,17 @@ class Launcher {
     // Check for updates on startup (respects user preference)
     this.settingsManager.autoCheckForUpdates();
 
-    // Restore active app from URL (shortcut deep-link) or last-opened state.
+    // Always return to launcher on browser reload (including hard reload).
+    // Deep-links and persisted app state only apply to fresh navigations.
     const params = new URLSearchParams(window.location.search);
     const appParam = params.get('app');
+    if (this.isReloadNavigation()) {
+      this.clearPersistedActiveApp();
+      if (appParam) this.clearAppQueryParam();
+      return;
+    }
+
+    // Restore active app from URL (shortcut deep-link) or last-opened state.
     const startupAppId = this.getStartupAppId(appParam);
 
     if (!startupAppId && appParam) {
@@ -119,6 +127,24 @@ class Launcher {
     if (startupAppId) {
       this.openApp(startupAppId);
     }
+  }
+
+  isReloadNavigation() {
+    try {
+      const navigationEntries = performance.getEntriesByType('navigation');
+      const navigationEntry = navigationEntries[0];
+      if (navigationEntry && typeof navigationEntry.type === 'string') {
+        return navigationEntry.type === 'reload';
+      }
+
+      if (performance.navigation && typeof performance.navigation.type === 'number') {
+        return performance.navigation.type === 1;
+      }
+    } catch (e) {
+      // Ignore navigation API errors.
+    }
+
+    return false;
   }
 
   isActivationKey(key) {
