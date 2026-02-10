@@ -5,7 +5,7 @@
   "description": "Focus timer with work/break intervals",
   "icon": "icon.svg",
   "entry": "index.html",
-  "categories": ["Focus", "Tools"],
+  "categories": ["Focus"],
   "order": 1,
   "storageKeys": ["marlapps-pomodoro-timer"],
   "version": "1.0.0",

@@ -15,6 +15,8 @@ body {
 
 .app-container {
   min-height: 100vh;
+  width: min(100%, 960px);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
 }
@@ -458,11 +460,15 @@ body {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  width: min(100%, 460px);
+  margin: 0 auto var(--space-4);
 }
 
-.custom-time-input {
-  width: 80px;
+/* Override shared input width: 100% for compact timer controls */
+.custom-time-row input.custom-time-input {
+  width: 112px;
+  flex: 0 1 112px;
+  min-width: 0;
   text-align: center;
   font-size: 1.1rem;
 }
@@ -593,6 +599,10 @@ body {
 /* ===== Responsive ===== */
 
 @media (max-width: 480px) {
+  .app-container {
+    width: 100%;
+  }
+
   .tab-content {
     padding: var(--space-4);
   }
@@ -623,6 +633,15 @@ body {
 
   .alarm-time-input {
     width: 100%;
+  }
+
+  .custom-time-row {
+    width: 100%;
+  }
+
+  .custom-time-row input.custom-time-input {
+    flex: 1 1 0;
+    width: auto;
   }
 
   .controls {

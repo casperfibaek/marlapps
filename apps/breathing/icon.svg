@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Breathing Meditation icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#0b1220" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#0f9c8d" />
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#bg)" />
+
+  <circle cx="64" cy="64" r="34" fill="none" stroke="url(#accent)" stroke-width="8" opacity="0.95" />
+  <circle cx="64" cy="64" r="18" fill="url(#accent)" opacity="0.4" />
+
+  <path d="M64 14v14m0-14-5 5m5-5 5 5" fill="none" stroke="#5eead4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M114 64h-14m14 0-5-5m5 5-5 5" fill="none" stroke="#5eead4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M64 114v-14m0 14-5-5m5 5 5-5" fill="none" stroke="#5eead4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M14 64h14m-14 0 5-5m-5 5 5 5" fill="none" stroke="#5eead4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

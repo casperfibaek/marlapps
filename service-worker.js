@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v39';
+const CACHE_NAME = 'marlapps-v41';
 const urlsToCache = [
   './',
   './index.html',
@@ -85,7 +85,13 @@ const urlsToCache = [
   './apps/soundscape/index.html',
   './apps/soundscape/styles.css',
   './apps/soundscape/app.js',
-  './apps/soundscape/icon.svg'
+  './apps/soundscape/icon.svg',
+
+  './apps/breathing/manifest.json',
+  './apps/breathing/index.html',
+  './apps/breathing/styles.css',
+  './apps/breathing/app.js',
+  './apps/breathing/icon.svg'
   // AUTO:APP-CACHE-END
 ];
 

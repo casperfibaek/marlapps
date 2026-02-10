@@ -1,0 +1,13 @@
+{
+  "id": "breathing",
+  "name": "Breathing Meditation",
+  "shortName": "Breathing",
+  "description": "Guided breathing techniques with a focus on box breathing",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Focus"],
+  "order": 10,
+  "storageKeys": ["marlapps-breathing"],
+  "version": "1.0.0",
+  "author": "MarlApps"
+}

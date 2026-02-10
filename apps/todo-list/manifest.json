@@ -5,7 +5,7 @@
   "description": "Simple task management with filters",
   "icon": "icon.svg",
   "entry": "index.html",
-  "categories": ["Planning", "Tools"],
+  "categories": ["Planning"],
   "order": 3,
   "storageKeys": ["marlapps-todo-list"],
   "version": "1.0.0",

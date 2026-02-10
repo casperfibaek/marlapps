@@ -1,0 +1,206 @@
+/* Breathing App - Uses shared theme from /themes/app-common.css */
+@import url('../../themes/app-common.css');
+
+:root {
+  --app-accent: #14b8a6;
+  --app-accent-hover: #0f9c8d;
+  --app-accent-light: rgba(20, 184, 166, 0.15);
+}
+
+body {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, color-mix(in srgb, var(--app-accent) 16%, transparent), transparent 60%);
+}
+
+.app-container {
+  max-width: 920px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.8vw, 2rem);
+  color: var(--app-text-primary);
+}
+
+.app-header p {
+  margin: var(--space-2) 0 0;
+  color: var(--app-text-secondary);
+}
+
+.breath-stage {
+  display: grid;
+  gap: var(--space-4);
+  place-items: center;
+  padding: var(--space-6);
+  background: color-mix(in srgb, var(--app-bg-secondary) 90%, transparent);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-lg);
+}
+
+.breath-ring {
+  width: clamp(220px, 48vw, 300px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 40%, var(--app-border-color));
+  background: radial-gradient(circle, color-mix(in srgb, var(--app-accent) 14%, transparent), transparent 70%);
+}
+
+.breath-orb {
+  --phase-duration: 4s;
+  width: 68%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--app-accent) 35%, var(--app-bg-tertiary)),
+    color-mix(in srgb, var(--app-accent) 18%, var(--app-bg-primary))
+  );
+  border: 1px solid color-mix(in srgb, var(--app-accent) 35%, var(--app-border-color));
+  box-shadow: 0 14px 40px color-mix(in srgb, var(--app-accent) 22%, transparent);
+  transition: transform var(--phase-duration) ease-in-out, box-shadow 300ms ease;
+}
+
+.breath-orb.phase-ready {
+  transform: scale(1);
+}
+
+.breath-orb.phase-inhale,
+.breath-orb.phase-hold-in {
+  transform: scale(1.22);
+}
+
+.breath-orb.phase-exhale,
+.breath-orb.phase-hold-out {
+  transform: scale(0.82);
+}
+
+.phase-label {
+  font-size: 0.96rem;
+  color: var(--app-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.phase-time {
+  margin-top: var(--space-2);
+  font-size: clamp(2.1rem, 6vw, 2.8rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--app-text-primary);
+}
+
+.phase-hint {
+  margin: 0;
+  text-align: center;
+  color: var(--app-text-secondary);
+  min-height: 1.35em;
+}
+
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.control-row .btn {
+  min-width: 124px;
+}
+
+.session-panel {
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.setting-row {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.setting-row label {
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+
+.setting-row select,
+.setting-row input,
+.duration-grid input {
+  width: 100%;
+}
+
+.duration-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.duration-grid label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--app-text-secondary);
+  font-size: 0.9rem;
+}
+
+.stats-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.stat-card {
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.stat-label {
+  color: var(--app-text-tertiary);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  color: var(--app-text-primary);
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .breath-stage {
+    padding: var(--space-4);
+  }
+
+  .duration-grid,
+  .stats-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .control-row .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}

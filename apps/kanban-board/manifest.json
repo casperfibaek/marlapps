@@ -5,7 +5,7 @@
   "description": "Visual task management with drag-and-drop",
   "icon": "icon.svg",
   "entry": "index.html",
-  "categories": ["Planning", "Tools"],
+  "categories": ["Planning"],
   "order": 2,
   "storageKeys": ["marlapps-kanban-board"],
   "version": "1.0.0",

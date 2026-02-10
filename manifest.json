@@ -172,6 +172,19 @@
           "type": "image/svg+xml"
         }
       ]
+    },
+    {
+      "name": "Breathing Meditation",
+      "short_name": "Breathing",
+      "description": "Guided breathing techniques with a focus on box breathing",
+      "url": "./index.html?app=breathing",
+      "icons": [
+        {
+          "src": "./apps/breathing/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }

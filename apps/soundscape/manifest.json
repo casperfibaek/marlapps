@@ -5,7 +5,7 @@
   "description": "Mix white and brown noise for focus and relaxation",
   "icon": "icon.svg",
   "entry": "index.html",
-  "categories": ["Focus", "Tools"],
+  "categories": ["Focus"],
   "order": 9,
   "storageKeys": ["marlapps-soundscape"],
   "keepAliveOnClose": true,

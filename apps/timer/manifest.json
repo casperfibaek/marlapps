@@ -5,7 +5,7 @@
   "description": "Alarms, interval timer, and countdown",
   "icon": "icon.svg",
   "entry": "index.html",
-  "categories": ["Tools", "Focus"],
+  "categories": ["Focus", "Tools"],
   "order": 8,
   "storageKeys": ["marlapps-timer"],
   "version": "1.0.0",

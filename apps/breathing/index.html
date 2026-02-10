@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#14b8a6">
+  <title>Breathing Meditation - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>Breathing Meditation</h1>
+      <p>Guided breathing techniques with a focus on box breathing.</p>
+    </header>
+
+    <section class="breath-stage" aria-live="polite">
+      <div class="breath-ring">
+        <div class="breath-orb phase-ready" id="breathOrb">
+          <span class="phase-label" id="phaseLabel">Ready</span>
+          <span class="phase-time" id="phaseTime">--</span>
+        </div>
+      </div>
+      <p class="phase-hint" id="phaseHint">Select a technique and press Start.</p>
+    </section>
+
+    <section class="control-row" aria-label="Breathing controls">
+      <button class="btn btn-primary" id="startBtn">Start</button>
+      <button class="btn btn-secondary" id="pauseBtn" disabled>Pause</button>
+      <button class="btn btn-secondary" id="resetBtn">Reset</button>
+    </section>
+
+    <section class="session-panel" aria-label="Session settings">
+      <div class="setting-row">
+        <label for="techniqueSelect">Technique</label>
+        <select id="techniqueSelect">
+          <option value="box">Box breathing (4-4-4-4)</option>
+          <option value="balanced">Balanced breathing (5-5-5-5)</option>
+          <option value="four-seven-eight">4-7-8 breathing</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label for="cyclesInput">Cycles</label>
+        <input type="number" id="cyclesInput" min="1" max="60" value="8">
+      </div>
+
+      <div class="duration-grid" aria-label="Phase durations in seconds">
+        <label>
+          Inhale
+          <input type="number" id="inhaleInput" min="1" max="30" value="4">
+        </label>
+        <label>
+          Hold (in)
+          <input type="number" id="holdInInput" min="0" max="30" value="4">
+        </label>
+        <label>
+          Exhale
+          <input type="number" id="exhaleInput" min="1" max="30" value="4">
+        </label>
+        <label>
+          Hold (out)
+          <input type="number" id="holdOutInput" min="0" max="30" value="4">
+        </label>
+      </div>
+    </section>
+
+    <section class="stats-panel" aria-label="Session progress">
+      <div class="stat-card">
+        <span class="stat-label">Cycle</span>
+        <strong class="stat-value" id="cycleProgress">0 / 0</strong>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Session remaining</span>
+        <strong class="stat-value" id="sessionRemaining">00:00</strong>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@
   "description": "Track your weight over time with charts and averages",
   "icon": "icon.svg",
   "entry": "index.html",
-  "categories": ["Health", "Tracking"],
+  "categories": ["Tracking"],
   "order": 7,
   "storageKeys": ["marlapps-weight-tracker"],
   "version": "1.0.0",
