@@ -440,17 +440,6 @@ body.app-open .topbar-mobile-btn {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  --running-light-width: 72%;
-  --running-light-height: 7px;
-  --running-light-offset: -6px;
-  --running-light-blur: 8px;
-}
-
-.recent-icon-wrap {
-  --running-light-width: 76%;
-  --running-light-height: 8px;
-  --running-light-offset: -7px;
-  --running-light-blur: 10px;
 }
 
 .recent-icon {
@@ -465,25 +454,33 @@ body.app-open .topbar-mobile-btn {
 }
 
 .background-running-frame {
-  position: absolute;
-  left: 50%;
-  bottom: var(--running-light-offset);
-  width: var(--running-light-width);
-  height: var(--running-light-height);
-  transform: translateX(-50%) scale(0.82);
-  border-radius: var(--radius-full);
-  background: radial-gradient(ellipse at center, var(--accent-primary) 0%, transparent 72%);
-  filter: blur(var(--running-light-blur));
-  opacity: 0;
-  pointer-events: none;
-  z-index: 0;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  display: none;
 }
 
-.app-card.is-background-running .background-running-frame,
-.recent-tile.is-background-running .background-running-frame {
-  opacity: 0.9;
-  animation: running-light-pulse 1.8s ease-in-out infinite;
+.app-card.is-background-running,
+.recent-tile.is-background-running {
+  animation: running-item-pulse 2.2s ease-in-out infinite;
+}
+
+.app-card.is-background-running {
+  --running-bg-base: var(--card-fill);
+  --running-bg-peak: var(--accent-lighter);
+}
+
+.app-card.is-background-running:hover {
+  --running-bg-base: var(--card-fill-hover);
+  --running-bg-peak: var(--accent-light);
+}
+
+.recent-tile.is-background-running {
+  --running-bg-base: var(--recent-tile-bg);
+  --running-bg-peak: var(--accent-lighter);
+  border-color: var(--accent-light);
+}
+
+.recent-tile.is-background-running:hover {
+  --running-bg-base: var(--recent-tile-hover-bg);
+  --running-bg-peak: var(--accent-light);
 }
 
 .app-card.is-background-running .app-category-badge {
@@ -496,16 +493,9 @@ body.app-open .topbar-mobile-btn {
   color: var(--accent-primary);
 }
 
-@keyframes running-light-pulse {
-  0%, 100% {
-    transform: translateX(-50%) scale(0.78);
-    opacity: 0.45;
-  }
-
-  50% {
-    transform: translateX(-50%) scale(1.12);
-    opacity: 0.95;
-  }
+@keyframes running-item-pulse {
+  0%, 100% { background-color: var(--running-bg-base); }
+  50% { background-color: var(--running-bg-peak); }
 }
 
 .recent-info {
@@ -1141,11 +1131,10 @@ body.app-open .topbar-mobile-btn {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-card.is-background-running .background-running-frame,
-  .recent-tile.is-background-running .background-running-frame {
+  .app-card.is-background-running,
+  .recent-tile.is-background-running {
     animation: none;
-    transform: translateX(-50%) scale(1);
-    opacity: 0.7;
+    background-color: var(--running-bg-peak);
   }
 }
 
