@@ -363,40 +363,6 @@ class Launcher {
   }
 
   bindMobileEvents() {
-    const mobileNavHome = document.getElementById('mobileNavHome');
-    const mobileNavSearch = document.getElementById('mobileNavSearch');
-    const mobileNavCategories = document.getElementById('mobileNavCategories');
-    const mobileNavSettings = document.getElementById('mobileNavSettings');
-
-    if (mobileNavHome) {
-      mobileNavHome.addEventListener('click', () => {
-        if (this.currentApp) this.closeApp('home');
-        this.closeMobileOverlays();
-        this.setMobileNavActive('home');
-      });
-    }
-
-    if (mobileNavSearch) {
-      mobileNavSearch.addEventListener('click', () => {
-        this.openMobileSearch();
-        this.setMobileNavActive('search');
-      });
-    }
-
-    if (mobileNavCategories) {
-      mobileNavCategories.addEventListener('click', () => {
-        this.openMobileCategoriesSheet();
-        this.setMobileNavActive('categories');
-      });
-    }
-
-    if (mobileNavSettings) {
-      mobileNavSettings.addEventListener('click', () => {
-        if (this.settingsManager) this.settingsManager.open();
-        this.setMobileNavActive('settings');
-      });
-    }
-
     const mobileSearchCancel = document.getElementById('mobileSearchCancel');
     const mobileSearchInput = document.getElementById('mobileSearchInput');
 
@@ -422,16 +388,7 @@ class Launcher {
         this.setCategory(btn.dataset.category);
         this.updateMobileCategoryActive(btn.dataset.category);
         this.closeMobileCategoriesSheet();
-        this.setMobileNavActive('home');
       });
-    });
-
-    window.addEventListener('settingsClosed', () => this.setMobileNavActive('home'));
-  }
-
-  setMobileNavActive(nav) {
-    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.nav === nav);
     });
   }
 
@@ -452,7 +409,6 @@ class Launcher {
     const results = document.getElementById('mobileSearchResults');
     if (overlay) overlay.classList.add('hidden');
     if (results) results.innerHTML = '';
-    this.setMobileNavActive('home');
   }
 
   handleMobileSearch() {
@@ -516,7 +472,6 @@ class Launcher {
     const sheet = document.getElementById('mobileCategoriesSheet');
     if (sheet) sheet.classList.add('hidden');
     this.hideMobileBackdrop();
-    this.setMobileNavActive('home');
   }
 
   updateMobileCategoryActive(category) {

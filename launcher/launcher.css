@@ -440,6 +440,12 @@ body.app-open .topbar-mobile-btn {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  --running-frame-radius: calc(var(--radius-sm) + 4px);
+  --running-frame-stroke: 2px;
+}
+
+.recent-icon-wrap {
+  --running-frame-radius: calc(var(--radius-md) + 4px);
 }
 
 .recent-icon {
@@ -449,35 +455,50 @@ body.app-open .topbar-mobile-btn {
   object-fit: contain;
   background: var(--surface-secondary);
   padding: var(--space-2);
+  position: relative;
+  z-index: 1;
 }
 
 .background-running-frame {
   position: absolute;
   inset: -4px;
   border: 1px solid var(--border-secondary);
-  border-radius: calc(var(--radius-sm) + 4px);
+  border-radius: var(--running-frame-radius);
   opacity: 0;
   pointer-events: none;
+  z-index: 2;
   transition: opacity var(--transition-fast), border-color var(--transition-fast);
 }
 
 .background-running-frame::after {
   content: '';
   position: absolute;
-  inset: -1px;
+  inset: 0;
+  padding: var(--running-frame-stroke);
   border-radius: inherit;
+  border: var(--running-frame-stroke) solid transparent;
+  border-top-color: var(--accent-primary);
+  border-right-color: var(--accent-primary);
   opacity: 0;
-  background:
-    repeating-linear-gradient(90deg, var(--accent-primary) 0 8px, transparent 8px 14px) top left / 200% 2px no-repeat,
-    repeating-linear-gradient(180deg, var(--accent-primary) 0 8px, transparent 8px 14px) top right / 2px 200% no-repeat,
-    repeating-linear-gradient(270deg, var(--accent-primary) 0 8px, transparent 8px 14px) bottom right / 200% 2px no-repeat,
-    repeating-linear-gradient(0deg, var(--accent-primary) 0 8px, transparent 8px 14px) bottom left / 2px 200% no-repeat;
-  animation: running-frame-edge 1.2s linear infinite;
+  animation: running-frame-rotate 1.15s linear infinite;
   transition: opacity var(--transition-fast);
 }
 
-.recent-icon-wrap .background-running-frame {
-  border-radius: calc(var(--radius-md) + 4px);
+@supports ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+  .background-running-frame::after {
+    border: none;
+    background: conic-gradient(
+      from 0deg,
+      color-mix(in srgb, var(--accent-primary) 0%, transparent) 0deg,
+      color-mix(in srgb, var(--accent-primary) 0%, transparent) 265deg,
+      var(--accent-primary) 310deg,
+      color-mix(in srgb, var(--accent-primary) 55%, transparent) 338deg,
+      color-mix(in srgb, var(--accent-primary) 0%, transparent) 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
 }
 
 .app-card.is-background-running .background-running-frame,
@@ -501,13 +522,8 @@ body.app-open .topbar-mobile-btn {
   color: var(--accent-primary);
 }
 
-@keyframes running-frame-edge {
-  from {
-    background-position: 0 0, 100% 0, 100% 100%, 0 100%;
-  }
-  to {
-    background-position: 14px 0, 100% 14px, calc(100% - 14px) 100%, 0 calc(100% - 14px);
-  }
+@keyframes running-frame-rotate {
+  to { transform: rotate(360deg); }
 }
 
 .recent-info {
@@ -703,6 +719,8 @@ body.app-open .topbar-mobile-btn {
   background: var(--surface-secondary);
   padding: var(--space-1);
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .app-info {
@@ -1194,58 +1212,6 @@ body.app-open .topbar-mobile-btn {
   visibility: visible;
 }
 
-/* ========================================
-   MOBILE NAVIGATION
-   ======================================== */
-
-/* Mobile Bottom Navigation Bar */
-.mobile-nav {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
-  padding-bottom: env(safe-area-inset-bottom, 0);
-  background: var(--surface-tertiary);
-  border-top: 1px solid var(--border-secondary);
-  z-index: var(--z-sticky);
-  justify-content: space-around;
-  align-items: center;
-}
-
-.mobile-nav-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 64px;
-  min-height: 48px;
-  padding: var(--space-2);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-md);
-  color: var(--text-tertiary);
-  font-size: 11px;
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.mobile-nav-btn svg {
-  width: 24px;
-  height: 24px;
-}
-
-.mobile-nav-btn.active {
-  color: var(--accent-primary);
-}
-
-.mobile-nav-btn:active {
-  background: var(--surface-hover);
-}
-
 /* Mobile Search Overlay */
 .mobile-search-overlay {
   position: fixed;
@@ -1459,11 +1425,6 @@ body.app-open .topbar-mobile-btn {
     display: none;
   }
 
-  /* Enable bottom navigation on mobile */
-  .mobile-nav {
-    display: flex;
-  }
-
   /* Show mobile topbar buttons (search, categories) */
   .topbar-mobile-btn {
     display: flex;
@@ -1479,9 +1440,9 @@ body.app-open .topbar-mobile-btn {
     margin-left: auto;
   }
 
-  /* Padding for bottom safe area + extra space so last item is reachable */
+  /* Keep scrollable content clear of bottom safe area */
   .main-content {
-    padding-bottom: calc(64px + var(--space-6) + env(safe-area-inset-bottom, 0));
+    padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0));
   }
 
   .search-hint {
@@ -1528,11 +1489,6 @@ body.app-open .topbar-mobile-btn {
     display: none;
   }
 
-  /* Hide mobile nav when app is open */
-  body.app-open .mobile-nav {
-    display: none;
-  }
-
   /* App workspace takes full screen on mobile */
   .app-workspace {
     position: fixed;
@@ -1560,20 +1516,8 @@ body.app-open .topbar-mobile-btn {
     top: 48px;
   }
 
-  .mobile-nav {
-    height: 52px;
-  }
-
-  .mobile-nav-btn {
-    min-height: 44px;
-  }
-
-  .mobile-nav-btn span {
-    display: none; /* Hide labels in landscape to save space */
-  }
-
   .main-content {
-    padding-bottom: calc(52px + var(--space-4));
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0));
   }
 }
 
