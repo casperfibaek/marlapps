@@ -8,6 +8,9 @@
   "categories": ["Focus", "Tools"],
   "order": 8,
   "storageKeys": ["marlapps-timer"],
+  "background": {
+    "mode": "keep-alive"
+  },
   "version": "1.0.0",
   "author": "MarlApps",
   "permissions": ["notifications"],

@@ -1,3 +1,73 @@
+class BackgroundAppHost {
+  constructor() {
+    this.frames = new Map();
+    this.container = null;
+  }
+
+  shouldKeepAliveApp(app) {
+    if (!app) return false;
+
+    // Legacy fallback to keep old manifests working.
+    if (app.keepAliveOnClose === true) return true;
+
+    const background = app.background;
+    if (!background || typeof background !== 'object' || Array.isArray(background)) {
+      return false;
+    }
+
+    return background.mode === 'keep-alive' || background.keepAlive === true;
+  }
+
+  getContainer() {
+    if (this.container && document.body.contains(this.container)) {
+      return this.container;
+    }
+
+    let container = document.getElementById('keepAliveWorkspace');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'keepAliveWorkspace';
+      container.setAttribute('aria-hidden', 'true');
+      container.style.position = 'absolute';
+      container.style.width = '0';
+      container.style.height = '0';
+      container.style.overflow = 'hidden';
+      container.style.opacity = '0';
+      container.style.pointerEvents = 'none';
+      document.body.appendChild(container);
+    }
+
+    this.container = container;
+    return container;
+  }
+
+  stashFrame(appId, iframe) {
+    if (!appId || !iframe) return;
+    this.frames.set(appId, iframe);
+    this.getContainer().appendChild(iframe);
+  }
+
+  restoreFrame(appId) {
+    const iframe = this.frames.get(appId);
+    if (!iframe) return null;
+    this.frames.delete(appId);
+    return iframe;
+  }
+
+  discardFrame(appId) {
+    const iframe = this.frames.get(appId);
+    if (!iframe) return false;
+
+    this.frames.delete(appId);
+    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    return true;
+  }
+
+  forEachFrame(cb) {
+    this.frames.forEach((iframe, appId) => cb(iframe, appId));
+  }
+}
+
 class Launcher {
   constructor() {
     this.themeManager = new ThemeManager();
@@ -7,8 +77,7 @@ class Launcher {
     this.currentCategory = 'all';
     this.currentSort = 'recent';
     this.currentApp = null;
-    this.keepAliveFrames = new Map();
-    this.keepAliveContainer = null;
+    this.backgroundHost = new BackgroundAppHost();
   }
 
   async init() {
@@ -128,8 +197,9 @@ class Launcher {
     });
 
     window.addEventListener('themechange', () => {
-      const iframe = document.querySelector('.app-iframe');
+      const iframe = document.querySelector('#workspaceContent .app-iframe');
       if (iframe) this.syncThemeToIframe(iframe);
+      this.backgroundHost.forEachFrame((frame) => this.syncThemeToIframe(frame));
     });
 
     const topbarSettingsBtn = document.getElementById('topbarSettingsBtn');
@@ -446,48 +516,28 @@ class Launcher {
   }
 
   shouldKeepAliveApp(app) {
-    return Boolean(app && app.keepAliveOnClose);
+    return this.backgroundHost.shouldKeepAliveApp(app);
   }
 
-  getKeepAliveContainer() {
-    if (this.keepAliveContainer && document.body.contains(this.keepAliveContainer)) {
-      return this.keepAliveContainer;
+  notifyAppVisibility(iframe, visible, reason = '') {
+    if (!iframe || !iframe.contentWindow) return;
+
+    try {
+      iframe.contentWindow.postMessage({
+        type: 'app-visibility',
+        visible: Boolean(visible),
+        reason
+      }, '*');
+    } catch (e) {
+      // Ignore
     }
-
-    let container = document.getElementById('keepAliveWorkspace');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'keepAliveWorkspace';
-      container.setAttribute('aria-hidden', 'true');
-      container.style.position = 'absolute';
-      container.style.width = '0';
-      container.style.height = '0';
-      container.style.overflow = 'hidden';
-      container.style.opacity = '0';
-      container.style.pointerEvents = 'none';
-      document.body.appendChild(container);
-    }
-
-    this.keepAliveContainer = container;
-    return container;
-  }
-
-  discardKeptAliveFrame(appId) {
-    const iframe = this.keepAliveFrames.get(appId);
-    if (!iframe) return false;
-
-    this.keepAliveFrames.delete(appId);
-    if (iframe.parentNode) {
-      iframe.parentNode.removeChild(iframe);
-    }
-    return true;
   }
 
   invalidateAppInstance(appId) {
     const app = this.appLoader.getAppById(appId);
     if (!app) return false;
 
-    this.discardKeptAliveFrame(appId);
+    this.backgroundHost.discardFrame(appId);
 
     if (!this.currentApp || this.currentApp.id !== appId) {
       return false;
@@ -501,6 +551,7 @@ class Launcher {
     content.appendChild(iframe);
     iframe.addEventListener('load', () => {
       this.syncThemeToIframe(iframe);
+      this.notifyAppVisibility(iframe, true, 'workspace-open');
       iframe.classList.add('loaded');
     });
     return true;
@@ -539,18 +590,19 @@ class Launcher {
     if (!workspace || !content || !mainContent) return;
 
     content.innerHTML = '';
-    let iframe = this.keepAliveFrames.get(app.id);
+    let iframe = this.backgroundHost.restoreFrame(app.id);
 
     if (iframe) {
-      this.keepAliveFrames.delete(app.id);
       content.appendChild(iframe);
       this.syncThemeToIframe(iframe);
+      this.notifyAppVisibility(iframe, true, 'workspace-open');
       iframe.classList.add('loaded');
     } else {
       iframe = this.createAppIframe(app);
       content.appendChild(iframe);
       iframe.addEventListener('load', () => {
         this.syncThemeToIframe(iframe);
+        this.notifyAppVisibility(iframe, true, 'workspace-open');
         iframe.classList.add('loaded');
       });
     }
@@ -571,10 +623,10 @@ class Launcher {
     const iframe = content.querySelector('.app-iframe');
 
     if (app && iframe && this.shouldKeepAliveApp(app)) {
-      const keepAliveContainer = this.getKeepAliveContainer();
-      this.keepAliveFrames.set(app.id, iframe);
-      keepAliveContainer.appendChild(iframe);
+      this.notifyAppVisibility(iframe, false, 'launcher-home');
+      this.backgroundHost.stashFrame(app.id, iframe);
     } else {
+      if (iframe) this.notifyAppVisibility(iframe, false, 'app-closed');
       content.innerHTML = '';
     }
 

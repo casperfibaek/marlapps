@@ -10,6 +10,7 @@ class TimerApp {
     this.notificationPermissionRequested = false;
     this.lastCompletedCountdown = 0;
     this.wakeLock = null;
+    this.appVisible = true;
 
     // Interval timer state (not persisted while running - too fast)
     this.intervalState = {
@@ -138,6 +139,10 @@ class TimerApp {
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'theme-change') {
         this.applyTheme(event.data.theme);
+      }
+
+      if (event.data && event.data.type === 'app-visibility') {
+        this.handleAppVisibility(Boolean(event.data.visible));
       }
     });
   }
@@ -840,6 +845,7 @@ class TimerApp {
   async acquireWakeLock() {
     if (!('wakeLock' in navigator)) return;
     if (!this.countdownState.running) return;
+    if (!this.appVisible) return;
     if (document.visibilityState !== 'visible') return;
     if (this.wakeLock) return;
 
@@ -858,11 +864,21 @@ class TimerApp {
   }
 
   handleVisibilityChange() {
+    if (!this.appVisible) {
+      this.releaseWakeLock();
+      return;
+    }
+
     if (document.visibilityState === 'visible' && this.countdownState.running) {
       this.acquireWakeLock();
     } else if (document.visibilityState !== 'visible') {
       this.releaseWakeLock();
     }
+  }
+
+  handleAppVisibility(visible) {
+    this.appVisible = visible;
+    this.handleVisibilityChange();
   }
 
   maybeRequestNotificationPermission() {

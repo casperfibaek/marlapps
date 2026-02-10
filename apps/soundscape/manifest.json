@@ -8,7 +8,9 @@
   "categories": ["Focus"],
   "order": 9,
   "storageKeys": ["marlapps-soundscape"],
-  "keepAliveOnClose": true,
+  "background": {
+    "mode": "keep-alive"
+  },
   "version": "1.0.0",
   "author": "MarlApps",
   "capabilities": {

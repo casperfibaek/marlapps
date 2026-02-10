@@ -8,6 +8,9 @@
   "categories": ["Focus"],
   "order": 1,
   "storageKeys": ["marlapps-pomodoro-timer"],
+  "background": {
+    "mode": "keep-alive"
+  },
   "version": "1.0.0",
   "author": "MarlApps",
   "permissions": ["notifications"],

@@ -49,8 +49,9 @@ marlapps/
 2. For each registered app, it fetches `apps/{folder}/manifest.json` to get metadata (name, description, categories, icon, etc.)
 3. Apps are rendered as cards in the launcher grid, sorted by `order`
 4. When a user opens an app, it loads inside a sandboxed `<iframe>` pointing to the app's `index.html`
-5. The launcher supports `?app={id}` URL parameters for direct deep-linking (used by PWA shortcuts)
-6. Theme changes are broadcast to the iframe via `postMessage`
+5. If an app declares `background.mode = "keep-alive"` in its manifest, the launcher keeps that iframe alive when returning Home so timers/audio continue
+6. The launcher sends lifecycle updates to apps via `postMessage` (`theme-change`, `app-visibility`)
+7. The launcher supports `?app={id}` URL parameters for direct deep-linking (used by PWA shortcuts)
 
 ## Adding a New App
 
@@ -80,6 +81,9 @@ apps/my-app/
   "categories": ["Tools"],
   "order": 7,
   "storageKeys": ["marlapps-my-app"],
+  "background": {
+    "mode": "keep-alive"
+  },
   "version": "1.0.0",
   "author": "MarlApps"
 }
@@ -96,6 +100,7 @@ apps/my-app/
 | `categories` | Array of categories for filtering (e.g. `["Tools", "Planning"]`) |
 | `order` | Sort position in the launcher (lower = first) |
 | `storageKeys` | Array of localStorage keys your app uses |
+| `background` | Optional. Use `{ "mode": "keep-alive" }` for apps that must keep running after Home (timers/audio/etc.) |
 | `version` | Semver version string |
 | `author` | Author name |
 
@@ -180,6 +185,10 @@ class MyApp {
       if (event.data && event.data.type === 'theme-change') {
         this.applyTheme(event.data.theme);
       }
+
+      if (event.data && event.data.type === 'app-visibility') {
+        this.handleVisibility(Boolean(event.data.visible), event.data.reason || '');
+      }
     });
   }
 
@@ -195,6 +204,12 @@ class MyApp {
 
   saveData() {
     localStorage.setItem('marlapps-my-app', JSON.stringify(this.data));
+  }
+
+  // Optional lifecycle hook for background-enabled apps.
+  handleVisibility(visible, reason) {
+    // Keep business logic running even when hidden.
+    // Only pause expensive rendering/animation here if needed.
   }
 }
 
