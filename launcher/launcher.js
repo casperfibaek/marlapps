@@ -78,6 +78,7 @@ class Launcher {
     this.currentSort = 'recent';
     this.currentApp = null;
     this.backgroundHost = new BackgroundAppHost();
+    this.activeAppStorageKey = 'marlapps-active-app';
   }
 
   async init() {
@@ -99,13 +100,17 @@ class Launcher {
     // Check for updates on startup (respects user preference)
     this.settingsManager.autoCheckForUpdates();
 
-    // Handle ?app= shortcut parameter (from PWA manifest shortcuts)
+    // Restore active app from URL (shortcut deep-link) or last-opened state.
     const params = new URLSearchParams(window.location.search);
     const appParam = params.get('app');
-    if (appParam && this.appLoader.getAppById(appParam)) {
-      this.openApp(appParam);
-      // Clean URL without reloading
-      window.history.replaceState({}, '', window.location.pathname);
+    const startupAppId = this.getStartupAppId(appParam);
+
+    if (!startupAppId && appParam) {
+      this.clearAppQueryParam();
+    }
+
+    if (startupAppId) {
+      this.openApp(startupAppId);
     }
   }
 
@@ -129,7 +134,7 @@ class Launcher {
     const homeBtn = document.getElementById('homeBtn');
     if (homeBtn) {
       homeBtn.addEventListener('click', () => {
-        if (this.currentApp) this.closeApp();
+        if (this.currentApp) this.closeApp('home');
         this.setCategory('all');
         this.closeMobileOverlays();
       });
@@ -183,7 +188,7 @@ class Launcher {
         }
 
         if (this.currentApp && !this.settingsManager.isOpen) {
-          this.closeApp();
+          this.closeApp('home');
           e.preventDefault();
           return;
         }
@@ -220,7 +225,7 @@ class Launcher {
 
     if (mobileNavHome) {
       mobileNavHome.addEventListener('click', () => {
-        if (this.currentApp) this.closeApp();
+        if (this.currentApp) this.closeApp('home');
         this.closeMobileOverlays();
         this.setMobileNavActive('home');
       });
@@ -567,6 +572,60 @@ class Launcher {
     return iframe;
   }
 
+  getPersistedActiveAppId() {
+    try {
+      const appId = localStorage.getItem(this.activeAppStorageKey);
+      if (!appId) return null;
+      if (this.appLoader.getAppById(appId)) return appId;
+      localStorage.removeItem(this.activeAppStorageKey);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  persistActiveApp(appId) {
+    if (!appId) return;
+    try {
+      localStorage.setItem(this.activeAppStorageKey, appId);
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  clearPersistedActiveApp() {
+    try {
+      localStorage.removeItem(this.activeAppStorageKey);
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  setAppQueryParam(appId) {
+    try {
+      const url = new URL(window.location.href);
+      if (appId) {
+        url.searchParams.set('app', appId);
+      } else {
+        url.searchParams.delete('app');
+      }
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    } catch (e) {
+      // Ignore URL update errors
+    }
+  }
+
+  clearAppQueryParam() {
+    this.setAppQueryParam(null);
+  }
+
+  getStartupAppId(appParam) {
+    if (appParam && this.appLoader.getAppById(appParam)) {
+      return appParam;
+    }
+    return this.getPersistedActiveAppId();
+  }
+
   openApp(appId) {
     const app = this.appLoader.getAppById(appId);
     if (!app) {
@@ -575,10 +634,12 @@ class Launcher {
     }
 
     if (this.currentApp && this.currentApp.id === appId) {
+      this.persistActiveApp(app.id);
+      this.setAppQueryParam(app.id);
       return;
     }
     if (this.currentApp && this.currentApp.id !== appId) {
-      this.closeApp();
+      this.closeApp('switch');
     }
 
     this.appLoader.recordAppOpen(appId);
@@ -588,6 +649,9 @@ class Launcher {
     const content = document.getElementById('workspaceContent');
     const mainContent = document.getElementById('mainContent');
     if (!workspace || !content || !mainContent) return;
+
+    this.persistActiveApp(app.id);
+    this.setAppQueryParam(app.id);
 
     content.innerHTML = '';
     let iframe = this.backgroundHost.restoreFrame(app.id);
@@ -613,7 +677,7 @@ class Launcher {
     document.title = `${app.name} - MarlApps`;
   }
 
-  closeApp() {
+  closeApp(reason = 'home') {
     const workspace = document.getElementById('appWorkspace');
     const content = document.getElementById('workspaceContent');
     const mainContent = document.getElementById('mainContent');
@@ -621,12 +685,15 @@ class Launcher {
 
     const app = this.currentApp;
     const iframe = content.querySelector('.app-iframe');
+    const isSwitch = reason === 'switch';
+    const hiddenReason = isSwitch ? 'app-switch' : 'launcher-home';
+    const closeReason = isSwitch ? 'app-switch' : 'app-closed';
 
     if (app && iframe && this.shouldKeepAliveApp(app)) {
-      this.notifyAppVisibility(iframe, false, 'launcher-home');
+      this.notifyAppVisibility(iframe, false, hiddenReason);
       this.backgroundHost.stashFrame(app.id, iframe);
     } else {
-      if (iframe) this.notifyAppVisibility(iframe, false, 'app-closed');
+      if (iframe) this.notifyAppVisibility(iframe, false, closeReason);
       content.innerHTML = '';
     }
 
@@ -635,6 +702,12 @@ class Launcher {
     document.body.classList.remove('app-open');
     this.currentApp = null;
     document.title = 'MarlApps';
+
+    if (!isSwitch) {
+      this.clearPersistedActiveApp();
+      this.clearAppQueryParam();
+    }
+
     this.renderRecents();
   }
 
