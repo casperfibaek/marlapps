@@ -1,6 +1,6 @@
-app get version and updates is broken after an update to the service-worker and manifest?
-Wave noise is too smooth in its transition, needs to be more bouncy.
-Fan noise is too low in volume compared to the others, can also be more droning
+For the soundscape app:
+    Please add rain
+    Please add a crackling noise
 
 Add: Fancy calculator
 Add: Converter

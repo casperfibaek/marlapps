@@ -47,7 +47,7 @@ class TimerApp {
     const defaults = {
       alarms: [],
       intervalSettings: { work: 30, rest: 10, rounds: 8 },
-      activeTab: 'alarm',
+      activeTab: 'timer',
       recentCountdowns: [60, 180, 300, 600]
     };
     if (!saved) return defaults;
@@ -134,10 +134,8 @@ class TimerApp {
     this.intervalRestInput.value = this.data.intervalSettings.rest;
     this.intervalRoundsInput.value = this.data.intervalSettings.rounds;
 
-    // Restore active tab
-    if (this.data.activeTab) {
-      this.switchTab(this.data.activeTab);
-    }
+    // Timer is the default pane on load
+    this.switchTab('timer');
   }
 
   attachEventListeners() {
@@ -236,11 +234,12 @@ class TimerApp {
       el.className = `alarm-item${alarm.enabled ? '' : ' disabled'}`;
 
       const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+      const orderedDays = this.sortDaysMondayFirst(alarm.days);
       const repeatText = alarm.days.length === 0
         ? 'Once'
         : alarm.days.length === 7
           ? 'Every day'
-          : alarm.days.map(d => dayNames[d]).join(', ');
+          : orderedDays.map(d => dayNames[d]).join(', ');
 
       el.innerHTML = `
         <div class="alarm-info">
@@ -269,9 +268,13 @@ class TimerApp {
 
   formatAlarmTime(time24) {
     const [h, m] = time24.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 || 12;
-    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    if (Number.isNaN(h) || Number.isNaN(m)) return time24;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  sortDaysMondayFirst(days) {
+    const mondayFirstOrder = [1, 2, 3, 4, 5, 6, 0];
+    return mondayFirstOrder.filter(day => days.includes(day));
   }
 
   escapeHtml(str) {

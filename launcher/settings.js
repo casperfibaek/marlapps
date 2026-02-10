@@ -25,6 +25,11 @@ class SettingsManager {
     this.updateThemeSelector();
     this.initUpdateSection();
     this.updateAboutVersion();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        this.updateAboutVersion();
+      });
+    }
     return this;
   }
 
@@ -121,6 +126,7 @@ class SettingsManager {
   }
 
   open() {
+    this.updateAboutVersion();
     this.drawer.classList.add('open');
     this.overlay.classList.add('visible');
     this.drawer.setAttribute('aria-hidden', 'false');
@@ -303,16 +309,59 @@ class SettingsManager {
     }
   }
 
-  async getInstalledVersion() {
-    if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return null;
+  getVersionFromWorker(worker) {
+    if (!worker) return Promise.resolve(null);
+
     return new Promise((resolve) => {
       const channel = new MessageChannel();
-      channel.port1.onmessage = (e) => resolve(e.data.version);
-      navigator.serviceWorker.controller.postMessage(
-        { type: 'GET_VERSION' },
-        [channel.port2]
-      );
-      setTimeout(() => resolve(null), 2000);
+      const timeoutId = setTimeout(() => resolve(null), 2000);
+
+      channel.port1.onmessage = (e) => {
+        clearTimeout(timeoutId);
+        const version = Number.parseInt(e?.data?.version, 10);
+        resolve(Number.isFinite(version) ? version : null);
+      };
+
+      try {
+        worker.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+      } catch {
+        clearTimeout(timeoutId);
+        resolve(null);
+      }
+    });
+  }
+
+  async getInstalledVersion() {
+    if (!navigator.serviceWorker) return null;
+
+    const controllerVersion = await this.getVersionFromWorker(navigator.serviceWorker.controller);
+    if (controllerVersion !== null) return controllerVersion;
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const worker = registration?.active || registration?.waiting || registration?.installing;
+      const registrationVersion = await this.getVersionFromWorker(worker);
+      if (registrationVersion !== null) return registrationVersion;
+    } catch {}
+
+    return new Promise((resolve) => {
+      let settled = false;
+
+      const finish = (version) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+        resolve(version);
+      };
+
+      const onControllerChange = async () => {
+        const version = await this.getVersionFromWorker(navigator.serviceWorker.controller);
+        finish(version);
+      };
+
+      const timeoutId = setTimeout(() => finish(null), 2000);
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
     });
   }
 
@@ -330,6 +379,8 @@ class SettingsManager {
       const response = await fetch('./version.json', { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch version');
       const remote = await response.json();
+      const remoteVersion = Number.parseInt(remote?.version, 10);
+      if (!Number.isFinite(remoteVersion)) throw new Error('Invalid remote version');
       const installed = await this.getInstalledVersion();
 
       if (installed === null) {
@@ -340,9 +391,9 @@ class SettingsManager {
         return;
       }
 
-      if (remote.version > installed) {
+      if (remoteVersion > installed) {
         statusEl.className = 'update-status available';
-        textEl.textContent = `Update available (build ${remote.version})`;
+        textEl.textContent = `Update available (build ${remoteVersion})`;
         // Add install button if not already present
         if (!statusEl.querySelector('.update-install-btn')) {
           const btn = document.createElement('button');
@@ -351,7 +402,7 @@ class SettingsManager {
           btn.addEventListener('click', () => this.installUpdate());
           statusEl.appendChild(btn);
         }
-        return { updateAvailable: true, remoteVersion: remote.version };
+        return { updateAvailable: true, remoteVersion };
       } else {
         if (showStatus) {
           statusEl.className = 'update-status up-to-date';
@@ -457,9 +508,11 @@ class SettingsManager {
     const versionEl = document.getElementById('appVersion');
     if (!versionEl) return;
 
+    const versionMatch = versionEl.textContent.match(/Version\s+([^\s(]+)/i);
+    const appVersion = versionMatch ? versionMatch[1] : '2.0.0';
     const installed = await this.getInstalledVersion();
     if (installed !== null) {
-      versionEl.textContent = `Version 2.0.0 (build ${installed})`;
+      versionEl.textContent = `Version ${appVersion} (build ${installed})`;
     }
   }
 

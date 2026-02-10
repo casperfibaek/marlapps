@@ -5,6 +5,7 @@ class PomodoroTimer {
     this.migrateStorage();
     this.settings = this.loadSettings();
     this.state = this.loadState();
+    this.history = this.loadHistory();
     this.timerInterval = null;
     this.notificationPermissionRequested = false;
 
@@ -12,6 +13,7 @@ class PomodoroTimer {
     this.attachEventListeners();
     this.updateDisplay();
     this.updateSettingsDisplay();
+    this.updateHistoryDisplay();
     this.syncThemeWithParent();
 
     // Auto-resume if timer was active
@@ -28,8 +30,13 @@ class PomodoroTimer {
     this.pauseBtn = document.getElementById('pauseBtn');
     this.resetBtn = document.getElementById('resetBtn');
     this.settingsToggle = document.getElementById('settingsToggle');
+    this.historyToggle = document.getElementById('historyToggle');
     this.settingsPanel = document.getElementById('settingsPanel');
+    this.historyPanel = document.getElementById('historyPanel');
     this.saveSettingsBtn = document.getElementById('saveSettings');
+    this.historyDateInput = document.getElementById('historyDate');
+    this.historyCountEl = document.getElementById('historyCount');
+    this.historyListEl = document.getElementById('historyList');
     this.timerDisplay = document.querySelector('.timer-display');
   }
 
@@ -38,7 +45,9 @@ class PomodoroTimer {
     this.pauseBtn.addEventListener('click', () => this.pauseTimer());
     this.resetBtn.addEventListener('click', () => this.resetTimer());
     this.settingsToggle.addEventListener('click', () => this.toggleSettings());
+    this.historyToggle.addEventListener('click', () => this.toggleHistory());
     this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
+    this.historyDateInput.addEventListener('change', () => this.updateHistoryDisplay());
 
     // Listen for theme changes from parent
     window.addEventListener('message', (event) => {
@@ -84,6 +93,7 @@ class PomodoroTimer {
 
   loadSettings() {
     const defaultSettings = {
+      targetPomodoros: 4,
       workDuration: 25,
       shortBreakDuration: 5,
       longBreakDuration: 15,
@@ -100,6 +110,7 @@ class PomodoroTimer {
       timeRemaining: 25 * 60,
       sessionType: 'work',
       pomodoroCount: 1,
+      totalWorkSessions: 0,
       isActive: false,
       lastUpdated: Date.now(),
       targetEndAt: null
@@ -117,24 +128,43 @@ class PomodoroTimer {
       state.timeRemaining = Math.max(0, state.timeRemaining - elapsed);
     }
 
-    return { ...defaultState, ...state };
+    const merged = { ...defaultState, ...state };
+    if (!Number.isFinite(merged.pomodoroCount) || merged.pomodoroCount < 1) {
+      merged.pomodoroCount = 1;
+    }
+    if (!Number.isFinite(merged.totalWorkSessions) || merged.totalWorkSessions < 0) {
+      merged.totalWorkSessions = Math.max(0, merged.pomodoroCount - 1);
+    }
+
+    return merged;
+  }
+
+  loadHistory() {
+    const data = this.loadData();
+    if (!data.history || typeof data.history !== 'object') return {};
+    return data.history;
   }
 
   saveData() {
-    const data = { settings: this.settings, state: this.state };
+    const data = { settings: this.settings, state: this.state, history: this.history };
     localStorage.setItem('marlapps-pomodoro-timer', JSON.stringify(data));
   }
 
   saveSettings() {
     this.settings = {
-      workDuration: parseInt(document.getElementById('workDuration').value),
-      shortBreakDuration: parseInt(document.getElementById('shortBreakDuration').value),
-      longBreakDuration: parseInt(document.getElementById('longBreakDuration').value),
+      targetPomodoros: this.clampValue(parseInt(document.getElementById('targetPomodoros').value, 10), 1, 30, 4),
+      workDuration: this.clampValue(parseInt(document.getElementById('workDuration').value, 10), 1, 60, 25),
+      shortBreakDuration: this.clampValue(parseInt(document.getElementById('shortBreakDuration').value, 10), 1, 30, 5),
+      longBreakDuration: this.clampValue(parseInt(document.getElementById('longBreakDuration').value, 10), 1, 60, 15),
       autoStartBreaks: document.getElementById('autoStartBreaks').checked,
       soundEnabled: document.getElementById('soundEnabled').checked
     };
 
+    const target = this.getTargetPomodoros();
+    this.state.pomodoroCount = ((Math.max(1, this.state.pomodoroCount) - 1) % target) + 1;
+
     this.saveData();
+    this.updateDisplay();
     this.toggleSettings();
 
     if (!this.state.isActive && this.state.timeRemaining === this.getDurationForSession() * 60) {
@@ -148,6 +178,7 @@ class PomodoroTimer {
   }
 
   updateSettingsDisplay() {
+    document.getElementById('targetPomodoros').value = this.getTargetPomodoros();
     document.getElementById('workDuration').value = this.settings.workDuration;
     document.getElementById('shortBreakDuration').value = this.settings.shortBreakDuration;
     document.getElementById('longBreakDuration').value = this.settings.longBreakDuration;
@@ -156,7 +187,29 @@ class PomodoroTimer {
   }
 
   toggleSettings() {
-    this.settingsPanel.classList.toggle('active');
+    const nextState = !this.settingsPanel.classList.contains('active');
+    this.settingsPanel.classList.toggle('active', nextState);
+    if (nextState) {
+      this.historyPanel.classList.remove('active');
+    }
+  }
+
+  toggleHistory() {
+    const nextState = !this.historyPanel.classList.contains('active');
+    this.historyPanel.classList.toggle('active', nextState);
+    if (nextState) {
+      this.settingsPanel.classList.remove('active');
+      this.updateHistoryDisplay();
+    }
+  }
+
+  clampValue(value, min, max, fallback = min) {
+    const safe = Number.isFinite(value) ? value : fallback;
+    return Math.min(max, Math.max(min, safe));
+  }
+
+  getTargetPomodoros() {
+    return this.clampValue(this.settings.targetPomodoros, 1, 30, 4);
   }
 
   getDurationForSession() {
@@ -231,12 +284,16 @@ class PomodoroTimer {
 
     if (this.state.sessionType === 'work') {
       // Work session completed
-      if (this.state.pomodoroCount % 4 === 0) {
+      this.recordPomodoroCompletion();
+      this.state.totalWorkSessions += 1;
+
+      if (this.state.totalWorkSessions % 4 === 0) {
         this.state.sessionType = 'longBreak';
       } else {
         this.state.sessionType = 'shortBreak';
       }
-      this.state.pomodoroCount++;
+      const target = this.getTargetPomodoros();
+      this.state.pomodoroCount = (this.state.pomodoroCount % target) + 1;
     } else {
       // Break completed, back to work
       this.state.sessionType = 'work';
@@ -270,12 +327,69 @@ class PomodoroTimer {
     };
     this.sessionTypeEl.textContent = sessionNames[this.state.sessionType];
 
-    // Show current pomodoro cycle (1-4)
-    const currentCycle = ((this.state.pomodoroCount - 1) % 4) + 1;
-    this.pomodoroCountEl.textContent = `Pomodoro ${currentCycle} of 4`;
+    const target = this.getTargetPomodoros();
+    const currentPomodoro = this.clampValue(this.state.pomodoroCount, 1, target, 1);
+    this.pomodoroCountEl.textContent = `Pomodoro ${currentPomodoro} of ${target}`;
 
     // Update page title
     document.title = `${this.timerEl.textContent} - ${sessionNames[this.state.sessionType]}`;
+  }
+
+  getDateKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  formatHistoryDate(dateKey) {
+    const parsed = new Date(`${dateKey}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return dateKey;
+    return parsed.toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  recordPomodoroCompletion() {
+    const today = this.getDateKey();
+    this.history[today] = (this.history[today] || 0) + 1;
+    this.saveData();
+    this.updateHistoryDisplay();
+  }
+
+  updateHistoryDisplay() {
+    if (!this.historyDateInput || !this.historyCountEl) return;
+
+    if (!this.historyDateInput.value) {
+      this.historyDateInput.value = this.getDateKey();
+    }
+
+    const selectedDate = this.historyDateInput.value;
+    const completed = this.history[selectedDate] || 0;
+    this.historyCountEl.textContent = `${completed} pomodoro${completed === 1 ? '' : 's'} completed`;
+    this.renderHistoryList(selectedDate);
+  }
+
+  renderHistoryList(selectedDate) {
+    if (!this.historyListEl) return;
+
+    const entries = Object.entries(this.history)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, 30);
+
+    if (entries.length === 0) {
+      this.historyListEl.innerHTML = '<div class="history-empty">No completed pomodoros yet.</div>';
+      return;
+    }
+
+    this.historyListEl.innerHTML = entries.map(([date, count]) => `
+      <div class="history-row${date === selectedDate ? ' active' : ''}">
+        <span>${this.formatHistoryDate(date)}</span>
+        <span>${count}</span>
+      </div>
+    `).join('');
   }
 
   playNotification() {

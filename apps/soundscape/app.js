@@ -24,16 +24,30 @@ class SoundscapeApp {
       {
         id: 'fan-noise',
         name: 'Fan',
-        description: 'Steady airflow hum with soft turbulence',
+        description: 'Steady airflow with a fuller, droning motor hum',
         icon: '\u{1F32C}',
         generator: (ctx) => this.createFanNoise(ctx)
       },
       {
         id: 'wave-noise',
         name: 'Waves',
-        description: 'Gentle ocean wash with rolling motion',
+        description: 'Rolling surf with bouncier shoreline movement',
         icon: '\u{1F30A}',
         generator: (ctx) => this.createWaveNoise(ctx)
+      },
+      {
+        id: 'rain-noise',
+        name: 'Rain',
+        description: 'Steady rainfall with scattered droplets',
+        icon: '\u{1F327}',
+        generator: (ctx) => this.createRainNoise(ctx)
+      },
+      {
+        id: 'crackle-noise',
+        name: 'Crackle',
+        description: 'Warm ember crackle with popping sparks',
+        icon: '\u{1F525}',
+        generator: (ctx) => this.createCrackleNoise(ctx)
       }
     ];
 
@@ -128,47 +142,91 @@ class SoundscapeApp {
 
   createFanNoise(ctx) {
     const source = this.createWhiteNoise(ctx);
+
     const lowpass = ctx.createBiquadFilter();
     lowpass.type = 'lowpass';
-    lowpass.frequency.value = 1200;
-    lowpass.Q.value = 0.7;
+    lowpass.frequency.value = 1700;
+    lowpass.Q.value = 0.9;
 
     const highpass = ctx.createBiquadFilter();
     highpass.type = 'highpass';
-    highpass.frequency.value = 80;
+    highpass.frequency.value = 70;
     highpass.Q.value = 0.5;
 
-    const hum = ctx.createOscillator();
-    hum.type = 'sine';
-    hum.frequency.value = 95;
-    const humGain = ctx.createGain();
-    humGain.gain.value = 0.08;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.value = 0.9;
 
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = 0.18;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 120;
+    const drone = ctx.createOscillator();
+    drone.type = 'sawtooth';
+    drone.frequency.value = 92;
+    const droneGain = ctx.createGain();
+    droneGain.gain.value = 0.14;
 
-    lfo.connect(lfoGain);
-    lfoGain.connect(lowpass.frequency);
-    lfo.start();
+    const subDrone = ctx.createOscillator();
+    subDrone.type = 'sine';
+    subDrone.frequency.value = 46;
+    const subDroneGain = ctx.createGain();
+    subDroneGain.gain.value = 0.09;
+
+    const droneFilter = ctx.createBiquadFilter();
+    droneFilter.type = 'bandpass';
+    droneFilter.frequency.value = 170;
+    droneFilter.Q.value = 0.9;
+
+    const turbulence = ctx.createOscillator();
+    turbulence.type = 'triangle';
+    turbulence.frequency.value = 0.13;
+    const turbulenceAmount = ctx.createGain();
+    turbulenceAmount.gain.value = 180;
+
+    const droneDrift = ctx.createOscillator();
+    droneDrift.type = 'sine';
+    droneDrift.frequency.value = 0.07;
+    const droneDriftAmount = ctx.createGain();
+    droneDriftAmount.gain.value = 6;
+
+    const dronePulse = ctx.createOscillator();
+    dronePulse.type = 'sine';
+    dronePulse.frequency.value = 0.09;
+    const dronePulseAmount = ctx.createGain();
+    dronePulseAmount.gain.value = 0.035;
+
+    turbulence.connect(turbulenceAmount);
+    turbulenceAmount.connect(lowpass.frequency);
+
+    droneDrift.connect(droneDriftAmount);
+    droneDriftAmount.connect(drone.frequency);
+
+    dronePulse.connect(dronePulseAmount);
+    dronePulseAmount.connect(droneGain.gain);
 
     source.connect(lowpass);
     lowpass.connect(highpass);
-    highpass.connect(humGain);
-    hum.connect(humGain);
+    highpass.connect(noiseGain);
 
-    hum.start();
+    drone.connect(droneFilter);
+    droneFilter.connect(droneGain);
+    subDrone.connect(subDroneGain);
+
+    drone.start();
+    subDrone.start();
+    turbulence.start();
+    droneDrift.start();
+    dronePulse.start();
 
     const output = ctx.createGain();
-    output.gain.value = 0.85;
-    humGain.connect(output);
+    output.gain.value = 1.15;
+    noiseGain.connect(output);
+    droneGain.connect(output);
+    subDroneGain.connect(output);
 
     const originalStop = source.stop.bind(source);
     source.stop = (...args) => {
-      try { hum.stop(...args); } catch (e) {}
-      try { lfo.stop(...args); } catch (e) {}
+      try { drone.stop(...args); } catch (e) {}
+      try { subDrone.stop(...args); } catch (e) {}
+      try { turbulence.stop(...args); } catch (e) {}
+      try { droneDrift.stop(...args); } catch (e) {}
+      try { dronePulse.stop(...args); } catch (e) {}
       originalStop(...args);
     };
     source.connect = output.connect.bind(output);
@@ -179,40 +237,323 @@ class SoundscapeApp {
 
   createWaveNoise(ctx) {
     const source = this.createBrownNoise(ctx);
+    const splashSource = this.createWhiteNoise(ctx);
 
     const highpass = ctx.createBiquadFilter();
     highpass.type = 'highpass';
-    highpass.frequency.value = 120;
-    highpass.Q.value = 0.6;
+    highpass.frequency.value = 90;
+    highpass.Q.value = 0.7;
 
     const lowpass = ctx.createBiquadFilter();
     lowpass.type = 'lowpass';
-    lowpass.frequency.value = 1800;
-    lowpass.Q.value = 0.8;
+    lowpass.frequency.value = 2200;
+    lowpass.Q.value = 0.9;
 
     const swell = ctx.createGain();
-    swell.gain.value = 0.4;
+    swell.gain.value = 0.3;
 
-    const motion = ctx.createOscillator();
-    motion.type = 'sine';
-    motion.frequency.value = 0.12;
-    const motionGain = ctx.createGain();
-    motionGain.gain.value = 0.25;
-    motion.connect(motionGain);
-    motionGain.connect(swell.gain);
-    motion.start();
+    const roll = ctx.createOscillator();
+    roll.type = 'triangle';
+    roll.frequency.value = 0.25;
+    const rollDepth = ctx.createGain();
+    rollDepth.gain.value = 0.22;
+
+    const surge = ctx.createOscillator();
+    surge.type = 'sine';
+    surge.frequency.value = 0.1;
+    const surgeDepth = ctx.createGain();
+    surgeDepth.gain.value = 0.16;
+
+    const bounce = ctx.createOscillator();
+    bounce.type = 'sawtooth';
+    bounce.frequency.value = 0.42;
+    const bounceDepth = ctx.createGain();
+    bounceDepth.gain.value = 0.1;
+
+    roll.connect(rollDepth);
+    rollDepth.connect(swell.gain);
+    surge.connect(surgeDepth);
+    surgeDepth.connect(swell.gain);
+    bounce.connect(bounceDepth);
+    bounceDepth.connect(swell.gain);
+
+    const splashBand = ctx.createBiquadFilter();
+    splashBand.type = 'bandpass';
+    splashBand.frequency.value = 850;
+    splashBand.Q.value = 0.6;
+
+    const splashLowpass = ctx.createBiquadFilter();
+    splashLowpass.type = 'lowpass';
+    splashLowpass.frequency.value = 1800;
+    splashLowpass.Q.value = 0.7;
+
+    const splashGain = ctx.createGain();
+    splashGain.gain.value = 0.12;
+
+    const splashMotion = ctx.createOscillator();
+    splashMotion.type = 'triangle';
+    splashMotion.frequency.value = 0.36;
+    const splashMotionDepth = ctx.createGain();
+    splashMotionDepth.gain.value = 0.08;
+    splashMotion.connect(splashMotionDepth);
+    splashMotionDepth.connect(splashGain.gain);
 
     source.connect(highpass);
     highpass.connect(lowpass);
     lowpass.connect(swell);
 
-    const output = ctx.createGain();
-    output.gain.value = 0.9;
-    swell.connect(output);
+    splashSource.connect(splashBand);
+    splashBand.connect(splashLowpass);
+    splashLowpass.connect(splashGain);
 
+    roll.start();
+    surge.start();
+    bounce.start();
+    splashMotion.start();
+
+    const output = ctx.createGain();
+    output.gain.value = 1;
+    swell.connect(output);
+    splashGain.connect(output);
+
+    const originalStart = source.start.bind(source);
     const originalStop = source.stop.bind(source);
+    source.start = (...args) => {
+      try { splashSource.start(...args); } catch (e) {}
+      originalStart(...args);
+    };
     source.stop = (...args) => {
-      try { motion.stop(...args); } catch (e) {}
+      try { splashSource.stop(...args); } catch (e) {}
+      try { roll.stop(...args); } catch (e) {}
+      try { surge.stop(...args); } catch (e) {}
+      try { bounce.stop(...args); } catch (e) {}
+      try { splashMotion.stop(...args); } catch (e) {}
+      originalStop(...args);
+    };
+    source.connect = output.connect.bind(output);
+    source.disconnect = output.disconnect.bind(output);
+
+    return source;
+  }
+
+  createImpulseNoise(ctx, {
+    duration = 6,
+    eventsPerSecond = 12,
+    ampMin = 0.08,
+    ampMax = 0.6,
+    decayMin = 0.002,
+    decayMax = 0.02
+  } = {}) {
+    const bufferSize = Math.max(1, Math.floor(duration * ctx.sampleRate));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    const eventCount = Math.max(1, Math.floor(duration * eventsPerSecond));
+
+    for (let i = 0; i < eventCount; i++) {
+      const start = Math.floor(Math.random() * (bufferSize - 1));
+      const amplitude = ampMin + (Math.random() * (ampMax - ampMin));
+      const decaySeconds = decayMin + (Math.random() * (decayMax - decayMin));
+      const decaySamples = Math.max(1, Math.floor(decaySeconds * ctx.sampleRate));
+
+      for (let j = 0; j < decaySamples && (start + j) < bufferSize; j++) {
+        const envelope = Math.exp((-5 * j) / decaySamples);
+        data[start + j] += (Math.random() * 2 - 1) * amplitude * envelope;
+      }
+    }
+
+    for (let i = 0; i < bufferSize; i++) {
+      if (data[i] > 1) data[i] = 1;
+      else if (data[i] < -1) data[i] = -1;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    return source;
+  }
+
+  createRainNoise(ctx) {
+    const source = this.createWhiteNoise(ctx);
+    const dropletsSource = this.createImpulseNoise(ctx, {
+      duration: 7,
+      eventsPerSecond: 65,
+      ampMin: 0.025,
+      ampMax: 0.14,
+      decayMin: 0.002,
+      decayMax: 0.014
+    });
+
+    const rainHighpass = ctx.createBiquadFilter();
+    rainHighpass.type = 'highpass';
+    rainHighpass.frequency.value = 500;
+    rainHighpass.Q.value = 0.45;
+
+    const rainLowpass = ctx.createBiquadFilter();
+    rainLowpass.type = 'lowpass';
+    rainLowpass.frequency.value = 9000;
+    rainLowpass.Q.value = 0.5;
+
+    const rainGain = ctx.createGain();
+    rainGain.gain.value = 0.34;
+
+    const rainMotion = ctx.createOscillator();
+    rainMotion.type = 'triangle';
+    rainMotion.frequency.value = 0.08;
+    const rainMotionDepth = ctx.createGain();
+    rainMotionDepth.gain.value = 0.11;
+    rainMotion.connect(rainMotionDepth);
+    rainMotionDepth.connect(rainGain.gain);
+
+    const dropletBandpass = ctx.createBiquadFilter();
+    dropletBandpass.type = 'bandpass';
+    dropletBandpass.frequency.value = 3200;
+    dropletBandpass.Q.value = 0.8;
+
+    const dropletHighpass = ctx.createBiquadFilter();
+    dropletHighpass.type = 'highpass';
+    dropletHighpass.frequency.value = 1200;
+    dropletHighpass.Q.value = 0.6;
+
+    const dropletGain = ctx.createGain();
+    dropletGain.gain.value = 0.28;
+
+    const dropletMotion = ctx.createOscillator();
+    dropletMotion.type = 'sine';
+    dropletMotion.frequency.value = 0.19;
+    const dropletMotionDepth = ctx.createGain();
+    dropletMotionDepth.gain.value = 650;
+    dropletMotion.connect(dropletMotionDepth);
+    dropletMotionDepth.connect(dropletBandpass.frequency);
+
+    source.connect(rainHighpass);
+    rainHighpass.connect(rainLowpass);
+    rainLowpass.connect(rainGain);
+
+    dropletsSource.connect(dropletBandpass);
+    dropletBandpass.connect(dropletHighpass);
+    dropletHighpass.connect(dropletGain);
+
+    rainMotion.start();
+    dropletMotion.start();
+
+    const output = ctx.createGain();
+    output.gain.value = 1.03;
+    rainGain.connect(output);
+    dropletGain.connect(output);
+
+    const originalStart = source.start.bind(source);
+    const originalStop = source.stop.bind(source);
+    source.start = (...args) => {
+      try { dropletsSource.start(...args); } catch (e) {}
+      originalStart(...args);
+    };
+    source.stop = (...args) => {
+      try { dropletsSource.stop(...args); } catch (e) {}
+      try { rainMotion.stop(...args); } catch (e) {}
+      try { dropletMotion.stop(...args); } catch (e) {}
+      originalStop(...args);
+    };
+    source.connect = output.connect.bind(output);
+    source.disconnect = output.disconnect.bind(output);
+
+    return source;
+  }
+
+  createCrackleNoise(ctx) {
+    const source = this.createBrownNoise(ctx);
+    const cracklesSource = this.createImpulseNoise(ctx, {
+      duration: 6,
+      eventsPerSecond: 18,
+      ampMin: 0.15,
+      ampMax: 0.95,
+      decayMin: 0.001,
+      decayMax: 0.02
+    });
+    const popsSource = this.createImpulseNoise(ctx, {
+      duration: 8,
+      eventsPerSecond: 4,
+      ampMin: 0.22,
+      ampMax: 1.2,
+      decayMin: 0.006,
+      decayMax: 0.045
+    });
+
+    const emberHighpass = ctx.createBiquadFilter();
+    emberHighpass.type = 'highpass';
+    emberHighpass.frequency.value = 70;
+    emberHighpass.Q.value = 0.7;
+
+    const emberLowpass = ctx.createBiquadFilter();
+    emberLowpass.type = 'lowpass';
+    emberLowpass.frequency.value = 1000;
+    emberLowpass.Q.value = 0.8;
+
+    const emberGain = ctx.createGain();
+    emberGain.gain.value = 0.24;
+
+    const crackBandpass = ctx.createBiquadFilter();
+    crackBandpass.type = 'bandpass';
+    crackBandpass.frequency.value = 2900;
+    crackBandpass.Q.value = 2.5;
+
+    const crackGain = ctx.createGain();
+    crackGain.gain.value = 0.24;
+
+    const popBandpass = ctx.createBiquadFilter();
+    popBandpass.type = 'bandpass';
+    popBandpass.frequency.value = 980;
+    popBandpass.Q.value = 1.3;
+
+    const popGain = ctx.createGain();
+    popGain.gain.value = 0.2;
+
+    const crackMotion = ctx.createOscillator();
+    crackMotion.type = 'triangle';
+    crackMotion.frequency.value = 0.45;
+    const crackMotionDepth = ctx.createGain();
+    crackMotionDepth.gain.value = 900;
+    crackMotion.connect(crackMotionDepth);
+    crackMotionDepth.connect(crackBandpass.frequency);
+
+    const emberSwell = ctx.createOscillator();
+    emberSwell.type = 'sine';
+    emberSwell.frequency.value = 0.1;
+    const emberSwellDepth = ctx.createGain();
+    emberSwellDepth.gain.value = 0.08;
+    emberSwell.connect(emberSwellDepth);
+    emberSwellDepth.connect(emberGain.gain);
+
+    source.connect(emberHighpass);
+    emberHighpass.connect(emberLowpass);
+    emberLowpass.connect(emberGain);
+
+    cracklesSource.connect(crackBandpass);
+    crackBandpass.connect(crackGain);
+
+    popsSource.connect(popBandpass);
+    popBandpass.connect(popGain);
+
+    crackMotion.start();
+    emberSwell.start();
+
+    const output = ctx.createGain();
+    output.gain.value = 1.06;
+    emberGain.connect(output);
+    crackGain.connect(output);
+    popGain.connect(output);
+
+    const originalStart = source.start.bind(source);
+    const originalStop = source.stop.bind(source);
+    source.start = (...args) => {
+      try { cracklesSource.start(...args); } catch (e) {}
+      try { popsSource.start(...args); } catch (e) {}
+      originalStart(...args);
+    };
+    source.stop = (...args) => {
+      try { cracklesSource.stop(...args); } catch (e) {}
+      try { popsSource.stop(...args); } catch (e) {}
+      try { crackMotion.stop(...args); } catch (e) {}
+      try { emberSwell.stop(...args); } catch (e) {}
       originalStop(...args);
     };
     source.connect = output.connect.bind(output);
