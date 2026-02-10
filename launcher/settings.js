@@ -22,6 +22,7 @@ class SettingsManager {
 
     this.buildStorageMaps();
     this.populateDeleteDropdown();
+    this.renderThemeOptions();
     this.bindEvents();
     this.updateThemeSelector();
     this.initUpdateSection();
@@ -85,12 +86,15 @@ class SettingsManager {
       }
     });
 
-    document.querySelectorAll('.theme-option').forEach(btn => {
-      btn.addEventListener('click', () => {
+    const themeSelector = document.getElementById('themeSelector');
+    if (themeSelector) {
+      themeSelector.addEventListener('click', (event) => {
+        const btn = event.target.closest('.theme-option[data-theme]');
+        if (!btn || !themeSelector.contains(btn)) return;
         this.themeManager.apply(btn.dataset.theme);
         this.updateThemeSelector();
       });
-    });
+    }
 
     const resetThemeBtn = document.getElementById('resetThemeBtn');
     if (resetThemeBtn) {
@@ -160,6 +164,38 @@ class SettingsManager {
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
 
     window.dispatchEvent(new CustomEvent('settingsClosed'));
+  }
+
+  renderThemeOptions() {
+    const container = document.getElementById('themeSelector');
+    if (!container) return;
+
+    const themes = typeof this.themeManager.getThemeDefinitions === 'function'
+      ? this.themeManager.getThemeDefinitions()
+      : [];
+
+    container.innerHTML = '';
+    const knownPreviewThemes = new Set(['dark', 'light', 'futuristic', 'amalfi']);
+
+    themes.forEach((theme) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'theme-option';
+      btn.dataset.theme = theme.id;
+
+      const preview = document.createElement('span');
+      preview.className = `theme-preview ${theme.id}`;
+      if (!knownPreviewThemes.has(theme.id) && theme.themeColor) {
+        preview.style.background = `linear-gradient(135deg, ${theme.themeColor} 0%, ${theme.themeColor} 100%)`;
+      }
+
+      const label = document.createElement('span');
+      label.textContent = theme.label;
+
+      btn.appendChild(preview);
+      btn.appendChild(label);
+      container.appendChild(btn);
+    });
   }
 
   updateThemeSelector() {
@@ -426,6 +462,8 @@ class SettingsManager {
         localStorage.removeItem(key);
       }
     });
+    localStorage.removeItem('pwa-installed');
+    localStorage.removeItem('pwa-install-dismissed');
 
     this.showNotification('All data has been reset. Reloading...');
     setTimeout(() => location.reload(), 1500);

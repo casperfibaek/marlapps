@@ -7,7 +7,7 @@
   "entry": "index.html",
   "categories": ["Focus"],
   "order": 1,
-  "storageKeys": ["marlapps-pomodoro-timer"],
+  "storageKeys": ["marlapps-pomodoro-timer", "pomodoroSettings", "pomodoroState"],
   "background": {
     "mode": "keep-alive"
   },

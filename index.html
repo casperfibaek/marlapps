@@ -86,56 +86,7 @@
       <!-- Sidebar -->
       <aside class="sidebar" aria-label="App categories">
         <nav class="sidebar-nav" aria-label="Categories">
-          <ul class="nav-list" role="listbox" aria-label="Category filter">
-            <li class="nav-item active" data-category="all" tabindex="0" role="option" aria-selected="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <rect x="3" y="3" width="7" height="7"/>
-                <rect x="14" y="3" width="7" height="7"/>
-                <rect x="14" y="14" width="7" height="7"/>
-                <rect x="3" y="14" width="7" height="7"/>
-              </svg>
-              <span>All apps</span>
-            </li>
-            <li class="nav-item" data-category="focus" tabindex="0" role="option" aria-selected="false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/>
-                <circle cx="12" cy="12" r="6"/>
-                <circle cx="12" cy="12" r="2"/>
-              </svg>
-              <span>Focus</span>
-            </li>
-            <li class="nav-item" data-category="planning" tabindex="0" role="option" aria-selected="false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-              <span>Planning</span>
-            </li>
-            <li class="nav-item" data-category="notes" tabindex="0" role="option" aria-selected="false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14,2 14,8 20,8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-                <polyline points="10,9 9,9 8,9"/>
-              </svg>
-              <span>Notes</span>
-            </li>
-            <li class="nav-item" data-category="tracking" tabindex="0" role="option" aria-selected="false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-              </svg>
-              <span>Tracking</span>
-            </li>
-            <li class="nav-item" data-category="tools" tabindex="0" role="option" aria-selected="false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-              </svg>
-              <span>Tools</span>
-            </li>
-          </ul>
+          <ul class="nav-list" id="sidebarCategoryList" role="listbox" aria-label="Category filter"></ul>
         </nav>
 
       </aside>
@@ -166,14 +117,7 @@
               <span id="toolbarCategoryLabel">Categories</span>
             </button>
             <!-- Category Dropdown -->
-            <div class="category-dropdown hidden" id="categoryDropdown" role="menu" aria-label="Category filter">
-              <button class="category-dropdown-item active" data-category="all" role="menuitem">All Apps</button>
-              <button class="category-dropdown-item" data-category="focus" role="menuitem">Focus</button>
-              <button class="category-dropdown-item" data-category="planning" role="menuitem">Planning</button>
-              <button class="category-dropdown-item" data-category="notes" role="menuitem">Notes</button>
-              <button class="category-dropdown-item" data-category="tracking" role="menuitem">Tracking</button>
-              <button class="category-dropdown-item" data-category="tools" role="menuitem">Tools</button>
-            </div>
+            <div class="category-dropdown hidden" id="categoryDropdown" role="menu" aria-label="Category filter"></div>
             <label for="sortSelect" class="sr-only">Sort apps by</label>
             <select class="sort-select" id="sortSelect">
               <option value="recent">Recently used</option>
@@ -218,24 +162,7 @@
       <!-- Themes Section -->
       <section class="settings-section">
         <h3>Themes</h3>
-        <div class="theme-selector">
-          <button class="theme-option active" data-theme="dark">
-            <span class="theme-preview dark"></span>
-            <span>Dark</span>
-          </button>
-          <button class="theme-option" data-theme="light">
-            <span class="theme-preview light"></span>
-            <span>Light</span>
-          </button>
-          <button class="theme-option" data-theme="futuristic">
-            <span class="theme-preview futuristic"></span>
-            <span>Futuristic</span>
-          </button>
-          <button class="theme-option" data-theme="amalfi">
-            <span class="theme-preview amalfi"></span>
-            <span>Amalfi</span>
-          </button>
-        </div>
+        <div class="theme-selector" id="themeSelector"></div>
         <button class="text-btn" id="resetThemeBtn">Reset to default</button>
       </section>
 
@@ -385,12 +312,7 @@
       </button>
     </div>
     <div class="mobile-sheet-content">
-      <button class="mobile-category-btn active" data-category="all">All Apps</button>
-      <button class="mobile-category-btn" data-category="focus">Focus</button>
-      <button class="mobile-category-btn" data-category="planning">Planning</button>
-      <button class="mobile-category-btn" data-category="notes">Notes</button>
-      <button class="mobile-category-btn" data-category="tracking">Tracking</button>
-      <button class="mobile-category-btn" data-category="tools">Tools</button>
+      <div id="mobileCategoryList"></div>
     </div>
   </div>
 

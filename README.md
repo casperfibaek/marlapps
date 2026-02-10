@@ -57,7 +57,7 @@ marlapps/
 
 ### 1. Create the app folder
 
-Create `apps/{your-app-id}/` with these 5 files:
+Create `apps/{your-app-id}/` with at least these required files:
 
 ```
 apps/my-app/
@@ -67,6 +67,8 @@ apps/my-app/
   app.js
   icon.svg
 ```
+
+Optional assets (images/audio/fonts/etc.) can be added in this folder structure and are auto-discovered by `build.js` for offline caching.
 
 ### 2. Write `manifest.json`
 
@@ -116,6 +118,7 @@ Minimal template:
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My App - MarlApps</title>
   <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <script src="../../themes/theme-bootstrap.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -129,6 +132,7 @@ Minimal template:
 ```
 
 Key points:
+- Include `../../themes/theme-bootstrap.js` before CSS to prevent initial theme flash/mismatch.
 - No `<link>` to theme CSS in HTML — `styles.css` imports it via `@import`
 - The favicon path is `../../favicon.ico` (two levels up from `apps/{id}/`)
 - Keep the structure simple: one CSS file, one JS file
@@ -231,7 +235,7 @@ node build.js
 This auto-updates:
 - `registry/apps.json` — app registry used by the launcher
 - `manifest.json` — PWA shortcuts for all apps
-- `service-worker.js` — offline cache entries for all app files
+- `service-worker.js` — offline cache entries for all discovered files in each app folder (recursive)
 
 That's it. Your app will appear in the launcher.
 
@@ -281,20 +285,35 @@ When the user changes themes in the launcher, it sends a `postMessage` to the if
 
 ## localStorage Convention
 
-All storage keys follow the pattern `marlapps-{app-id}`:
+App storage keys:
 
 | App | Key |
 |-----|-----|
-| Pomodoro Timer | `marlapps-pomodoro-timer` |
+| Breathing | `marlapps-breathing` |
+| Habits | `marlapps-habits` |
 | Kanban Board | `marlapps-kanban-board` |
-| Todo List | `marlapps-todo-list` |
-| Notes | `marlapps-notes` |
-| Habit Tracker | `marlapps-habits` |
 | Mirror | `marlapps-mirror` |
+| Notes | `marlapps-notes` |
+| Pomodoro Timer | `marlapps-pomodoro-timer` |
+| Soundscape | `marlapps-soundscape` |
+| Timer | `marlapps-timer` |
+| Todo List | `marlapps-todo-list` |
+| Weight Tracker | `marlapps-weight-tracker` |
 
 Global keys:
 - `marlapps-theme` — current theme name
 - `marlapps-recents` — recently opened apps
+- `marlapps-active-app` — last active app id for restore/deep-link fallback
+- `marlapps-auto-update-check` — startup update-check preference
+- `pwa-installed` — PWA install completed flag
+- `pwa-install-dismissed` — timestamp of install prompt dismissal
+
+Legacy migration keys that may still exist before each app runs migration:
+- `todoList`
+- `kanbanBoard`
+- `pomodoroSettings`
+- `pomodoroState`
+- `marlapps-mirror-photos`
 
 The `storageKeys` field in your app's `manifest.json` tells the settings manager which keys to include in export/import and which to delete when the user clears your app's data.
 
@@ -304,7 +323,7 @@ The `storageKeys` field in your app's `manifest.json` tells the settings manager
 
 1. **`registry/apps.json`** — the app registry that `AppLoader` fetches at runtime
 2. **`manifest.json`** — the `shortcuts` array (PWA app shortcuts)
-3. **`service-worker.js`** — the file cache list between `// AUTO:APP-CACHE-START` and `// AUTO:APP-CACHE-END` markers
+3. **`service-worker.js`** — the file cache list between `// AUTO:APP-CACHE-START` and `// AUTO:APP-CACHE-END` markers (all app files discovered recursively)
 
 It also bumps the service worker cache version so returning users get the update.
 

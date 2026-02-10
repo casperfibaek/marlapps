@@ -7,7 +7,7 @@
   "entry": "index.html",
   "categories": ["Tools"],
   "order": 6,
-  "storageKeys": ["marlapps-mirror"],
+  "storageKeys": ["marlapps-mirror", "marlapps-mirror-photos"],
   "version": "1.0.0",
   "author": "MarlApps"
 }

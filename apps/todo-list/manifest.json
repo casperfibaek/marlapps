@@ -7,7 +7,7 @@
   "entry": "index.html",
   "categories": ["Planning"],
   "order": 3,
-  "storageKeys": ["marlapps-todo-list"],
+  "storageKeys": ["marlapps-todo-list", "todoList"],
   "version": "1.0.0",
   "author": "MarlApps"
 }

@@ -37,15 +37,21 @@ class WeightTrackerApp {
             if (!entry || typeof entry !== 'object') return null;
             if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) return null;
 
-            const weight = Number.parseFloat(entry.weight);
-            if (!Number.isFinite(weight) || weight <= 0) return null;
+            const storedKg = Number.parseFloat(entry.weightKg);
+            const legacyWeight = Number.parseFloat(entry.weight);
+            const weightKg = Number.isFinite(storedKg) && storedKg > 0
+              ? storedKg
+              : (Number.isFinite(legacyWeight) && legacyWeight > 0
+                ? this.toKilograms(legacyWeight, unit)
+                : NaN);
+            if (!Number.isFinite(weightKg) || weightKg <= 0) return null;
 
             return {
               id: typeof entry.id === 'string'
                 ? entry.id
                 : `${entry.date}-${index}`,
               date: entry.date,
-              weight: Math.round(weight * 10) / 10,
+              weightKg: this.roundKg(weightKg),
               note: typeof entry.note === 'string' ? entry.note : ''
             };
           })
@@ -59,33 +65,50 @@ class WeightTrackerApp {
   }
 
   saveData() {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+    const payload = {
+      unit: this.data.unit,
+      entries: this.data.entries.map((entry) => ({
+        id: entry.id,
+        date: entry.date,
+        weightKg: this.roundKg(entry.weightKg),
+        // Legacy compatibility for older app versions that still read `weight`.
+        weight: Math.round(this.toDisplay(entry.weightKg) * 10) / 10,
+        note: entry.note
+      }))
+    };
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(payload));
   }
 
   getSortedEntries() {
     return [...this.data.entries].sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  // Weight is stored in the user's current unit. Convert when unit changes.
-  toDisplay(weight) {
-    return weight;
+  // Weights are stored in kg and converted for display/input using current unit.
+  toDisplay(weightKg) {
+    if (!Number.isFinite(weightKg)) return NaN;
+    return this.data.unit === 'metric'
+      ? weightKg
+      : weightKg * this.LB_PER_KG;
+  }
+
+  toKilograms(weight, unit = this.data.unit) {
+    if (!Number.isFinite(weight)) return NaN;
+    return unit === 'metric'
+      ? weight
+      : weight * this.KG_PER_LB;
+  }
+
+  roundKg(weightKg) {
+    return Math.round(weightKg * 10000) / 10000;
   }
 
   unitLabel() {
     return this.data.unit === 'metric' ? 'kg' : 'lbs';
   }
 
-  formatWeight(w) {
-    if (w == null) return '—';
-    return w.toFixed(1) + ' ' + this.unitLabel();
-  }
-
-  convertEntries(fromUnit, toUnit) {
-    if (fromUnit === toUnit) return;
-    const factor = toUnit === 'metric' ? this.KG_PER_LB : this.LB_PER_KG;
-    this.data.entries.forEach(e => {
-      e.weight = Math.round(e.weight * factor * 10) / 10;
-    });
+  formatWeight(weightKg) {
+    if (weightKg == null || !Number.isFinite(weightKg)) return '—';
+    return this.toDisplay(weightKg).toFixed(1) + ' ' + this.unitLabel();
   }
 
   // --- Elements ---
@@ -149,9 +172,8 @@ class WeightTrackerApp {
   // --- Unit switching ---
 
   setUnit(unit) {
+    if (unit !== 'metric' && unit !== 'imperial') return;
     if (unit === this.data.unit) return;
-    const oldUnit = this.data.unit;
-    this.convertEntries(oldUnit, unit);
     this.data.unit = unit;
     this.saveData();
     this.unitBtns.forEach(b => b.classList.toggle('active', b.dataset.unit === unit));
@@ -168,7 +190,7 @@ class WeightTrackerApp {
 
     if (entry) {
       this.dateInput.value = entry.date;
-      this.weightInput.value = entry.weight;
+      this.weightInput.value = this.toDisplay(entry.weightKg).toFixed(1);
       this.noteInput.value = entry.note || '';
     } else {
       this.dateInput.value = this.todayStr();
@@ -202,23 +224,24 @@ class WeightTrackerApp {
 
   saveEntry() {
     const date = this.dateInput.value;
-    const weight = parseFloat(this.weightInput.value);
+    const weight = Number.parseFloat(this.weightInput.value);
     const note = this.noteInput.value.trim();
+    const weightKg = this.toKilograms(weight);
 
-    if (!date || isNaN(weight) || weight <= 0) return;
+    if (!date || !Number.isFinite(weightKg) || weightKg <= 0) return;
 
     if (this.editingId) {
       const entry = this.data.entries.find(e => e.id === this.editingId);
       if (entry) {
         entry.date = date;
-        entry.weight = weight;
+        entry.weightKg = this.roundKg(weightKg);
         entry.note = note;
       }
     } else {
       this.data.entries.push({
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         date,
-        weight,
+        weightKg: this.roundKg(weightKg),
         note
       });
     }
@@ -240,7 +263,7 @@ class WeightTrackerApp {
 
   calcAverage(entries) {
     if (!entries.length) return null;
-    const sum = entries.reduce((s, e) => s + e.weight, 0);
+    const sum = entries.reduce((s, e) => s + e.weightKg, 0);
     return sum / entries.length;
   }
 
@@ -287,18 +310,19 @@ class WeightTrackerApp {
       return;
     }
 
-    const current = sorted[sorted.length - 1].weight;
-    const lowest = Math.min(...sorted.map(e => e.weight));
-    const highest = Math.max(...sorted.map(e => e.weight));
-    const change = current - sorted[0].weight;
+    const current = sorted[sorted.length - 1].weightKg;
+    const lowest = Math.min(...sorted.map(e => e.weightKg));
+    const highest = Math.max(...sorted.map(e => e.weightKg));
+    const change = current - sorted[0].weightKg;
 
     this.statCurrent.textContent = this.formatWeight(current);
     this.statLowest.textContent = this.formatWeight(lowest);
     this.statHighest.textContent = this.formatWeight(highest);
 
     if (sorted.length > 1) {
+      const displayChange = this.toDisplay(change);
       const sign = change > 0 ? '+' : '';
-      this.statChange.textContent = sign + change.toFixed(1) + ' ' + this.unitLabel();
+      this.statChange.textContent = sign + displayChange.toFixed(1) + ' ' + this.unitLabel();
       this.statChange.className = 'stat-value' + (change > 0 ? ' positive' : change < 0 ? ' negative' : '');
     } else {
       this.statChange.textContent = '—';
@@ -324,13 +348,14 @@ class WeightTrackerApp {
       const prevEntry = sorted[i + 1]; // previous chronologically (next in reversed)
       let diffHtml = '';
       if (prevEntry) {
-        const d = entry.weight - prevEntry.weight;
+        const d = this.toDisplay(entry.weightKg) - this.toDisplay(prevEntry.weightKg);
         const sign = d > 0 ? '+' : '';
         const cls = d < 0 ? 'loss' : d > 0 ? 'gain' : 'same';
         diffHtml = `<span class="entry-diff ${cls}">${sign}${d.toFixed(1)}</span>`;
       }
 
       const noteHtml = entry.note ? `<span class="entry-note">${this.escapeHtml(entry.note)}</span>` : '';
+      const displayWeight = this.toDisplay(entry.weightKg);
 
       item.innerHTML = `
         <div class="entry-left">
@@ -339,7 +364,7 @@ class WeightTrackerApp {
         </div>
         <div class="entry-right">
           ${diffHtml}
-          <span class="entry-weight">${entry.weight.toFixed(1)} ${this.unitLabel()}</span>
+          <span class="entry-weight">${displayWeight.toFixed(1)} ${this.unitLabel()}</span>
         </div>
       `;
 
@@ -401,7 +426,7 @@ class WeightTrackerApp {
 
     ctx.clearRect(0, 0, W, H);
 
-    const weights = entries.map(e => e.weight);
+    const weights = entries.map(e => this.toDisplay(e.weightKg));
     let minW = Math.min(...weights);
     let maxW = Math.max(...weights);
     if (minW === maxW) {
@@ -463,7 +488,7 @@ class WeightTrackerApp {
 
     ctx.beginPath();
     ctx.moveTo(toX(dates[0]), pad.top + plotH);
-    entries.forEach((e, i) => ctx.lineTo(toX(dates[i]), toY(e.weight)));
+    entries.forEach((e, i) => ctx.lineTo(toX(dates[i]), toY(this.toDisplay(e.weightKg))));
     ctx.lineTo(toX(dates[dates.length - 1]), pad.top + plotH);
     ctx.closePath();
     ctx.fillStyle = gradient;
@@ -473,7 +498,7 @@ class WeightTrackerApp {
     ctx.beginPath();
     entries.forEach((e, i) => {
       const x = toX(dates[i]);
-      const y = toY(e.weight);
+      const y = toY(this.toDisplay(e.weightKg));
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.strokeStyle = accentColor;
@@ -485,7 +510,7 @@ class WeightTrackerApp {
     // Data points
     entries.forEach((e, i) => {
       const x = toX(dates[i]);
-      const y = toY(e.weight);
+      const y = toY(this.toDisplay(e.weightKg));
       ctx.beginPath();
       ctx.arc(x, y, 3.5, 0, Math.PI * 2);
       ctx.fillStyle = accentColor;

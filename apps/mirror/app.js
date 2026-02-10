@@ -14,6 +14,7 @@ class MirrorApp {
 
     this.initElements();
     this.initEventListeners();
+    this.updateFlipButtonState();
     this.syncThemeWithParent();
     this.renderGallery();
   }
@@ -108,26 +109,43 @@ class MirrorApp {
   async startCamera() {
     try {
       this.errorScreen.style.display = 'none';
-
-      const constraints = {
-        video: {
-          facingMode: this.facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      };
-
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-      this.videoElement.srcObject = this.stream;
+      const stream = await this.requestCameraStream(this.facingMode);
+      this.setStream(stream);
+      this.isMirrored = this.facingMode === 'user';
 
       this.startScreen.style.display = 'none';
+      this.updateFlipButtonState();
       this.applyFilters();
+      return true;
 
     } catch (error) {
       console.error('Error accessing camera:', error);
       this.showError(error);
+      return false;
     }
+  }
+
+  buildCameraConstraints(facingMode) {
+    return {
+      video: {
+        facingMode: { ideal: facingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
+  }
+
+  requestCameraStream(facingMode) {
+    return navigator.mediaDevices.getUserMedia(this.buildCameraConstraints(facingMode));
+  }
+
+  setStream(stream) {
+    if (this.stream && this.stream !== stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+    }
+    this.stream = stream;
+    this.videoElement.srcObject = stream;
   }
 
   stopCamera() {
@@ -137,10 +155,39 @@ class MirrorApp {
     }
   }
 
-  flipCamera() {
-    // Toggle horizontal mirroring
-    this.isMirrored = !this.isMirrored;
-    this.applyFilters();
+  async flipCamera() {
+    const previousMode = this.facingMode;
+    const nextMode = this.facingMode === 'user' ? 'environment' : 'user';
+
+    this.facingMode = nextMode;
+    this.isMirrored = nextMode === 'user';
+    this.updateFlipButtonState();
+
+    if (!this.stream) {
+      this.applyFilters();
+      return;
+    }
+
+    try {
+      const stream = await this.requestCameraStream(nextMode);
+      this.setStream(stream);
+      this.errorScreen.style.display = 'none';
+      this.applyFilters();
+    } catch (error) {
+      console.warn('Unable to switch camera, keeping current stream:', error);
+      this.facingMode = previousMode;
+      this.isMirrored = previousMode === 'user';
+      this.updateFlipButtonState();
+      this.applyFilters();
+    }
+  }
+
+  updateFlipButtonState() {
+    if (!this.flipBtn) return;
+    const nextCamera = this.facingMode === 'user' ? 'rear' : 'front';
+    const label = `Switch to ${nextCamera} camera`;
+    this.flipBtn.title = label;
+    this.flipBtn.setAttribute('aria-label', label);
   }
 
   applyFilters() {
@@ -168,7 +215,7 @@ class MirrorApp {
     this.brightness = 1;
     this.contrast = 1;
     this.currentFilter = 'none';
-    this.isMirrored = true;
+    this.isMirrored = this.facingMode === 'user';
 
     this.zoomSlider.value = 1;
     this.zoomValue.textContent = '1.0x';
@@ -317,7 +364,7 @@ class MirrorApp {
 
   renderGallery() {
     if (this.photos.length === 0) {
-      this.galleryGrid.innerHTML = `<div style="padding: 1rem; color: var(--mirror-text-tertiary);">No photos captured yet</div>`;
+      this.galleryGrid.innerHTML = `<div style="padding: 1rem; color: var(--app-text-tertiary);">No photos captured yet</div>`;
       return;
     }
 

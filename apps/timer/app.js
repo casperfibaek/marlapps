@@ -104,8 +104,8 @@ class TimerApp {
         ? parsed.intervalSettings
         : {};
       const intervalSettings = {
-        work: toBoundedInt(intervalSettingsRaw.work, 1, 180, defaults.intervalSettings.work),
-        rest: toBoundedInt(intervalSettingsRaw.rest, 1, 180, defaults.intervalSettings.rest),
+        work: toBoundedInt(intervalSettingsRaw.work, 5, 3600, defaults.intervalSettings.work),
+        rest: toBoundedInt(intervalSettingsRaw.rest, 5, 3600, defaults.intervalSettings.rest),
         rounds: toBoundedInt(intervalSettingsRaw.rounds, 1, 99, defaults.intervalSettings.rounds)
       };
 
@@ -673,11 +673,25 @@ class TimerApp {
   // ===== Interval Timer Functions =====
 
   saveIntervalSettings() {
-    this.data.intervalSettings = {
-      work: Math.max(1, parseInt(this.intervalWorkInput.value) || 30),
-      rest: Math.max(1, parseInt(this.intervalRestInput.value) || 10),
-      rounds: Math.max(1, parseInt(this.intervalRoundsInput.value) || 8)
+    const parseIntervalSeconds = (value, fallback) => {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed)) return fallback;
+      return Math.min(3600, Math.max(5, parsed));
     };
+    const parseRounds = (value, fallback) => {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed)) return fallback;
+      return Math.min(99, Math.max(1, parsed));
+    };
+
+    this.data.intervalSettings = {
+      work: parseIntervalSeconds(this.intervalWorkInput.value, this.data.intervalSettings.work),
+      rest: parseIntervalSeconds(this.intervalRestInput.value, this.data.intervalSettings.rest),
+      rounds: parseRounds(this.intervalRoundsInput.value, this.data.intervalSettings.rounds)
+    };
+    this.intervalWorkInput.value = this.data.intervalSettings.work;
+    this.intervalRestInput.value = this.data.intervalSettings.rest;
+    this.intervalRoundsInput.value = this.data.intervalSettings.rounds;
     this.saveData();
   }
 

@@ -7,7 +7,7 @@
   "entry": "index.html",
   "categories": ["Planning"],
   "order": 2,
-  "storageKeys": ["marlapps-kanban-board"],
+  "storageKeys": ["marlapps-kanban-board", "kanbanBoard"],
   "version": "1.0.0",
   "author": "MarlApps"
 }

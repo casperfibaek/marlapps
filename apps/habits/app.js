@@ -289,8 +289,8 @@ class HabitTrackerApp {
   render() {
     // Update week display
     const weekDays = this.getWeekDays();
-    const startDate = weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endDate = weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startDate = weekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const endDate = weekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     this.weekDisplay.textContent = `${startDate} - ${endDate}`;
 
     // Show/hide empty state

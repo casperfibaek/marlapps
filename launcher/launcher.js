@@ -63,6 +63,10 @@ class BackgroundAppHost {
     return true;
   }
 
+  hasFrame(appId) {
+    return this.frames.has(appId);
+  }
+
   forEachFrame(cb) {
     this.frames.forEach((iframe, appId) => cb(iframe, appId));
   }
@@ -74,6 +78,7 @@ class Launcher {
     this.appLoader = new AppLoader();
     this.searchManager = null;
     this.settingsManager = null;
+    this.categories = [];
     this.currentCategory = 'all';
     this.currentSort = 'recent';
     this.currentApp = null;
@@ -84,6 +89,7 @@ class Launcher {
   async init() {
     this.themeManager.init();
     await this.appLoader.init();
+    this.renderCategoryControls();
 
     this.searchManager = new SearchManager(this.appLoader, this);
     this.searchManager.init();
@@ -114,12 +120,128 @@ class Launcher {
     }
   }
 
+  isActivationKey(key) {
+    return key === 'Enter' || key === ' ' || key === 'Spacebar';
+  }
+
+  normalizeCategory(category) {
+    return String(category || '').trim().toLowerCase();
+  }
+
+  getCategoryDefinitions() {
+    const categoryMap = new Map();
+
+    this.appLoader.apps.forEach((app) => {
+      if (!Array.isArray(app.categories)) return;
+      app.categories.forEach((category) => {
+        if (typeof category !== 'string') return;
+        const label = category.trim();
+        if (!label) return;
+        const key = this.normalizeCategory(label);
+        if (!categoryMap.has(key)) {
+          categoryMap.set(key, label);
+        }
+      });
+    });
+
+    const categories = [...categoryMap.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([key, label]) => ({ key, label }));
+
+    return [{ key: 'all', label: 'All apps' }, ...categories];
+  }
+
+  getCategoryLabel(category, fallback = 'All apps') {
+    const normalized = this.normalizeCategory(category);
+    const match = this.categories.find(item => item.key === normalized);
+    return match ? match.label : fallback;
+  }
+
+  getCategoryIcon(category) {
+    const iconMap = {
+      all: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+      focus: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+      planning: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+      notes: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/>',
+      tracking: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+      tools: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'
+    };
+    return iconMap[this.normalizeCategory(category)]
+      || '<path d="M20 7h-9a2 2 0 0 1 0-4h9a2 2 0 0 1 0 4z"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M4 22h16"/>';
+  }
+
+  renderCategoryControls() {
+    this.categories = this.getCategoryDefinitions();
+    const validCategories = new Set(this.categories.map(item => item.key));
+    if (!validCategories.has(this.currentCategory)) {
+      this.currentCategory = 'all';
+    }
+
+    const sidebarList = document.getElementById('sidebarCategoryList');
+    if (sidebarList) {
+      sidebarList.innerHTML = this.categories.map((category) => {
+        const isActive = category.key === this.currentCategory;
+        return `
+          <li class="nav-item${isActive ? ' active' : ''}" data-category="${this.escapeHtml(category.key)}" tabindex="0" role="option" aria-selected="${isActive ? 'true' : 'false'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              ${this.getCategoryIcon(category.key)}
+            </svg>
+            <span>${this.escapeHtml(category.label)}</span>
+          </li>
+        `;
+      }).join('');
+    }
+
+    const dropdown = document.getElementById('categoryDropdown');
+    if (dropdown) {
+      dropdown.innerHTML = this.categories.map((category) => {
+        const isActive = category.key === this.currentCategory;
+        return `
+          <button class="category-dropdown-item${isActive ? ' active' : ''}" data-category="${this.escapeHtml(category.key)}" role="menuitem">
+            ${this.escapeHtml(category.label)}
+          </button>
+        `;
+      }).join('');
+    }
+
+    const mobileList = document.getElementById('mobileCategoryList');
+    if (mobileList) {
+      mobileList.innerHTML = this.categories.map((category) => {
+        const isActive = category.key === this.currentCategory;
+        return `
+          <button class="mobile-category-btn${isActive ? ' active' : ''}" data-category="${this.escapeHtml(category.key)}">
+            ${this.escapeHtml(category.label)}
+          </button>
+        `;
+      }).join('');
+    }
+
+    this.updateCategoryLabels();
+  }
+
+  updateCategoryLabels() {
+    const label = this.getCategoryLabel(this.currentCategory);
+
+    const title = document.querySelector('.toolbar-title');
+    if (title) title.textContent = label;
+
+    const toolbarLabel = document.getElementById('toolbarCategoryLabel');
+    if (toolbarLabel) toolbarLabel.textContent = label;
+  }
+
   bindEvents() {
     const appGrid = document.getElementById('appGrid');
     if (appGrid) {
       appGrid.addEventListener('click', (e) => {
         const card = e.target.closest('.app-card[data-app-id]');
         if (card) this.openApp(card.dataset.appId);
+      });
+      appGrid.addEventListener('keydown', (e) => {
+        if (!this.isActivationKey(e.key)) return;
+        const card = e.target.closest('.app-card[data-app-id]');
+        if (!card) return;
+        e.preventDefault();
+        this.openApp(card.dataset.appId);
       });
     }
 
@@ -128,6 +250,13 @@ class Launcher {
       recentsScroller.addEventListener('click', (e) => {
         const tile = e.target.closest('.recent-tile[data-app-id]');
         if (tile) this.openApp(tile.dataset.appId);
+      });
+      recentsScroller.addEventListener('keydown', (e) => {
+        if (!this.isActivationKey(e.key)) return;
+        const tile = e.target.closest('.recent-tile[data-app-id]');
+        if (!tile) return;
+        e.preventDefault();
+        this.openApp(tile.dataset.appId);
       });
     }
 
@@ -147,6 +276,11 @@ class Launcher {
 
     document.querySelectorAll('.nav-item[data-category]').forEach(item => {
       item.addEventListener('click', () => this.setCategory(item.dataset.category));
+      item.addEventListener('keydown', (e) => {
+        if (!this.isActivationKey(e.key)) return;
+        e.preventDefault();
+        this.setCategory(item.dataset.category);
+      });
     });
 
     const sortSelect = document.getElementById('sortSelect');
@@ -333,23 +467,38 @@ class Launcher {
       return;
     }
 
-    const cardsHtml = apps.map(app => `
-      <div class="app-card" data-app-id="${app.id}" tabindex="0" role="listitem" aria-label="Open ${this.escapeHtml(app.name)}">
-        <img class="app-icon" src="${this.appLoader.getAppIconUrl(app)}" alt="" loading="lazy">
+    const cardsHtml = apps.map((app) => {
+      const isBackgroundRunning = this.isAppRunningInBackground(app.id);
+      const ariaLabel = this.escapeHtml(this.getLauncherItemAriaLabel(app.name, isBackgroundRunning));
+      return `
+      <div class="app-card${isBackgroundRunning ? ' is-background-running' : ''}" data-app-id="${app.id}" tabindex="0" role="listitem" aria-label="${ariaLabel}">
+        <span class="app-icon-wrap">
+          <span class="background-running-frame" aria-hidden="true"></span>
+          <img class="app-icon" src="${this.appLoader.getAppIconUrl(app)}" alt="" loading="lazy">
+        </span>
         <div class="app-info">
           <span class="app-name">${this.escapeHtml(app.name)}</span>
           <span class="app-description">${this.escapeHtml(app.description)}</span>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
     results.innerHTML = `<div class="search-results-list">${cardsHtml}</div>`;
 
     results.querySelectorAll('.app-card').forEach(card => {
-      card.addEventListener('click', () => {
+      const openFromSearch = () => {
         this.openApp(card.dataset.appId);
         this.closeMobileSearch();
+      };
+      card.addEventListener('click', openFromSearch);
+      card.addEventListener('keydown', (e) => {
+        if (!this.isActivationKey(e.key)) return;
+        e.preventDefault();
+        openFromSearch();
       });
     });
+
+    this.refreshBackgroundIndicators();
   }
 
   openMobileCategoriesSheet() {
@@ -426,20 +575,22 @@ class Launcher {
   }
 
   setCategory(category) {
-    this.currentCategory = category;
+    const normalizedCategory = this.normalizeCategory(category);
+    const validCategories = new Set(this.categories.map(item => item.key));
+    this.currentCategory = validCategories.has(normalizedCategory) ? normalizedCategory : 'all';
 
     document.querySelectorAll('.nav-item[data-category]').forEach(item => {
-      const isActive = item.dataset.category === category;
+      const isActive = item.dataset.category === this.currentCategory;
       item.classList.toggle('active', isActive);
       item.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
 
-    const title = document.querySelector('.toolbar-title');
-    if (title) {
-      title.textContent = category === 'all'
-        ? 'All apps'
-        : category.charAt(0).toUpperCase() + category.slice(1);
-    }
+    document.querySelectorAll('.category-dropdown-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.category === this.currentCategory);
+    });
+
+    this.updateMobileCategoryActive(this.currentCategory);
+    this.updateCategoryLabels();
 
     if (this.searchManager) this.searchManager.clear();
     this.renderApps();
@@ -487,15 +638,27 @@ class Launcher {
       return;
     }
 
-    container.innerHTML = recents.map(app => `
-      <div class="recent-tile" data-app-id="${app.id}" tabindex="0" role="listitem" aria-label="Open ${this.escapeHtml(app.name)}">
-        <img class="recent-icon" src="${this.appLoader.getAppIconUrl(app)}" alt="" loading="lazy">
+    container.innerHTML = recents.map((app) => {
+      const isBackgroundRunning = this.isAppRunningInBackground(app.id);
+      const ariaLabel = this.escapeHtml(this.getLauncherItemAriaLabel(app.name, isBackgroundRunning));
+      const recentMeta = isBackgroundRunning
+        ? `Running in background, last opened ${this.formatRelativeTime(app.lastOpened)}`
+        : `Last opened ${this.formatRelativeTime(app.lastOpened)}`;
+      return `
+      <div class="recent-tile${isBackgroundRunning ? ' is-background-running' : ''}" data-app-id="${app.id}" tabindex="0" role="listitem" aria-label="${ariaLabel}">
+        <span class="recent-icon-wrap">
+          <span class="background-running-frame" aria-hidden="true"></span>
+          <img class="recent-icon" src="${this.appLoader.getAppIconUrl(app)}" alt="" loading="lazy">
+        </span>
         <div class="recent-info">
           <span class="recent-name">${this.escapeHtml(app.name)}</span>
-          <span class="recent-meta">Last opened ${this.formatRelativeTime(app.lastOpened)}</span>
+          <span class="recent-meta">${this.escapeHtml(recentMeta)}</span>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
+
+    this.refreshBackgroundIndicators();
   }
 
   renderApps(apps = null) {
@@ -508,12 +671,20 @@ class Launcher {
 
     apps = this.sortApps(apps);
 
-    const cardsHtml = apps.map(app => {
+    const cardsHtml = apps.map((app) => {
       const category = app.categories?.[0] || '';
-      const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
+      const categoryKey = this.normalizeCategory(category);
+      const categoryLabel = category
+        ? this.getCategoryLabel(categoryKey, category)
+        : '';
+      const isBackgroundRunning = this.isAppRunningInBackground(app.id);
+      const ariaLabel = this.escapeHtml(this.getLauncherItemAriaLabel(app.name, isBackgroundRunning));
       return `
-      <div class="app-card" data-app-id="${app.id}" tabindex="0" role="listitem" aria-label="Open ${this.escapeHtml(app.name)}">
-        <img class="app-icon" src="${this.appLoader.getAppIconUrl(app)}" alt="" loading="lazy">
+      <div class="app-card${isBackgroundRunning ? ' is-background-running' : ''}" data-app-id="${app.id}" tabindex="0" role="listitem" aria-label="${ariaLabel}">
+        <span class="app-icon-wrap">
+          <span class="background-running-frame" aria-hidden="true"></span>
+          <img class="app-icon" src="${this.appLoader.getAppIconUrl(app)}" alt="" loading="lazy">
+        </span>
         <div class="app-info">
           <span class="app-name">${this.escapeHtml(app.name)}</span>
           <span class="app-description">${this.escapeHtml(app.description)}</span>
@@ -524,10 +695,34 @@ class Launcher {
     }).join('');
 
     container.innerHTML = cardsHtml;
+    this.refreshBackgroundIndicators();
   }
 
   shouldKeepAliveApp(app) {
     return this.backgroundHost.shouldKeepAliveApp(app);
+  }
+
+  isAppRunningInBackground(appId) {
+    return this.backgroundHost.hasFrame(appId);
+  }
+
+  getLauncherItemAriaLabel(appName, isBackgroundRunning = false) {
+    const openLabel = `Open ${appName}`;
+    if (!isBackgroundRunning) return openLabel;
+    return `${openLabel}. Running in background.`;
+  }
+
+  refreshBackgroundIndicators() {
+    const launcherItems = document.querySelectorAll('.app-card[data-app-id], .recent-tile[data-app-id]');
+    launcherItems.forEach((item) => {
+      const appId = item.dataset.appId;
+      const app = this.appLoader.getAppById(appId);
+      const appName = app && typeof app.name === 'string' ? app.name : 'app';
+      const isBackgroundRunning = this.isAppRunningInBackground(appId);
+
+      item.classList.toggle('is-background-running', isBackgroundRunning);
+      item.setAttribute('aria-label', this.getLauncherItemAriaLabel(appName, isBackgroundRunning));
+    });
   }
 
   notifyAppVisibility(iframe, visible, reason = '') {
@@ -554,9 +749,10 @@ class Launcher {
     const app = this.appLoader.getAppById(appId);
     if (!app) return false;
 
-    this.backgroundHost.discardFrame(appId);
+    const removedBackgroundFrame = this.backgroundHost.discardFrame(appId);
 
     if (!this.currentApp || this.currentApp.id !== appId) {
+      if (removedBackgroundFrame) this.refreshBackgroundIndicators();
       return false;
     }
 
@@ -571,6 +767,7 @@ class Launcher {
       this.notifyAppVisibility(iframe, true, 'workspace-open');
       iframe.classList.add('loaded');
     });
+    this.refreshBackgroundIndicators();
     return true;
   }
 
@@ -687,6 +884,7 @@ class Launcher {
     workspace.classList.remove('hidden');
     document.body.classList.add('app-open');
     document.title = `${app.name} - MarlApps`;
+    this.refreshBackgroundIndicators();
   }
 
   closeApp(reason = 'home') {
@@ -721,6 +919,7 @@ class Launcher {
     }
 
     this.renderRecents();
+    this.refreshBackgroundIndicators();
   }
 
   syncThemeToIframe(iframe) {

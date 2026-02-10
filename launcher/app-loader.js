@@ -66,7 +66,7 @@ class AppLoader {
 
     return this.apps.filter(app =>
       app.categories && app.categories.some(c =>
-        c.toLowerCase() === category.toLowerCase()
+        String(c).trim().toLowerCase() === String(category).trim().toLowerCase()
       )
     );
   }

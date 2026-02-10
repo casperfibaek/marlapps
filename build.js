@@ -74,10 +74,31 @@ function patchServiceWorker(apps) {
     process.exit(1);
   }
 
-  const files = ['manifest.json', 'index.html', 'styles.css', 'app.js', 'icon.svg'];
-  const cacheLines = apps.map(app => {
-    return files.map(f => `  './apps/${app.folder}/${f}'`).join(',\n');
-  }).join(',\n\n');
+  const listAppFiles = (folderPath) => {
+    const files = [];
+    const walk = (currentPath) => {
+      const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+      entries.sort((a, b) => a.name.localeCompare(b.name));
+
+      for (const entry of entries) {
+        if (entry.name.startsWith('.')) continue;
+        const fullPath = path.join(currentPath, entry.name);
+        if (entry.isDirectory()) {
+          walk(fullPath);
+          continue;
+        }
+        if (!entry.isFile()) continue;
+        const relPath = path.relative(ROOT, fullPath).split(path.sep).join('/');
+        files.push(`./${relPath}`);
+      }
+    };
+
+    walk(folderPath);
+    return files;
+  };
+
+  const appFiles = apps.map((app) => listAppFiles(path.join(APPS_DIR, app.folder)));
+  const cacheLines = appFiles.map((files) => files.map((file) => `  '${file}'`).join(',\n')).join(',\n\n');
 
   const before = content.substring(0, startIdx);
   const after = content.substring(endIdx + endMarker.length);
@@ -103,7 +124,8 @@ function patchServiceWorker(apps) {
     console.log(`  version.json (build ${version})`);
   }
 
-  console.log(`  service-worker.js (${apps.length * files.length} cached files)`);
+  const totalCachedFiles = appFiles.reduce((count, files) => count + files.length, 0);
+  console.log(`  service-worker.js (${totalCachedFiles} cached files)`);
 }
 
 // Run
