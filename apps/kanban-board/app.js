@@ -235,7 +235,7 @@ class KanbanBoard {
 
   createColumnElement(column) {
     const columnEl = document.createElement('div');
-    columnEl.className = 'column';
+    columnEl.className = `column ${column.collapsed ? 'collapsed' : ''}`;
     columnEl.dataset.columnId = column.id;
 
     // Filter tasks based on this column's color filter

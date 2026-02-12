@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v67';
+const CACHE_NAME = 'marlapps-v68';
 const urlsToCache = [
   './',
   './index.html',

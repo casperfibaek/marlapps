@@ -117,6 +117,12 @@
   /* Body is hidden via .column-body.collapsed, column keeps its width */
 }
 
+@media (min-width: 769px) {
+  .column.collapsed {
+    align-self: flex-start;
+  }
+}
+
 .task-count {
   background: var(--app-accent);
   color: white;
