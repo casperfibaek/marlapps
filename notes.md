@@ -1,12 +1,4 @@
-
-In the kanban app:
-When no colour is selected for a task, there is not shown a border on the left side of the row. Please make sure that in the case of no colour selected, the border goes all the way around.
-
-Fix the drag functionality:
-    First do a review of the current functionality and fix any claring bugs.
-    The consider these bugs:
-        It is currently not possible to drag a task to a collapsed column
-        It is currently not possible to drag a task to an empty column
+Clicking filter scrolls the bars to the top left
 
 
 Home, search, and settings buttons could be floating - leaving more room for the apps.
