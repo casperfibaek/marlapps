@@ -6,6 +6,11 @@ class KanbanBoard {
     this.board = this.loadBoard();
     this.currentColumnId = null;
     this.editingTaskId = null;
+    this.selectedColor = null;
+    this.hasUnsavedChanges = false;
+    this.activeColorFilter = null;
+    this.deletedTaskState = null;
+    this.undoTimeoutId = null;
 
     // Touch drag state
     this.touchDragState = {
@@ -34,6 +39,16 @@ class KanbanBoard {
     this.taskDescriptionInput = document.getElementById('taskDescription');
     this.cancelBtn = document.getElementById('cancelBtn');
     this.modalTitle = document.getElementById('modalTitle');
+    this.colorSelector = document.getElementById('colorSelector');
+    this.colorSwatches = document.querySelectorAll('.color-swatch');
+    this.statusGroup = document.getElementById('statusGroup');
+    this.taskStatus = document.getElementById('taskStatus');
+    this.deleteTaskBtn = document.getElementById('deleteTaskBtn');
+    this.colorFilterBtns = document.querySelectorAll('.color-filter-btn');
+    this.undoToast = document.getElementById('undoToast');
+    this.toastMessage = document.getElementById('toastMessage');
+    this.toastUndo = document.getElementById('toastUndo');
+    this.saveAndAddBtn = document.getElementById('saveAndAddBtn');
   }
 
   syncThemeWithParent() {
@@ -69,10 +84,13 @@ class KanbanBoard {
   loadBoard() {
     const defaultBoard = {
       columns: [
-        { id: 'todo', name: 'To Do', tasks: [] },
-        { id: 'inprogress', name: 'In Progress', tasks: [] },
-        { id: 'done', name: 'Done', tasks: [] }
-      ]
+        { id: 'todo', name: 'To Do', tasks: [], collapsed: false },
+        { id: 'inprogress', name: 'In Progress', tasks: [], collapsed: false },
+        { id: 'done', name: 'Done', tasks: [], collapsed: false }
+      ],
+      settings: {
+        activeColorFilter: null
+      }
     };
 
     const saved = localStorage.getItem('marlapps-kanban-board');
@@ -84,6 +102,7 @@ class KanbanBoard {
         return defaultBoard;
       }
 
+      const validColors = ['red', 'blue', 'green', 'yellow', 'purple'];
       const columns = parsed.columns
         .map((column, columnIndex) => {
           if (!column || typeof column !== 'object') return null;
@@ -107,17 +126,34 @@ class KanbanBoard {
                     ? task.id
                     : `${id}-task-${taskIndex}`,
                   title: task.title,
-                  description: typeof task.description === 'string' ? task.description : ''
+                  description: typeof task.description === 'string' ? task.description : '',
+                  color: typeof task.color === 'string' && validColors.includes(task.color)
+                    ? task.color
+                    : null,
+                  createdAt: Number.isFinite(task.createdAt) ? task.createdAt : Date.now()
                 };
               })
               .filter(Boolean)
             : [];
 
-          return { id, name, tasks };
+          const collapsed = typeof column.collapsed === 'boolean' ? column.collapsed : false;
+
+          return { id, name, tasks, collapsed };
         })
         .filter(Boolean);
 
-      return { columns: columns.length > 0 ? columns : defaultBoard.columns };
+      const settings = parsed.settings && typeof parsed.settings === 'object'
+        ? {
+            activeColorFilter: typeof parsed.settings.activeColorFilter === 'string' && validColors.includes(parsed.settings.activeColorFilter)
+              ? parsed.settings.activeColorFilter
+              : null
+          }
+        : { activeColorFilter: null };
+
+      return {
+        columns: columns.length > 0 ? columns : defaultBoard.columns,
+        settings
+      };
     } catch {
       return defaultBoard;
     }
@@ -149,6 +185,52 @@ class KanbanBoard {
         this.closeModal();
       }
     });
+
+    // Color selector
+    this.colorSwatches.forEach(swatch => {
+      swatch.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.selectColor(swatch.dataset.color);
+      });
+    });
+
+    // Status selector
+    this.taskStatus.addEventListener('change', () => {
+      this.hasUnsavedChanges = true;
+    });
+
+    // Delete button in modal
+    this.deleteTaskBtn.addEventListener('click', () => {
+      if (this.editingTaskId) {
+        this.deleteTask(this.editingTaskId);
+        this.closeModal();
+      }
+    });
+
+    // Track unsaved changes
+    this.taskTitleInput.addEventListener('input', () => {
+      this.hasUnsavedChanges = true;
+    });
+    this.taskDescriptionInput.addEventListener('input', () => {
+      this.hasUnsavedChanges = true;
+    });
+
+    // Color filter buttons
+    this.colorFilterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.setColorFilter(btn.dataset.color);
+      });
+    });
+
+    // Undo button
+    this.toastUndo.addEventListener('click', () => {
+      this.undoDelete();
+    });
+
+    // Save and add another
+    this.saveAndAddBtn.addEventListener('click', () => {
+      this.saveTask(true);
+    });
   }
 
   renderBoard() {
@@ -158,6 +240,15 @@ class KanbanBoard {
       const columnEl = this.createColumnElement(column);
       this.boardEl.appendChild(columnEl);
     });
+
+    // Restore filter state from settings
+    if (this.board.settings && this.board.settings.activeColorFilter) {
+      const filterColor = this.board.settings.activeColorFilter;
+      this.activeColorFilter = filterColor;
+      this.colorFilterBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.color === filterColor);
+      });
+    }
   }
 
   createColumnElement(column) {
@@ -165,19 +256,68 @@ class KanbanBoard {
     columnEl.className = 'column';
     columnEl.dataset.columnId = column.id;
 
+    // Filter tasks based on active color filter
+    const visibleTasks = column.tasks.filter(task => this.shouldShowTask(task));
+    const totalTasks = column.tasks.length;
+
+    // Show "X of Y" if filtered
+    const countText = this.activeColorFilter
+      ? `${visibleTasks.length} of ${totalTasks}`
+      : totalTasks.toString();
+
     columnEl.innerHTML = `
       <div class="column-header">
-        <h2 class="column-title">${column.name}</h2>
-        <span class="task-count">${column.tasks.length}</span>
+        <div class="column-title-row">
+          <h2 class="column-title">${column.name}</h2>
+          <button class="column-collapse-btn" data-column-id="${column.id}" aria-label="Toggle collapse">
+            <span class="collapse-icon">${column.collapsed ? '▶' : '▼'}</span>
+          </button>
+        </div>
+        <span class="task-count">${countText}</span>
       </div>
-      <div class="tasks" data-column-id="${column.id}"></div>
-      <button class="add-task-btn" data-column-id="${column.id}">+ Add Task</button>
+      <div class="column-body ${column.collapsed ? 'collapsed' : ''}">
+        <div class="tasks scrollable" data-column-id="${column.id}"></div>
+        <button class="add-task-btn" data-column-id="${column.id}">+ Add Task</button>
+      </div>
     `;
 
     const tasksContainer = columnEl.querySelector('.tasks');
-    column.tasks.forEach(task => {
+
+    // Render only visible tasks
+    visibleTasks.forEach(task => {
       const taskEl = this.createTaskElement(task, column.id);
       tasksContainer.appendChild(taskEl);
+    });
+
+    // Show empty state if no tasks at all
+    if (totalTasks === 0) {
+      const emptyState = document.createElement('div');
+      emptyState.className = 'column-empty';
+      emptyState.innerHTML = `
+        <div class="column-empty-icon">📝</div>
+        <div class="column-empty-text">No tasks yet</div>
+        <button class="column-empty-btn" data-column-id="${column.id}">Add First Task</button>
+      `;
+      tasksContainer.appendChild(emptyState);
+
+      // Event listener for empty state button
+      const emptyBtn = emptyState.querySelector('.column-empty-btn');
+      emptyBtn.addEventListener('click', () => {
+        this.openModal(column.id);
+      });
+    }
+    // Show filtered empty state if filtered and no visible tasks
+    else if (visibleTasks.length === 0 && totalTasks > 0) {
+      const emptyState = document.createElement('div');
+      emptyState.className = 'column-empty-filtered';
+      emptyState.textContent = 'No tasks with this color';
+      tasksContainer.appendChild(emptyState);
+    }
+
+    // Collapse button event
+    const collapseBtn = columnEl.querySelector('.column-collapse-btn');
+    collapseBtn.addEventListener('click', () => {
+      this.toggleColumnCollapse(column.id);
     });
 
     // Add task button event
@@ -203,11 +343,11 @@ class KanbanBoard {
     taskEl.dataset.taskId = task.id;
 
     taskEl.innerHTML = `
-      <div class="task-header">
+      <div class="task-content">
         <div class="task-title">${this.escapeHtml(task.title)}</div>
-        <button class="task-delete" data-task-id="${task.id}">×</button>
+        ${this.renderTaskMetadata(task)}
       </div>
-      ${task.description ? `<div class="task-description">${this.escapeHtml(task.description)}</div>` : ''}
+      <button class="task-delete" data-task-id="${task.id}" aria-label="Delete task">×</button>
     `;
 
     // Delete button event
@@ -239,6 +379,20 @@ class KanbanBoard {
     });
 
     return taskEl;
+  }
+
+  renderTaskMetadata(task) {
+    const parts = [];
+
+    if (task.color) {
+      parts.push(`<span class="task-color-dot" data-color="${task.color}"></span>`);
+    }
+
+    if (task.description && task.description.trim()) {
+      parts.push(`<span class="task-has-description" aria-label="Has description">📝</span>`);
+    }
+
+    return parts.length > 0 ? `<div class="task-metadata">${parts.join('')}</div>` : '';
   }
 
   // Touch drag handlers
@@ -454,6 +608,7 @@ class KanbanBoard {
   openModal(columnId, taskId = null) {
     this.currentColumnId = columnId;
     this.editingTaskId = taskId;
+    this.hasUnsavedChanges = false;
 
     if (taskId) {
       // Editing existing task
@@ -462,12 +617,27 @@ class KanbanBoard {
         this.modalTitle.textContent = 'Edit Task';
         this.taskTitleInput.value = task.title;
         this.taskDescriptionInput.value = task.description || '';
+
+        // Set color
+        this.selectColor(task.color || 'none');
+
+        // Show and set status
+        this.statusGroup.style.display = 'block';
+        this.taskStatus.value = this.findTaskColumn(taskId);
+
+        // Show delete button
+        this.deleteTaskBtn.style.display = 'inline-flex';
       }
     } else {
       // Adding new task
       this.modalTitle.textContent = 'Add Task';
       this.taskTitleInput.value = '';
       this.taskDescriptionInput.value = '';
+      this.selectColor('none');
+
+      // Hide status and delete
+      this.statusGroup.style.display = 'none';
+      this.deleteTaskBtn.style.display = 'none';
     }
 
     this.taskModal.classList.add('active');
@@ -475,13 +645,17 @@ class KanbanBoard {
   }
 
   closeModal() {
+    if (!this.checkUnsavedChanges()) return;
+
     this.taskModal.classList.remove('active');
     this.currentColumnId = null;
     this.editingTaskId = null;
+    this.selectedColor = null;
+    this.hasUnsavedChanges = false;
     this.taskForm.reset();
   }
 
-  saveTask() {
+  saveTask(keepOpen = false) {
     const title = this.taskTitleInput.value.trim();
     const description = this.taskDescriptionInput.value.trim();
 
@@ -490,16 +664,27 @@ class KanbanBoard {
     if (this.editingTaskId) {
       // Update existing task
       const task = this.findTask(this.editingTaskId);
+      const oldColumnId = this.findTaskColumn(this.editingTaskId);
+      const newColumnId = this.taskStatus.value;
+
       if (task) {
         task.title = title;
         task.description = description;
+        task.color = this.selectedColor;
+
+        // Handle status change (move to different column)
+        if (oldColumnId !== newColumnId) {
+          this.moveTaskToColumn(this.editingTaskId, oldColumnId, newColumnId);
+        }
       }
     } else {
       // Create new task
       const newTask = {
         id: this.generateId(),
         title: title,
-        description: description
+        description: description,
+        color: this.selectedColor,
+        createdAt: Date.now()
       };
 
       const column = this.board.columns.find(c => c.id === this.currentColumnId);
@@ -508,24 +693,64 @@ class KanbanBoard {
       }
     }
 
+    this.hasUnsavedChanges = false;
     this.saveBoard();
     this.renderBoard();
-    this.closeModal();
+
+    if (keepOpen) {
+      // Reset form for new task, keep modal open
+      this.editingTaskId = null;
+      this.taskTitleInput.value = '';
+      this.taskDescriptionInput.value = '';
+      this.selectColor('none');
+      this.statusGroup.style.display = 'none';
+      this.deleteTaskBtn.style.display = 'none';
+      this.modalTitle.textContent = 'Add Task';
+      this.taskTitleInput.focus();
+    } else {
+      this.closeModal();
+    }
   }
 
   deleteTask(taskId) {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+    const task = this.findTask(taskId);
+    if (!task) return;
+
+    const taskTitle = task.title;
+
+    // Confirmation dialog
+    if (!confirm(`Delete task "${taskTitle}"?`)) return;
+
+    // Find column and task index
+    let deletedFromColumn = null;
+    let deletedTaskIndex = -1;
 
     for (const column of this.board.columns) {
       const taskIndex = column.tasks.findIndex(t => t.id === taskId);
       if (taskIndex !== -1) {
+        deletedFromColumn = column.id;
+        deletedTaskIndex = taskIndex;
+
+        // Store for undo (deep copy)
+        this.deletedTaskState = {
+          task: { ...column.tasks[taskIndex] },
+          columnId: column.id,
+          index: taskIndex
+        };
+
+        // Remove task
         column.tasks.splice(taskIndex, 1);
         break;
       }
     }
 
+    if (!deletedFromColumn) return;
+
     this.saveBoard();
     this.renderBoard();
+
+    // Show undo toast
+    this.showUndoToast(taskTitle);
   }
 
   findTask(taskId) {
@@ -534,6 +759,128 @@ class KanbanBoard {
       if (task) return task;
     }
     return null;
+  }
+
+  findTaskColumn(taskId) {
+    for (const column of this.board.columns) {
+      if (column.tasks.find(t => t.id === taskId)) {
+        return column.id;
+      }
+    }
+    return null;
+  }
+
+  moveTaskToColumn(taskId, fromColumnId, toColumnId) {
+    const fromColumn = this.board.columns.find(c => c.id === fromColumnId);
+    const toColumn = this.board.columns.find(c => c.id === toColumnId);
+
+    if (!fromColumn || !toColumn) return;
+
+    const taskIndex = fromColumn.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex === -1) return;
+
+    const task = fromColumn.tasks.splice(taskIndex, 1)[0];
+    toColumn.tasks.push(task);
+  }
+
+  selectColor(color) {
+    this.selectedColor = color === 'none' ? null : color;
+    this.hasUnsavedChanges = true;
+
+    this.colorSwatches.forEach(swatch => {
+      swatch.classList.toggle('active', swatch.dataset.color === color);
+    });
+  }
+
+  checkUnsavedChanges() {
+    if (!this.hasUnsavedChanges) return true;
+    return confirm('You have unsaved changes. Are you sure you want to close?');
+  }
+
+  setColorFilter(color) {
+    this.activeColorFilter = color === 'all' ? null : color;
+
+    // Update UI
+    this.colorFilterBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.color === color);
+    });
+
+    // Re-render board with filter applied
+    this.renderBoard();
+
+    // Persist filter state
+    if (!this.board.settings) {
+      this.board.settings = {};
+    }
+    this.board.settings.activeColorFilter = this.activeColorFilter;
+    this.saveBoard();
+  }
+
+  shouldShowTask(task) {
+    if (!this.activeColorFilter) return true;
+    return task.color === this.activeColorFilter;
+  }
+
+  toggleColumnCollapse(columnId) {
+    const column = this.board.columns.find(c => c.id === columnId);
+    if (!column) return;
+
+    column.collapsed = !column.collapsed;
+
+    this.saveBoard();
+    this.renderBoard();
+  }
+
+  showUndoToast(taskTitle) {
+    // Clear previous timeout
+    if (this.undoTimeoutId) {
+      clearTimeout(this.undoTimeoutId);
+    }
+
+    // Set message
+    this.toastMessage.textContent = `Deleted "${taskTitle}"`;
+
+    // Show toast
+    this.undoToast.classList.add('show');
+
+    // Auto-hide after 8 seconds
+    this.undoTimeoutId = setTimeout(() => {
+      this.hideUndoToast();
+      this.deletedTaskState = null;
+    }, 8000);
+  }
+
+  hideUndoToast() {
+    this.undoToast.classList.remove('show');
+
+    if (this.undoTimeoutId) {
+      clearTimeout(this.undoTimeoutId);
+      this.undoTimeoutId = null;
+    }
+  }
+
+  undoDelete() {
+    if (!this.deletedTaskState) return;
+
+    const { task, columnId, index } = this.deletedTaskState;
+
+    // Find target column
+    const column = this.board.columns.find(c => c.id === columnId);
+    if (!column) {
+      console.error('Column not found for undo');
+      this.hideUndoToast();
+      return;
+    }
+
+    // Restore task at original position
+    column.tasks.splice(index, 0, task);
+
+    this.saveBoard();
+    this.renderBoard();
+
+    // Hide toast
+    this.hideUndoToast();
+    this.deletedTaskState = null;
   }
 
   generateId() {
