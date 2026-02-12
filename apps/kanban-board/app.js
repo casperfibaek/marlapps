@@ -8,7 +8,7 @@ class KanbanBoard {
     this.editingTaskId = null;
     this.selectedColor = null;
     this.hasUnsavedChanges = false;
-    this.activeColorFilter = null;
+    this.activeColorFilter = (this.board.settings && this.board.settings.activeColorFilter) || null;
     this.deletedTaskState = null;
     this.undoTimeoutId = null;
 
@@ -24,6 +24,16 @@ class KanbanBoard {
       offsetY: 0,
       longPressTimer: null
     };
+
+    // Drag animation state
+    this.dragAnimState = {
+      rafId: null,
+      pendingX: 0,
+      pendingY: 0,
+      columnCache: null
+    };
+
+    this.justDragged = false;
 
     this.initElements();
     this.renderBoard();
@@ -41,14 +51,10 @@ class KanbanBoard {
     this.modalTitle = document.getElementById('modalTitle');
     this.colorSelector = document.getElementById('colorSelector');
     this.colorSwatches = document.querySelectorAll('.color-swatch');
-    this.statusGroup = document.getElementById('statusGroup');
-    this.taskStatus = document.getElementById('taskStatus');
     this.deleteTaskBtn = document.getElementById('deleteTaskBtn');
-    this.colorFilterBtns = document.querySelectorAll('.color-filter-btn');
     this.undoToast = document.getElementById('undoToast');
     this.toastMessage = document.getElementById('toastMessage');
     this.toastUndo = document.getElementById('toastUndo');
-    this.saveAndAddBtn = document.getElementById('saveAndAddBtn');
   }
 
   syncThemeWithParent() {
@@ -190,13 +196,8 @@ class KanbanBoard {
     this.colorSwatches.forEach(swatch => {
       swatch.addEventListener('click', (e) => {
         e.preventDefault();
-        this.selectColor(swatch.dataset.color);
+        this.selectColor(swatch.dataset.color, true);
       });
-    });
-
-    // Status selector
-    this.taskStatus.addEventListener('change', () => {
-      this.hasUnsavedChanges = true;
     });
 
     // Delete button in modal
@@ -215,10 +216,10 @@ class KanbanBoard {
       this.hasUnsavedChanges = true;
     });
 
-    // Color filter buttons
-    this.colorFilterBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.setColorFilter(btn.dataset.color);
+    // Close filter dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.column-filter-dropdown.open').forEach(d => {
+        d.classList.remove('open');
       });
     });
 
@@ -227,10 +228,6 @@ class KanbanBoard {
       this.undoDelete();
     });
 
-    // Save and add another
-    this.saveAndAddBtn.addEventListener('click', () => {
-      this.saveTask(true);
-    });
   }
 
   renderBoard() {
@@ -240,15 +237,6 @@ class KanbanBoard {
       const columnEl = this.createColumnElement(column);
       this.boardEl.appendChild(columnEl);
     });
-
-    // Restore filter state from settings
-    if (this.board.settings && this.board.settings.activeColorFilter) {
-      const filterColor = this.board.settings.activeColorFilter;
-      this.activeColorFilter = filterColor;
-      this.colorFilterBtns.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.color === filterColor);
-      });
-    }
   }
 
   createColumnElement(column) {
@@ -265,15 +253,44 @@ class KanbanBoard {
       ? `${visibleTasks.length} of ${totalTasks}`
       : totalTasks.toString();
 
+    const filterIcon = this.activeColorFilter
+      ? `<span class="filter-btn-dot" data-color="${this.activeColorFilter}"></span>`
+      : '&#9679;';
+
     columnEl.innerHTML = `
       <div class="column-header">
         <div class="column-title-row">
-          <h2 class="column-title">${column.name}</h2>
-          <button class="column-collapse-btn" data-column-id="${column.id}" aria-label="Toggle collapse">
-            <span class="collapse-icon">${column.collapsed ? '▶' : '▼'}</span>
-          </button>
+          <h2 class="column-title">${this.escapeHtml(column.name)}</h2>
+          <div class="column-controls">
+            <span class="task-count">${countText}</span>
+            <div class="column-filter-wrapper">
+              <button class="column-filter-btn ${this.activeColorFilter ? 'active' : ''}" aria-label="Filter by color">
+                ${filterIcon}
+              </button>
+              <div class="column-filter-dropdown">
+                <button class="filter-option ${!this.activeColorFilter ? 'active' : ''}" data-color="all">All</button>
+                <button class="filter-option ${this.activeColorFilter === 'red' ? 'active' : ''}" data-color="red">
+                  <span class="filter-color-dot" style="background: #E74C3C;"></span> Red
+                </button>
+                <button class="filter-option ${this.activeColorFilter === 'blue' ? 'active' : ''}" data-color="blue">
+                  <span class="filter-color-dot" style="background: #3498db;"></span> Blue
+                </button>
+                <button class="filter-option ${this.activeColorFilter === 'green' ? 'active' : ''}" data-color="green">
+                  <span class="filter-color-dot" style="background: #2ECC71;"></span> Green
+                </button>
+                <button class="filter-option ${this.activeColorFilter === 'yellow' ? 'active' : ''}" data-color="yellow">
+                  <span class="filter-color-dot" style="background: #F39C12;"></span> Yellow
+                </button>
+                <button class="filter-option ${this.activeColorFilter === 'purple' ? 'active' : ''}" data-color="purple">
+                  <span class="filter-color-dot" style="background: #9B59B6;"></span> Purple
+                </button>
+              </div>
+            </div>
+            <button class="column-collapse-btn" data-column-id="${column.id}" aria-label="Toggle collapse">
+              <span class="collapse-icon">${column.collapsed ? '▶' : '▼'}</span>
+            </button>
+          </div>
         </div>
-        <span class="task-count">${countText}</span>
       </div>
       <div class="column-body ${column.collapsed ? 'collapsed' : ''}">
         <div class="tasks scrollable" data-column-id="${column.id}"></div>
@@ -320,6 +337,27 @@ class KanbanBoard {
       this.toggleColumnCollapse(column.id);
     });
 
+    // Filter dropdown toggle
+    const filterBtn = columnEl.querySelector('.column-filter-btn');
+    const filterDropdown = columnEl.querySelector('.column-filter-dropdown');
+    filterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Close any other open dropdowns
+      document.querySelectorAll('.column-filter-dropdown.open').forEach(d => {
+        if (d !== filterDropdown) d.classList.remove('open');
+      });
+      filterDropdown.classList.toggle('open');
+    });
+
+    // Filter option clicks
+    filterDropdown.querySelectorAll('.filter-option').forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.setColorFilter(option.dataset.color);
+        filterDropdown.classList.remove('open');
+      });
+    });
+
     // Add task button event
     const addTaskBtn = columnEl.querySelector('.add-task-btn');
     addTaskBtn.addEventListener('click', () => {
@@ -344,8 +382,8 @@ class KanbanBoard {
 
     taskEl.innerHTML = `
       <div class="task-content">
+        ${task.color ? `<span class="task-color-dot" data-color="${task.color}"></span>` : ''}
         <div class="task-title">${this.escapeHtml(task.title)}</div>
-        ${this.renderTaskMetadata(task)}
       </div>
       <button class="task-delete" data-task-id="${task.id}" aria-label="Delete task">×</button>
     `;
@@ -370,6 +408,7 @@ class KanbanBoard {
     // Click/keyboard opens edit modal for existing tasks.
     taskEl.addEventListener('click', (e) => {
       if (e.target.closest('.task-delete')) return;
+      if (this.justDragged) return;
       this.openModal(columnId, task.id);
     });
     taskEl.addEventListener('keydown', (e) => {
@@ -379,20 +418,6 @@ class KanbanBoard {
     });
 
     return taskEl;
-  }
-
-  renderTaskMetadata(task) {
-    const parts = [];
-
-    if (task.color) {
-      parts.push(`<span class="task-color-dot" data-color="${task.color}"></span>`);
-    }
-
-    if (task.description && task.description.trim()) {
-      parts.push(`<span class="task-has-description" aria-label="Has description">📝</span>`);
-    }
-
-    return parts.length > 0 ? `<div class="task-metadata">${parts.join('')}</div>` : '';
   }
 
   // Touch drag handlers
@@ -413,7 +438,7 @@ class KanbanBoard {
     // Long press to start dragging
     this.touchDragState.longPressTimer = setTimeout(() => {
       this.startTouchDrag(taskEl, touch);
-    }, 200);
+    }, 400);
   }
 
   startTouchDrag(taskEl, touch) {
@@ -432,10 +457,22 @@ class KanbanBoard {
     // Mark original as placeholder
     taskEl.classList.add('touch-placeholder');
 
+    // Cache column rects for hit-testing during drag
+    this.cacheColumnRects();
+
     // Haptic feedback if available
     if (navigator.vibrate) {
       navigator.vibrate(50);
     }
+  }
+
+  cacheColumnRects() {
+    const columns = document.querySelectorAll('.tasks');
+    this.dragAnimState.columnCache = Array.from(columns).map(col => ({
+      el: col,
+      columnId: col.dataset.columnId,
+      rect: col.getBoundingClientRect()
+    }));
   }
 
   handleTouchMove(e) {
@@ -456,18 +493,69 @@ class KanbanBoard {
 
     e.preventDefault();
 
+    // Store pending position and schedule rAF update
+    this.dragAnimState.pendingX = touch.clientX;
+    this.dragAnimState.pendingY = touch.clientY;
+
+    if (!this.dragAnimState.rafId) {
+      this.dragAnimState.rafId = requestAnimationFrame(() => this.updateDragFrame());
+    }
+  }
+
+  updateDragFrame() {
+    this.dragAnimState.rafId = null;
+
+    const { pendingX, pendingY } = this.dragAnimState;
+
     // Move clone
     if (this.touchDragState.clone) {
-      this.touchDragState.clone.style.left = (touch.clientX - this.touchDragState.offsetX) + 'px';
-      this.touchDragState.clone.style.top = (touch.clientY - this.touchDragState.offsetY) + 'px';
+      this.touchDragState.clone.style.left = (pendingX - this.touchDragState.offsetX) + 'px';
+      this.touchDragState.clone.style.top = (pendingY - this.touchDragState.offsetY) + 'px';
     }
 
-    // Highlight target column
-    this.highlightDropTarget(touch.clientX, touch.clientY);
+    // Highlight target column (using cached rects)
+    this.highlightDropTarget(pendingX, pendingY);
+
+    // Auto-scroll when near edges
+    this.autoScrollDuringDrag(pendingY);
+  }
+
+  autoScrollDuringDrag(touchY) {
+    const edgeZone = 60;
+    const maxSpeed = 12;
+    const scrollContainer = document.querySelector('.kanban-main');
+    if (!scrollContainer) return;
+
+    let scrollDelta = 0;
+
+    if (touchY < edgeZone) {
+      // Near top — scroll up
+      scrollDelta = -maxSpeed * ((edgeZone - touchY) / edgeZone);
+    } else if (touchY > window.innerHeight - edgeZone) {
+      // Near bottom — scroll down
+      scrollDelta = maxSpeed * ((touchY - (window.innerHeight - edgeZone)) / edgeZone);
+    }
+
+    if (scrollDelta !== 0) {
+      scrollContainer.scrollTop += scrollDelta;
+      // Invalidate cached rects since scroll changed positions
+      this.dragAnimState.columnCache = null;
+
+      // Keep scrolling while touch stays in edge zone
+      if (this.touchDragState.isDragging) {
+        this.dragAnimState.rafId = requestAnimationFrame(() => this.updateDragFrame());
+      }
+    }
   }
 
   handleTouchEnd(e) {
     clearTimeout(this.touchDragState.longPressTimer);
+
+    // Cancel any pending animation frame
+    if (this.dragAnimState.rafId) {
+      cancelAnimationFrame(this.dragAnimState.rafId);
+      this.dragAnimState.rafId = null;
+    }
 
     if (this.touchDragState.isDragging) {
       // Find drop target
@@ -480,6 +568,10 @@ class KanbanBoard {
 
       // Clean up
       this.clearDropHighlights();
+
+      // Prevent click-after-drag from opening the edit modal
+      this.justDragged = true;
+      setTimeout(() => { this.justDragged = false; }, 0);
     }
 
     // Remove clone
@@ -493,6 +585,7 @@ class KanbanBoard {
     }
 
     this.resetTouchDragState();
+    this.dragAnimState.columnCache = null;
   }
 
   resetTouchDragState() {
@@ -512,13 +605,23 @@ class KanbanBoard {
   highlightDropTarget(x, y) {
     this.clearDropHighlights();
 
-    const columns = document.querySelectorAll('.tasks');
-    columns.forEach(col => {
-      const rect = col.getBoundingClientRect();
-      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-        col.classList.add('drag-over');
+    const cached = this.dragAnimState.columnCache;
+    if (cached) {
+      for (const { el, rect } of cached) {
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          el.classList.add('drag-over');
+        }
       }
-    });
+    } else {
+      // Fallback: query DOM directly
+      const columns = document.querySelectorAll('.tasks');
+      columns.forEach(col => {
+        const rect = col.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          col.classList.add('drag-over');
+        }
+      });
+    }
   }
 
   clearDropHighlights() {
@@ -528,11 +631,24 @@ class KanbanBoard {
   }
 
   findColumnAtPoint(x, y) {
-    const columns = document.querySelectorAll('.tasks');
-    for (const col of columns) {
-      const rect = col.getBoundingClientRect();
-      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-        return col.dataset.columnId;
+    const cached = this.dragAnimState.columnCache;
+    if (cached) {
+      // Refresh rects for final drop accuracy
+      for (const entry of cached) {
+        entry.rect = entry.el.getBoundingClientRect();
+      }
+      for (const { columnId, rect } of cached) {
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          return columnId;
+        }
+      }
+    } else {
+      const columns = document.querySelectorAll('.tasks');
+      for (const col of columns) {
+        const rect = col.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          return col.dataset.columnId;
+        }
       }
     }
     return null;
@@ -581,19 +697,25 @@ class KanbanBoard {
   }
 
   moveTask(taskId, targetColumnId) {
-    let task = null;
+    // Find the source column and task
+    let sourceColumn = null;
+    let taskIndex = -1;
 
-    // Find the task and remove from source column
     for (const column of this.board.columns) {
-      const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-      if (taskIndex !== -1) {
-        task = column.tasks[taskIndex];
-        column.tasks.splice(taskIndex, 1);
+      const idx = column.tasks.findIndex(t => t.id === taskId);
+      if (idx !== -1) {
+        sourceColumn = column;
+        taskIndex = idx;
         break;
       }
     }
 
-    if (!task) return;
+    if (!sourceColumn || taskIndex === -1) return;
+
+    // Skip if dropped on the same column
+    if (sourceColumn.id === targetColumnId) return;
+
+    const task = sourceColumn.tasks.splice(taskIndex, 1)[0];
 
     // Add to target column
     const targetColumn = this.board.columns.find(c => c.id === targetColumnId);
@@ -621,10 +743,6 @@ class KanbanBoard {
         // Set color
         this.selectColor(task.color || 'none');
 
-        // Show and set status
-        this.statusGroup.style.display = 'block';
-        this.taskStatus.value = this.findTaskColumn(taskId);
-
         // Show delete button
         this.deleteTaskBtn.style.display = 'inline-flex';
       }
@@ -635,8 +753,7 @@ class KanbanBoard {
       this.taskDescriptionInput.value = '';
       this.selectColor('none');
 
-      // Hide status and delete
-      this.statusGroup.style.display = 'none';
+      // Hide delete
       this.deleteTaskBtn.style.display = 'none';
     }
 
@@ -655,7 +772,7 @@ class KanbanBoard {
     this.taskForm.reset();
   }
 
-  saveTask(keepOpen = false) {
+  saveTask() {
     const title = this.taskTitleInput.value.trim();
     const description = this.taskDescriptionInput.value.trim();
 
@@ -664,18 +781,11 @@ class KanbanBoard {
     if (this.editingTaskId) {
       // Update existing task
       const task = this.findTask(this.editingTaskId);
-      const oldColumnId = this.findTaskColumn(this.editingTaskId);
-      const newColumnId = this.taskStatus.value;
 
       if (task) {
         task.title = title;
         task.description = description;
         task.color = this.selectedColor;
-
-        // Handle status change (move to different column)
-        if (oldColumnId !== newColumnId) {
-          this.moveTaskToColumn(this.editingTaskId, oldColumnId, newColumnId);
-        }
       }
     } else {
       // Create new task
@@ -696,20 +806,7 @@ class KanbanBoard {
     this.hasUnsavedChanges = false;
     this.saveBoard();
     this.renderBoard();
-
-    if (keepOpen) {
-      // Reset form for new task, keep modal open
-      this.editingTaskId = null;
-      this.taskTitleInput.value = '';
-      this.taskDescriptionInput.value = '';
-      this.selectColor('none');
-      this.statusGroup.style.display = 'none';
-      this.deleteTaskBtn.style.display = 'none';
-      this.modalTitle.textContent = 'Add Task';
-      this.taskTitleInput.focus();
-    } else {
-      this.closeModal();
-    }
+    this.closeModal();
   }
 
   deleteTask(taskId) {
@@ -770,22 +867,11 @@ class KanbanBoard {
     return null;
   }
 
-  moveTaskToColumn(taskId, fromColumnId, toColumnId) {
-    const fromColumn = this.board.columns.find(c => c.id === fromColumnId);
-    const toColumn = this.board.columns.find(c => c.id === toColumnId);
-
-    if (!fromColumn || !toColumn) return;
-
-    const taskIndex = fromColumn.tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) return;
-
-    const task = fromColumn.tasks.splice(taskIndex, 1)[0];
-    toColumn.tasks.push(task);
-  }
-
-  selectColor(color) {
+  selectColor(color, fromUserAction = false) {
     this.selectedColor = color === 'none' ? null : color;
-    this.hasUnsavedChanges = true;
+    if (fromUserAction) {
+      this.hasUnsavedChanges = true;
+    }
 
     this.colorSwatches.forEach(swatch => {
       swatch.classList.toggle('active', swatch.dataset.color === color);
@@ -800,20 +886,15 @@ class KanbanBoard {
   setColorFilter(color) {
     this.activeColorFilter = color === 'all' ? null : color;
 
-    // Update UI
-    this.colorFilterBtns.forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.color === color);
-    });
-
-    // Re-render board with filter applied
-    this.renderBoard();
-
     // Persist filter state
     if (!this.board.settings) {
       this.board.settings = {};
     }
     this.board.settings.activeColorFilter = this.activeColorFilter;
     this.saveBoard();
+
+    // Re-render board with filter applied
+    this.renderBoard();
   }
 
   shouldShowTask(task) {

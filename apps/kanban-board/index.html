@@ -12,27 +12,6 @@
 <body>
   <div class="app-container">
     <main class="kanban-main">
-      <!-- Color Filter Bar -->
-      <div class="color-filter-bar">
-        <span class="filter-label">Filter by color:</span>
-        <button class="color-filter-btn active" data-color="all" aria-label="Show all tasks">All</button>
-        <button class="color-filter-btn" data-color="red" aria-label="Show red tasks">
-          <span class="filter-color-dot" style="background: #E74C3C;"></span>
-        </button>
-        <button class="color-filter-btn" data-color="blue" aria-label="Show blue tasks">
-          <span class="filter-color-dot" style="background: #3498db;"></span>
-        </button>
-        <button class="color-filter-btn" data-color="green" aria-label="Show green tasks">
-          <span class="filter-color-dot" style="background: #2ECC71;"></span>
-        </button>
-        <button class="color-filter-btn" data-color="yellow" aria-label="Show yellow tasks">
-          <span class="filter-color-dot" style="background: #F39C12;"></span>
-        </button>
-        <button class="color-filter-btn" data-color="purple" aria-label="Show purple tasks">
-          <span class="filter-color-dot" style="background: #9B59B6;"></span>
-        </button>
-      </div>
-
       <div class="board" id="board">
         <!-- Columns will be dynamically generated -->
       </div>
@@ -77,19 +56,8 @@
             </div>
           </div>
 
-          <!-- Status Selector (only shown when editing) -->
-          <div class="form-group" id="statusGroup" style="display: none;">
-            <label for="taskStatus">Status:</label>
-            <select id="taskStatus">
-              <option value="todo">To Do</option>
-              <option value="inprogress">In Progress</option>
-              <option value="done">Done</option>
-            </select>
-          </div>
-
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Save Task</button>
-            <button type="button" class="btn btn-secondary" id="saveAndAddBtn">Save & Add Another</button>
             <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
             <button type="button" class="btn btn-danger" id="deleteTaskBtn" style="display: none;">Delete</button>
           </div>
