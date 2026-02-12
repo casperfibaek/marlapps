@@ -1,8 +1,7 @@
 
 In the kanban app:
-Make the kanban filter button a filter icon
-Make the filter only apply to its respective card
-In mobile mode the cards collapse vertically, but no so on a wide screen, please make it collapse here as well.
+The collapse button on a wide screen makes the card horizontally shorter, when it was suppose to be vertical (like in mobile view)
+The colour icon shown to the left of the task: Please change this to colour the left side of the respective row, for about 10px or so, maybe less, I don't want the text to be moved.
 
 
 

@@ -114,9 +114,7 @@
 }
 
 .column.collapsed {
-  min-width: auto;
-  max-width: none;
-  width: auto;
+  /* Body is hidden via .column-body.collapsed, column keeps its width */
 }
 
 .task-count {
@@ -153,6 +151,7 @@
 .task {
   background: var(--app-bg-primary);
   border: 1px solid var(--app-border-color);
+  border-left: 4px solid transparent;
   border-radius: var(--radius-md);
   padding: var(--space-3);
   cursor: pointer;
@@ -167,6 +166,12 @@
   gap: var(--space-2);
   min-height: 56px;
 }
+
+.task[data-color="red"] { border-left-color: #E74C3C; }
+.task[data-color="blue"] { border-left-color: #3498db; }
+.task[data-color="green"] { border-left-color: #2ECC71; }
+.task[data-color="yellow"] { border-left-color: #F39C12; }
+.task[data-color="purple"] { border-left-color: #9B59B6; }
 
 .task:hover {
   box-shadow: var(--app-shadow-md);
@@ -210,19 +215,6 @@
   line-height: 1.4;
 }
 
-.task-color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-.task-color-dot[data-color="red"] { background: #E74C3C; }
-.task-color-dot[data-color="blue"] { background: #3498db; }
-.task-color-dot[data-color="green"] { background: #2ECC71; }
-.task-color-dot[data-color="yellow"] { background: #F39C12; }
-.task-color-dot[data-color="purple"] { background: #9B59B6; }
 
 .task-delete {
   background: transparent;

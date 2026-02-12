@@ -235,7 +235,7 @@ class KanbanBoard {
 
   createColumnElement(column) {
     const columnEl = document.createElement('div');
-    columnEl.className = `column${column.collapsed ? ' collapsed' : ''}`;
+    columnEl.className = 'column';
     columnEl.dataset.columnId = column.id;
 
     // Filter tasks based on this column's color filter
@@ -372,10 +372,12 @@ class KanbanBoard {
     taskEl.draggable = true;
     taskEl.tabIndex = 0;
     taskEl.dataset.taskId = task.id;
+    if (task.color) {
+      taskEl.dataset.color = task.color;
+    }
 
     taskEl.innerHTML = `
       <div class="task-content">
-        ${task.color ? `<span class="task-color-dot" data-color="${task.color}"></span>` : ''}
         <div class="task-title">${this.escapeHtml(task.title)}</div>
       </div>
       <button class="task-delete" data-task-id="${task.id}" aria-label="Delete task">×</button>
