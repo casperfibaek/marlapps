@@ -147,11 +147,19 @@
   border: 2px dashed var(--app-accent);
 }
 
+.column.drag-over {
+  border-color: var(--app-accent);
+  box-shadow: var(--app-shadow-md);
+}
+
+.column.drag-over .column-header {
+  background: var(--app-info-light);
+}
+
 /* Task Card */
 .task {
   background: var(--app-bg-primary);
   border: 1px solid var(--app-border-color);
-  border-left: 4px solid transparent;
   border-radius: var(--radius-md);
   padding: var(--space-3);
   cursor: pointer;
@@ -167,16 +175,25 @@
   min-height: 56px;
 }
 
-.task[data-color="red"] { border-left-color: #E74C3C; }
-.task[data-color="blue"] { border-left-color: #3498db; }
-.task[data-color="green"] { border-left-color: #2ECC71; }
-.task[data-color="yellow"] { border-left-color: #F39C12; }
-.task[data-color="purple"] { border-left-color: #9B59B6; }
+.task:not([data-color]) {
+  border: 1px solid var(--app-border-color);
+  border-left: 1px solid var(--app-border-color);
+}
+
+.task[data-color="red"] { border-left: 4px solid #E74C3C; }
+.task[data-color="blue"] { border-left: 4px solid #3498db; }
+.task[data-color="green"] { border-left: 4px solid #2ECC71; }
+.task[data-color="yellow"] { border-left: 4px solid #F39C12; }
+.task[data-color="purple"] { border-left: 4px solid #9B59B6; }
 
 .task:hover {
   box-shadow: var(--app-shadow-md);
   transform: translateY(-2px);
   border-color: var(--app-accent);
+}
+
+.task[data-color]:hover {
+  border-left-color: inherit;
 }
 
 .task.dragging {

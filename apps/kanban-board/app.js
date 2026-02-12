@@ -357,13 +357,18 @@ class KanbanBoard {
       this.openModal(column.id);
     });
 
-    // Drag and drop events
-    tasksContainer.addEventListener('dragover', (e) => this.handleDragOver(e));
-    tasksContainer.addEventListener('drop', (e) => this.handleDrop(e, column.id));
-    tasksContainer.addEventListener('dragenter', (e) => this.handleDragEnter(e));
-    tasksContainer.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+    // Drag and drop events (entire column is droppable, including collapsed/empty states)
+    this.bindDropTarget(columnEl, column.id);
 
     return columnEl;
+  }
+
+  bindDropTarget(dropTargetEl, columnId) {
+    dropTargetEl.dataset.dragDepth = '0';
+    dropTargetEl.addEventListener('dragover', (e) => this.handleDragOver(e));
+    dropTargetEl.addEventListener('drop', (e) => this.handleDrop(e, columnId));
+    dropTargetEl.addEventListener('dragenter', (e) => this.handleDragEnter(e));
+    dropTargetEl.addEventListener('dragleave', (e) => this.handleDragLeave(e));
   }
 
   createTaskElement(task, columnId) {
@@ -462,7 +467,7 @@ class KanbanBoard {
   }
 
   cacheColumnRects() {
-    const columns = document.querySelectorAll('.tasks');
+    const columns = document.querySelectorAll('.column');
     this.dragAnimState.columnCache = Array.from(columns).map(col => ({
       el: col,
       columnId: col.dataset.columnId,
@@ -609,7 +614,7 @@ class KanbanBoard {
       }
     } else {
       // Fallback: query DOM directly
-      const columns = document.querySelectorAll('.tasks');
+      const columns = document.querySelectorAll('.column');
       columns.forEach(col => {
         const rect = col.getBoundingClientRect();
         if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
@@ -620,8 +625,11 @@ class KanbanBoard {
   }
 
   clearDropHighlights() {
-    document.querySelectorAll('.tasks.drag-over').forEach(el => {
+    document.querySelectorAll('.column.drag-over, .tasks.drag-over').forEach(el => {
       el.classList.remove('drag-over');
+      if (el.classList.contains('column')) {
+        el.dataset.dragDepth = '0';
+      }
     });
   }
 
@@ -638,7 +646,7 @@ class KanbanBoard {
         }
       }
     } else {
-      const columns = document.querySelectorAll('.tasks');
+      const columns = document.querySelectorAll('.column');
       for (const col of columns) {
         const rect = col.getBoundingClientRect();
         if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
@@ -650,14 +658,16 @@ class KanbanBoard {
   }
 
   handleDragStart(e) {
-    e.target.classList.add('dragging');
+    const taskEl = e.currentTarget;
+    taskEl.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', e.target.innerHTML);
-    e.dataTransfer.setData('taskId', e.target.dataset.taskId);
+    e.dataTransfer.setData('text/html', taskEl.innerHTML);
+    e.dataTransfer.setData('taskId', taskEl.dataset.taskId);
   }
 
   handleDragEnd(e) {
-    e.target.classList.remove('dragging');
+    e.currentTarget.classList.remove('dragging');
+    this.clearDropHighlights();
   }
 
   handleDragOver(e) {
@@ -666,14 +676,20 @@ class KanbanBoard {
   }
 
   handleDragEnter(e) {
-    if (e.target.classList.contains('tasks')) {
-      e.target.classList.add('drag-over');
-    }
+    e.preventDefault();
+    const dropTarget = e.currentTarget;
+    const depth = Number.parseInt(dropTarget.dataset.dragDepth || '0', 10) + 1;
+    dropTarget.dataset.dragDepth = depth.toString();
+    dropTarget.classList.add('drag-over');
   }
 
   handleDragLeave(e) {
-    if (e.target.classList.contains('tasks')) {
-      e.target.classList.remove('drag-over');
+    const dropTarget = e.currentTarget;
+    const depth = Math.max(0, Number.parseInt(dropTarget.dataset.dragDepth || '0', 10) - 1);
+    dropTarget.dataset.dragDepth = depth.toString();
+
+    if (depth === 0) {
+      dropTarget.classList.remove('drag-over');
     }
   }
 
@@ -681,8 +697,9 @@ class KanbanBoard {
     e.preventDefault();
     e.stopPropagation();
 
-    const tasksContainer = e.currentTarget;
-    tasksContainer.classList.remove('drag-over');
+    const dropTarget = e.currentTarget;
+    dropTarget.classList.remove('drag-over');
+    dropTarget.dataset.dragDepth = '0';
 
     const taskId = e.dataTransfer.getData('taskId');
     if (!taskId) return;
@@ -710,13 +727,11 @@ class KanbanBoard {
     // Skip if dropped on the same column
     if (sourceColumn.id === targetColumnId) return;
 
-    const task = sourceColumn.tasks.splice(taskIndex, 1)[0];
-
-    // Add to target column
     const targetColumn = this.board.columns.find(c => c.id === targetColumnId);
-    if (targetColumn) {
-      targetColumn.tasks.push(task);
-    }
+    if (!targetColumn) return;
+
+    const task = sourceColumn.tasks.splice(taskIndex, 1)[0];
+    targetColumn.tasks.push(task);
 
     this.saveBoard();
     this.renderBoard();

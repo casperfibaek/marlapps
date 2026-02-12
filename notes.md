@@ -1,8 +1,12 @@
 
 In the kanban app:
-The collapse button on a wide screen makes the card horizontally shorter, when it was suppose to be vertical (like in mobile view)
-The colour icon shown to the left of the task: Please change this to colour the left side of the respective row, for about 10px or so, maybe less, I don't want the text to be moved.
+When no colour is selected for a task, there is not shown a border on the left side of the row. Please make sure that in the case of no colour selected, the border goes all the way around.
 
+Fix the drag functionality:
+    First do a review of the current functionality and fix any claring bugs.
+    The consider these bugs:
+        It is currently not possible to drag a task to a collapsed column
+        It is currently not possible to drag a task to an empty column
 
 
 Home, search, and settings buttons could be floating - leaving more room for the apps.
