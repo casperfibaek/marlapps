@@ -563,7 +563,8 @@ class KanbanBoard {
       const targetColumn = this.findColumnAtPoint(touch.clientX, touch.clientY);
 
       if (targetColumn && this.touchDragState.taskId) {
-        this.moveTask(this.touchDragState.taskId, targetColumn);
+        const targetIndex = this.getDropIndex(targetColumn, touch.clientY, this.touchDragState.taskId);
+        this.moveTask(this.touchDragState.taskId, targetColumn, targetIndex);
       }
 
       // Clean up
@@ -657,6 +658,34 @@ class KanbanBoard {
     return null;
   }
 
+  getDropIndex(targetColumnId, clientY, draggedTaskId = null) {
+    const targetColumn = this.board.columns.find(c => c.id === targetColumnId);
+    if (!targetColumn) return null;
+
+    const targetColumnEl = document.querySelector(`.column[data-column-id="${targetColumnId}"]`);
+    if (!targetColumnEl) return targetColumn.tasks.length;
+
+    const visibleTaskEls = Array.from(targetColumnEl.querySelectorAll('.task[data-task-id]'))
+      .filter(taskEl => taskEl.dataset.taskId !== draggedTaskId);
+
+    if (visibleTaskEls.length === 0) {
+      return targetColumn.tasks.length;
+    }
+
+    for (const taskEl of visibleTaskEls) {
+      const rect = taskEl.getBoundingClientRect();
+      const midpoint = rect.top + (rect.height / 2);
+      if (clientY < midpoint) {
+        const beforeTaskIndex = targetColumn.tasks.findIndex(t => t.id === taskEl.dataset.taskId);
+        if (beforeTaskIndex !== -1) {
+          return beforeTaskIndex;
+        }
+      }
+    }
+
+    return targetColumn.tasks.length;
+  }
+
   handleDragStart(e) {
     const taskEl = e.currentTarget;
     taskEl.classList.add('dragging');
@@ -704,34 +733,45 @@ class KanbanBoard {
     const taskId = e.dataTransfer.getData('taskId');
     if (!taskId) return;
 
-    // Find and move the task
-    this.moveTask(taskId, targetColumnId);
+    const targetIndex = this.getDropIndex(targetColumnId, e.clientY, taskId);
+    this.moveTask(taskId, targetColumnId, targetIndex);
   }
 
-  moveTask(taskId, targetColumnId) {
+  moveTask(taskId, targetColumnId, targetIndex = null) {
     // Find the source column and task
     let sourceColumn = null;
-    let taskIndex = -1;
+    let sourceTaskIndex = -1;
 
     for (const column of this.board.columns) {
       const idx = column.tasks.findIndex(t => t.id === taskId);
       if (idx !== -1) {
         sourceColumn = column;
-        taskIndex = idx;
+        sourceTaskIndex = idx;
         break;
       }
     }
 
-    if (!sourceColumn || taskIndex === -1) return;
-
-    // Skip if dropped on the same column
-    if (sourceColumn.id === targetColumnId) return;
+    if (!sourceColumn || sourceTaskIndex === -1) return;
 
     const targetColumn = this.board.columns.find(c => c.id === targetColumnId);
     if (!targetColumn) return;
 
-    const task = sourceColumn.tasks.splice(taskIndex, 1)[0];
-    targetColumn.tasks.push(task);
+    // Default behavior remains append when no target index is available.
+    const maxTargetIndex = targetColumn.tasks.length;
+    let insertionIndex = Number.isInteger(targetIndex) ? targetIndex : maxTargetIndex;
+    insertionIndex = Math.max(0, Math.min(insertionIndex, maxTargetIndex));
+
+    if (sourceColumn.id === targetColumnId && sourceTaskIndex < insertionIndex) {
+      insertionIndex -= 1;
+    }
+
+    // No-op: dropped back to original position
+    if (sourceColumn.id === targetColumnId && insertionIndex === sourceTaskIndex) {
+      return;
+    }
+
+    const task = sourceColumn.tasks.splice(sourceTaskIndex, 1)[0];
+    targetColumn.tasks.splice(insertionIndex, 0, task);
 
     this.saveBoard();
     this.renderBoard();
