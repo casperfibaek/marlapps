@@ -113,6 +113,12 @@
   display: none;
 }
 
+.column.collapsed {
+  min-width: auto;
+  max-width: none;
+  width: auto;
+}
+
 .task-count {
   background: var(--app-accent);
   color: white;
@@ -286,18 +292,9 @@
   color: var(--app-accent);
 }
 
-.filter-btn-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.filter-icon {
   display: block;
 }
-
-.filter-btn-dot[data-color="red"] { background: #E74C3C; }
-.filter-btn-dot[data-color="blue"] { background: #3498db; }
-.filter-btn-dot[data-color="green"] { background: #2ECC71; }
-.filter-btn-dot[data-color="yellow"] { background: #F39C12; }
-.filter-btn-dot[data-color="purple"] { background: #9B59B6; }
 
 .column-filter-dropdown {
   display: none;

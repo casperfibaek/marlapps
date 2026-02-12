@@ -1,10 +1,8 @@
-Please remove the description/note icon as clicking it yields the same interface
-Move the colour icon to immediately left of the text
-Move the filter to be a dropdown menue shown left of the collapse button.
-Move the task count, to the left of the new filter button
-Closing the 'edit' task model always triggers a warning, despite no changes having been made
-Remove the 'Save & add another' button
-Remove the 'status' drop down
+
+In the kanban app:
+Make the kanban filter button a filter icon
+Make the filter only apply to its respective card
+In mobile mode the cards collapse vertically, but no so on a wide screen, please make it collapse here as well.
 
 
 

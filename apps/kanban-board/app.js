@@ -8,7 +8,6 @@ class KanbanBoard {
     this.editingTaskId = null;
     this.selectedColor = null;
     this.hasUnsavedChanges = false;
-    this.activeColorFilter = (this.board.settings && this.board.settings.activeColorFilter) || null;
     this.deletedTaskState = null;
     this.undoTimeoutId = null;
 
@@ -143,22 +142,17 @@ class KanbanBoard {
             : [];
 
           const collapsed = typeof column.collapsed === 'boolean' ? column.collapsed : false;
+          const colorFilter = typeof column.colorFilter === 'string' && validColors.includes(column.colorFilter)
+            ? column.colorFilter
+            : null;
 
-          return { id, name, tasks, collapsed };
+          return { id, name, tasks, collapsed, colorFilter };
         })
         .filter(Boolean);
 
-      const settings = parsed.settings && typeof parsed.settings === 'object'
-        ? {
-            activeColorFilter: typeof parsed.settings.activeColorFilter === 'string' && validColors.includes(parsed.settings.activeColorFilter)
-              ? parsed.settings.activeColorFilter
-              : null
-          }
-        : { activeColorFilter: null };
-
       return {
         columns: columns.length > 0 ? columns : defaultBoard.columns,
-        settings
+        settings: {}
       };
     } catch {
       return defaultBoard;
@@ -241,21 +235,20 @@ class KanbanBoard {
 
   createColumnElement(column) {
     const columnEl = document.createElement('div');
-    columnEl.className = 'column';
+    columnEl.className = `column${column.collapsed ? ' collapsed' : ''}`;
     columnEl.dataset.columnId = column.id;
 
-    // Filter tasks based on active color filter
-    const visibleTasks = column.tasks.filter(task => this.shouldShowTask(task));
+    // Filter tasks based on this column's color filter
+    const columnFilter = column.colorFilter || null;
+    const visibleTasks = column.tasks.filter(task => this.shouldShowTask(task, columnFilter));
     const totalTasks = column.tasks.length;
 
     // Show "X of Y" if filtered
-    const countText = this.activeColorFilter
+    const countText = columnFilter
       ? `${visibleTasks.length} of ${totalTasks}`
       : totalTasks.toString();
 
-    const filterIcon = this.activeColorFilter
-      ? `<span class="filter-btn-dot" data-color="${this.activeColorFilter}"></span>`
-      : '&#9679;';
+    const filterIcon = `<svg class="filter-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>`;
 
     columnEl.innerHTML = `
       <div class="column-header">
@@ -264,24 +257,24 @@ class KanbanBoard {
           <div class="column-controls">
             <span class="task-count">${countText}</span>
             <div class="column-filter-wrapper">
-              <button class="column-filter-btn ${this.activeColorFilter ? 'active' : ''}" aria-label="Filter by color">
+              <button class="column-filter-btn ${columnFilter ? 'active' : ''}" aria-label="Filter by color">
                 ${filterIcon}
               </button>
               <div class="column-filter-dropdown">
-                <button class="filter-option ${!this.activeColorFilter ? 'active' : ''}" data-color="all">All</button>
-                <button class="filter-option ${this.activeColorFilter === 'red' ? 'active' : ''}" data-color="red">
+                <button class="filter-option ${!columnFilter ? 'active' : ''}" data-color="all">All</button>
+                <button class="filter-option ${columnFilter === 'red' ? 'active' : ''}" data-color="red">
                   <span class="filter-color-dot" style="background: #E74C3C;"></span> Red
                 </button>
-                <button class="filter-option ${this.activeColorFilter === 'blue' ? 'active' : ''}" data-color="blue">
+                <button class="filter-option ${columnFilter === 'blue' ? 'active' : ''}" data-color="blue">
                   <span class="filter-color-dot" style="background: #3498db;"></span> Blue
                 </button>
-                <button class="filter-option ${this.activeColorFilter === 'green' ? 'active' : ''}" data-color="green">
+                <button class="filter-option ${columnFilter === 'green' ? 'active' : ''}" data-color="green">
                   <span class="filter-color-dot" style="background: #2ECC71;"></span> Green
                 </button>
-                <button class="filter-option ${this.activeColorFilter === 'yellow' ? 'active' : ''}" data-color="yellow">
+                <button class="filter-option ${columnFilter === 'yellow' ? 'active' : ''}" data-color="yellow">
                   <span class="filter-color-dot" style="background: #F39C12;"></span> Yellow
                 </button>
-                <button class="filter-option ${this.activeColorFilter === 'purple' ? 'active' : ''}" data-color="purple">
+                <button class="filter-option ${columnFilter === 'purple' ? 'active' : ''}" data-color="purple">
                   <span class="filter-color-dot" style="background: #9B59B6;"></span> Purple
                 </button>
               </div>
@@ -353,7 +346,7 @@ class KanbanBoard {
     filterDropdown.querySelectorAll('.filter-option').forEach(option => {
       option.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.setColorFilter(option.dataset.color);
+        this.setColorFilter(column.id, option.dataset.color);
         filterDropdown.classList.remove('open');
       });
     });
@@ -883,23 +876,18 @@ class KanbanBoard {
     return confirm('You have unsaved changes. Are you sure you want to close?');
   }
 
-  setColorFilter(color) {
-    this.activeColorFilter = color === 'all' ? null : color;
+  setColorFilter(columnId, color) {
+    const column = this.board.columns.find(c => c.id === columnId);
+    if (!column) return;
 
-    // Persist filter state
-    if (!this.board.settings) {
-      this.board.settings = {};
-    }
-    this.board.settings.activeColorFilter = this.activeColorFilter;
+    column.colorFilter = color === 'all' ? null : color;
     this.saveBoard();
-
-    // Re-render board with filter applied
     this.renderBoard();
   }
 
-  shouldShowTask(task) {
-    if (!this.activeColorFilter) return true;
-    return task.color === this.activeColorFilter;
+  shouldShowTask(task, columnFilter) {
+    if (!columnFilter) return true;
+    return task.color === columnFilter;
   }
 
   toggleColumnCollapse(columnId) {
