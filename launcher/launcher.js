@@ -99,7 +99,6 @@ class Launcher {
     this.settingsManager.init();
 
     this.bindEvents();
-    this.renderRecents();
     this.renderApps();
 
     document.body.classList.add('loaded');
@@ -225,7 +224,10 @@ class Launcher {
         const isActive = category.key === this.currentCategory;
         return `
           <button class="category-dropdown-item${isActive ? ' active' : ''}" data-category="${this.escapeHtml(category.key)}" role="menuitem">
-            ${this.escapeHtml(category.label)}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              ${this.getCategoryIcon(category.key)}
+            </svg>
+            <span>${this.escapeHtml(category.label)}</span>
           </button>
         `;
       }).join('');
@@ -269,21 +271,6 @@ class Launcher {
         if (!card) return;
         e.preventDefault();
         this.openApp(card.dataset.appId);
-      });
-    }
-
-    const recentsScroller = document.getElementById('recentsScroller');
-    if (recentsScroller) {
-      recentsScroller.addEventListener('click', (e) => {
-        const tile = e.target.closest('.recent-tile[data-app-id]');
-        if (tile) this.openApp(tile.dataset.appId);
-      });
-      recentsScroller.addEventListener('keydown', (e) => {
-        if (!this.isActivationKey(e.key)) return;
-        const tile = e.target.closest('.recent-tile[data-app-id]');
-        if (!tile) return;
-        e.preventDefault();
-        this.openApp(tile.dataset.appId);
       });
     }
 
@@ -613,40 +600,6 @@ class Launcher {
     return sorted;
   }
 
-  renderRecents() {
-    const container = document.getElementById('recentsScroller');
-    if (!container) return;
-
-    const recents = this.appLoader.getRecentApps(5);
-
-    if (recents.length === 0) {
-      container.innerHTML = '<p class="no-recents">No recent apps. Open an app to see it here.</p>';
-      return;
-    }
-
-    container.innerHTML = recents.map((app) => {
-      const isBackgroundRunning = this.isAppRunningInBackground(app.id);
-      const ariaLabel = this.escapeHtml(this.getLauncherItemAriaLabel(app.name, isBackgroundRunning));
-      const recentMeta = isBackgroundRunning
-        ? `Running in background, last opened ${this.formatRelativeTime(app.lastOpened)}`
-        : `Last opened ${this.formatRelativeTime(app.lastOpened)}`;
-      return `
-      <div class="recent-tile${isBackgroundRunning ? ' is-background-running' : ''}" data-app-id="${app.id}" tabindex="0" role="listitem" aria-label="${ariaLabel}">
-        <span class="recent-icon-wrap">
-          <span class="background-running-frame" aria-hidden="true"></span>
-          <img class="recent-icon" src="${this.appLoader.getAppIconUrl(app)}" alt="" loading="lazy">
-        </span>
-        <div class="recent-info">
-          <span class="recent-name">${this.escapeHtml(app.name)}</span>
-          <span class="recent-meta">${this.escapeHtml(recentMeta)}</span>
-        </div>
-      </div>
-    `;
-    }).join('');
-
-    this.refreshBackgroundIndicators();
-  }
-
   renderApps(apps = null) {
     const container = document.getElementById('appGrid');
     if (!container) return;
@@ -699,7 +652,7 @@ class Launcher {
   }
 
   refreshBackgroundIndicators() {
-    const launcherItems = document.querySelectorAll('.app-card[data-app-id], .recent-tile[data-app-id]');
+    const launcherItems = document.querySelectorAll('.app-card[data-app-id]');
     launcherItems.forEach((item) => {
       const appId = item.dataset.appId;
       const app = this.appLoader.getAppById(appId);
@@ -708,17 +661,6 @@ class Launcher {
 
       item.classList.toggle('is-background-running', isBackgroundRunning);
       item.setAttribute('aria-label', this.getLauncherItemAriaLabel(appName, isBackgroundRunning));
-
-      if (item.classList.contains('recent-tile')) {
-        const recentMeta = item.querySelector('.recent-meta');
-        if (recentMeta) {
-          const lastOpened = this.appLoader.recents.find(entry => entry.id === appId)?.timestamp || 0;
-          const relativeTime = lastOpened > 0 ? this.formatRelativeTime(lastOpened) : 'recently';
-          recentMeta.textContent = isBackgroundRunning
-            ? `Running in background, last opened ${relativeTime}`
-            : `Last opened ${relativeTime}`;
-        }
-      }
     });
   }
 
@@ -957,7 +899,6 @@ class Launcher {
       this.clearAppQueryParam();
     }
 
-    this.renderRecents();
     this.refreshBackgroundIndicators();
   }
 
