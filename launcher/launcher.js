@@ -203,21 +203,6 @@ class Launcher {
       this.currentCategory = 'all';
     }
 
-    const sidebarList = document.getElementById('sidebarCategoryList');
-    if (sidebarList) {
-      sidebarList.innerHTML = this.categories.map((category) => {
-        const isActive = category.key === this.currentCategory;
-        return `
-          <li class="nav-item${isActive ? ' active' : ''}" data-category="${this.escapeHtml(category.key)}" tabindex="0" role="option" aria-selected="${isActive ? 'true' : 'false'}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              ${this.getCategoryIcon(category.key)}
-            </svg>
-            <span>${this.escapeHtml(category.label)}</span>
-          </li>
-        `;
-      }).join('');
-    }
-
     const dropdown = document.getElementById('categoryDropdown');
     if (dropdown) {
       dropdown.innerHTML = this.categories.map((category) => {
@@ -250,9 +235,6 @@ class Launcher {
 
   updateCategoryLabels() {
     const label = this.getCategoryLabel(this.currentCategory);
-
-    const title = document.querySelector('.toolbar-title');
-    if (title) title.textContent = label;
 
     const toolbarLabel = document.getElementById('toolbarCategoryLabel');
     if (toolbarLabel) toolbarLabel.textContent = label;
@@ -287,15 +269,6 @@ class Launcher {
     if (topbarSearchBtn) {
       topbarSearchBtn.addEventListener('click', () => this.openMobileSearch());
     }
-
-    document.querySelectorAll('.nav-item[data-category]').forEach(item => {
-      item.addEventListener('click', () => this.setCategory(item.dataset.category));
-      item.addEventListener('keydown', (e) => {
-        if (!this.isActivationKey(e.key)) return;
-        e.preventDefault();
-        this.setCategory(item.dataset.category);
-      });
-    });
 
     const sortSelect = document.getElementById('sortSelect');
     if (sortSelect) {
@@ -551,12 +524,6 @@ class Launcher {
     const normalizedCategory = this.normalizeCategory(category);
     const validCategories = new Set(this.categories.map(item => item.key));
     this.currentCategory = validCategories.has(normalizedCategory) ? normalizedCategory : 'all';
-
-    document.querySelectorAll('.nav-item[data-category]').forEach(item => {
-      const isActive = item.dataset.category === this.currentCategory;
-      item.classList.toggle('active', isActive);
-      item.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
 
     document.querySelectorAll('.category-dropdown-item').forEach(item => {
       item.classList.toggle('active', item.dataset.category === this.currentCategory);

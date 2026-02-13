@@ -1,13 +1,4 @@
-In the kanban app:
-    If you have a list when many tasks (say To Do), and there are no tasks in the others. Collapsing the To Do column, makes the In Progress and Done columns approximately half height. This is not intended. Collapsing one column should not affect the others.
-
-    The distance from the bottom of the columns to the bottom of the screen is still too large - can you make it about half of what the distance currently is?
-
-
-Please remove the recents-section, it is not needed as it is possible to filter the row by most recent.
-
-In categoryDropdown please use the icons used in the sidebarCategoryList (the side bar will eventually be removed, but not now)
-
+Please remove the left sidebar in the launcher, it is no longer needed as themes can be selected in the categories tab. Also remove the gridTitle in the grid-tool bar
 
 
 Home, search, and settings buttons could be floating - leaving more room for the apps.
