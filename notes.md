@@ -1,10 +1,13 @@
 In the kanban app:
-    Clicking filter scrolls the bars to the top left
-    On hover, the tasks should display their full name in a tooltip (perhaps the tooltip functionality should be defined in app-common.css and styled in the theme?)
-    When the list of tasks is collapsed, fix the border and border-radius on the column header.
-    Remove the " add first task " button (its not needed, as there is the button to do so already close by)
-    Create a visual indicator of where the task will be dropped when doing drag and drop of tasks, perhaps a dark line inbetween the tasks.
-    Reduce the bottom padding/margin.
+    If you have a list when many tasks (say To Do), and there are no tasks in the others. Collapsing the To Do column, makes the In Progress and Done columns approximately half height. This is not intended. Collapsing one column should not affect the others.
+
+    The distance from the bottom of the columns to the bottom of the screen is still too large - can you make it about half of what the distance currently is?
+
+
+Please remove the recents-section, it is not needed as it is possible to filter the row by most recent.
+
+In categoryDropdown please use the icons used in the sidebarCategoryList (the side bar will eventually be removed, but not now)
+
 
 
 Home, search, and settings buttons could be floating - leaving more room for the apps.

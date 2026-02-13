@@ -17,17 +17,19 @@
 .kanban-main {
   flex: 1;
   min-height: 0;
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-2) var(--space-4);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Board */
 .board {
   display: flex;
   gap: var(--space-6);
+  flex: 1;
   min-height: 500px;
-  padding-bottom: var(--space-1);
 }
 
 /* Column */
@@ -40,7 +42,7 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--app-border-color);
-  max-height: calc(100vh - 180px);
+  max-height: calc(100vh - 24px);
 }
 
 .column-header {
@@ -567,7 +569,7 @@
   }
 
   .kanban-main {
-    padding: var(--space-4);
+    padding: var(--space-2) var(--space-3);
   }
 
   .column {
