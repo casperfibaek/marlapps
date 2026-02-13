@@ -34,15 +34,6 @@
 
   <!-- Main App Window -->
   <div class="app-window">
-    <!-- Mobile Rail Toggle -->
-    <button class="rail-toggle" id="railToggle" aria-label="Toggle navigation">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    </button>
-
     <!-- Utility Rail -->
     <nav class="utility-rail" id="utilityRail" role="navigation" aria-label="Main navigation">
       <div class="rail-top">
@@ -71,6 +62,17 @@
 
     <!-- Body -->
     <div class="app-body">
+      <!-- Mobile Nav Toggle -->
+      <div class="mobile-header" id="mobileHeader">
+        <button class="rail-toggle" id="railToggle" aria-label="Toggle navigation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
       <!-- Main Content -->
       <main class="main-content" id="mainContent" aria-label="App launcher">
         <!-- Grid Toolbar -->
@@ -99,13 +101,13 @@
                 <rect x="14" y="14" width="7" height="7"/>
                 <rect x="3" y="14" width="7" height="7"/>
               </svg>
-              <span id="toolbarCategoryLabel">All apps</span>
+              <span id="toolbarCategoryLabel">All</span>
             </button>
             <!-- Category Dropdown -->
             <div class="category-dropdown hidden" id="categoryDropdown" role="menu" aria-label="Category filter"></div>
             <label for="sortSelect" class="sr-only">Sort apps by</label>
             <select class="sort-select" id="sortSelect">
-              <option value="recent">Recently used</option>
+              <option value="recent">Recent</option>
               <option value="alpha">A to Z</option>
               <option value="category">Category</option>
             </select>

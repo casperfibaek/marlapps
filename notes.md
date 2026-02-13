@@ -1,4 +1,8 @@
-Move search to be in the left of the grid-toolbar and then lets change the header to a slim left utility rail. The utility rail should have the home button, the settings button, and in the bottom a placeholder 'user' button. The rail should not be open/collapsable, it should just have the icons.
+Drag and drop is slow on mobile, as in the icons drags slowly. Please make it feel fast like on desktop.
+
+The hamburger button disappears when inside apps.
+
+Change 'all apps' to 'all'
 
 
 Pomodoro app:

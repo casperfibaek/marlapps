@@ -174,10 +174,10 @@ class Launcher {
       .sort((a, b) => a[1].localeCompare(b[1]))
       .map(([key, label]) => ({ key, label }));
 
-    return [{ key: 'all', label: 'All apps' }, ...categories];
+    return [{ key: 'all', label: 'All' }, ...categories];
   }
 
-  getCategoryLabel(category, fallback = 'All apps') {
+  getCategoryLabel(category, fallback = 'All') {
     const normalized = this.normalizeCategory(category);
     const match = this.categories.find(item => item.key === normalized);
     return match ? match.label : fallback;

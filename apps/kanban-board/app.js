@@ -442,8 +442,11 @@ class KanbanBoard {
     const clone = taskEl.cloneNode(true);
     clone.classList.add('touch-dragging');
     clone.style.width = rect.width + 'px';
-    clone.style.left = (touch.clientX - this.touchDragState.offsetX) + 'px';
-    clone.style.top = (touch.clientY - this.touchDragState.offsetY) + 'px';
+    clone.style.left = '0px';
+    clone.style.top = '0px';
+    const x = touch.clientX - this.touchDragState.offsetX;
+    const y = touch.clientY - this.touchDragState.offsetY;
+    clone.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(3deg) scale(1.02)`;
     document.body.appendChild(clone);
     this.touchDragState.clone = clone;
 
@@ -500,10 +503,11 @@ class KanbanBoard {
 
     const { pendingX, pendingY } = this.dragAnimState;
 
-    // Move clone
+    // Move clone via transform (GPU-accelerated)
     if (this.touchDragState.clone) {
-      this.touchDragState.clone.style.left = (pendingX - this.touchDragState.offsetX) + 'px';
-      this.touchDragState.clone.style.top = (pendingY - this.touchDragState.offsetY) + 'px';
+      const x = pendingX - this.touchDragState.offsetX;
+      const y = pendingY - this.touchDragState.offsetY;
+      this.touchDragState.clone.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(3deg) scale(1.02)`;
     }
 
     // Highlight target column and show drop indicator (using cached rects)
