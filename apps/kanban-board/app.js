@@ -225,12 +225,22 @@ class KanbanBoard {
   }
 
   renderBoard() {
+    // Preserve scroll position across re-renders
+    const main = document.querySelector('.kanban-main');
+    const scrollLeft = main ? main.scrollLeft : 0;
+    const scrollTop = main ? main.scrollTop : 0;
+
     this.boardEl.innerHTML = '';
 
     this.board.columns.forEach(column => {
       const columnEl = this.createColumnElement(column);
       this.boardEl.appendChild(columnEl);
     });
+
+    if (main) {
+      main.scrollLeft = scrollLeft;
+      main.scrollTop = scrollTop;
+    }
   }
 
   createColumnElement(column) {
@@ -299,25 +309,8 @@ class KanbanBoard {
       tasksContainer.appendChild(taskEl);
     });
 
-    // Show empty state if no tasks at all
-    if (totalTasks === 0) {
-      const emptyState = document.createElement('div');
-      emptyState.className = 'column-empty';
-      emptyState.innerHTML = `
-        <div class="column-empty-icon">📝</div>
-        <div class="column-empty-text">No tasks yet</div>
-        <button class="column-empty-btn" data-column-id="${column.id}">Add First Task</button>
-      `;
-      tasksContainer.appendChild(emptyState);
-
-      // Event listener for empty state button
-      const emptyBtn = emptyState.querySelector('.column-empty-btn');
-      emptyBtn.addEventListener('click', () => {
-        this.openModal(column.id);
-      });
-    }
     // Show filtered empty state if filtered and no visible tasks
-    else if (visibleTasks.length === 0 && totalTasks > 0) {
+    if (visibleTasks.length === 0 && totalTasks > 0) {
       const emptyState = document.createElement('div');
       emptyState.className = 'column-empty-filtered';
       emptyState.textContent = 'No tasks with this color';
@@ -383,7 +376,7 @@ class KanbanBoard {
 
     taskEl.innerHTML = `
       <div class="task-content">
-        <div class="task-title">${this.escapeHtml(task.title)}</div>
+        <div class="task-title" data-tooltip="${this.escapeHtml(task.title)}">${this.escapeHtml(task.title)}</div>
       </div>
       <button class="task-delete" data-task-id="${task.id}" aria-label="Delete task">×</button>
     `;
@@ -513,8 +506,16 @@ class KanbanBoard {
       this.touchDragState.clone.style.top = (pendingY - this.touchDragState.offsetY) + 'px';
     }
 
-    // Highlight target column (using cached rects)
+    // Highlight target column and show drop indicator (using cached rects)
     this.highlightDropTarget(pendingX, pendingY);
+
+    // Show drop indicator for touch drag
+    const targetCol = this.findColumnAtPoint(pendingX, pendingY);
+    if (targetCol) {
+      this.showDropIndicator(targetCol, pendingY, this.touchDragState.taskId);
+    } else {
+      this.removeDropIndicator();
+    }
 
     // Auto-scroll when near edges
     this.autoScrollDuringDrag(pendingY);
@@ -569,6 +570,7 @@ class KanbanBoard {
 
       // Clean up
       this.clearDropHighlights();
+      this.removeDropIndicator();
 
       // Prevent click-after-drag from opening the edit modal
       this.justDragged = true;
@@ -689,6 +691,7 @@ class KanbanBoard {
   handleDragStart(e) {
     const taskEl = e.currentTarget;
     taskEl.classList.add('dragging');
+    this.currentDragTaskId = taskEl.dataset.taskId;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', taskEl.innerHTML);
     e.dataTransfer.setData('taskId', taskEl.dataset.taskId);
@@ -696,12 +699,20 @@ class KanbanBoard {
 
   handleDragEnd(e) {
     e.currentTarget.classList.remove('dragging');
+    this.currentDragTaskId = null;
     this.clearDropHighlights();
+    this.removeDropIndicator();
   }
 
   handleDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+
+    // Show drop indicator
+    const column = e.currentTarget;
+    const columnId = column.dataset.columnId;
+    const draggedTaskId = this.currentDragTaskId;
+    this.showDropIndicator(columnId, e.clientY, draggedTaskId);
   }
 
   handleDragEnter(e) {
@@ -729,6 +740,7 @@ class KanbanBoard {
     const dropTarget = e.currentTarget;
     dropTarget.classList.remove('drag-over');
     dropTarget.dataset.dragDepth = '0';
+    this.removeDropIndicator();
 
     const taskId = e.dataTransfer.getData('taskId');
     if (!taskId) return;
@@ -1007,6 +1019,52 @@ class KanbanBoard {
     // Hide toast
     this.hideUndoToast();
     this.deletedTaskState = null;
+  }
+
+  showDropIndicator(columnId, clientY, draggedTaskId = null) {
+    this.removeDropIndicator();
+
+    const columnEl = document.querySelector(`.column[data-column-id="${columnId}"]`);
+    if (!columnEl) return;
+
+    const tasksContainer = columnEl.querySelector('.tasks');
+    if (!tasksContainer) return;
+
+    const taskEls = Array.from(tasksContainer.querySelectorAll('.task[data-task-id]'))
+      .filter(el => el.dataset.taskId !== draggedTaskId);
+
+    const indicator = document.createElement('div');
+    indicator.className = 'drop-indicator';
+
+    if (taskEls.length === 0) {
+      tasksContainer.prepend(indicator);
+      return;
+    }
+
+    let inserted = false;
+    for (const taskEl of taskEls) {
+      const rect = taskEl.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      if (clientY < midpoint) {
+        tasksContainer.insertBefore(indicator, taskEl);
+        inserted = true;
+        break;
+      }
+    }
+
+    if (!inserted) {
+      // After the last task
+      const lastTask = taskEls[taskEls.length - 1];
+      if (lastTask.nextSibling) {
+        tasksContainer.insertBefore(indicator, lastTask.nextSibling);
+      } else {
+        tasksContainer.appendChild(indicator);
+      }
+    }
+  }
+
+  removeDropIndicator() {
+    document.querySelectorAll('.drop-indicator').forEach(el => el.remove());
   }
 
   generateId() {

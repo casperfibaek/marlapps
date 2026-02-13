@@ -17,7 +17,7 @@
 .kanban-main {
   flex: 1;
   min-height: 0;
-  padding: var(--space-6);
+  padding: var(--space-4) var(--space-6);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -27,7 +27,7 @@
   display: flex;
   gap: var(--space-6);
   min-height: 500px;
-  padding-bottom: var(--space-4);
+  padding-bottom: var(--space-1);
 }
 
 /* Column */
@@ -117,6 +117,11 @@
   /* Body is hidden via .column-body.collapsed, column keeps its width */
 }
 
+.column.collapsed .column-header {
+  border-bottom: none;
+  border-radius: var(--radius-md);
+}
+
 @media (min-width: 769px) {
   .column.collapsed {
     align-self: flex-start;
@@ -151,6 +156,15 @@
 .tasks.drag-over {
   background: var(--app-info-light);
   border: 2px dashed var(--app-accent);
+}
+
+/* Drop Indicator */
+.drop-indicator {
+  height: 3px;
+  background: var(--app-accent);
+  border-radius: 2px;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px var(--app-accent);
 }
 
 .column.drag-over {
@@ -375,43 +389,6 @@
   font-style: italic;
 }
 
-/* Empty Column State */
-.column-empty {
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
-  color: var(--app-text-tertiary);
-}
-
-.column-empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: var(--space-3);
-  opacity: 0.5;
-}
-
-.column-empty-text {
-  font-size: 0.9rem;
-  margin-bottom: var(--space-4);
-}
-
-.column-empty-btn {
-  background: var(--app-accent);
-  color: white;
-  border: none;
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-md);
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.column-empty-btn:hover {
-  background: var(--app-accent-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--app-shadow-md);
-}
 
 /* Add Task Button */
 .add-task-btn {
