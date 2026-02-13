@@ -34,46 +34,40 @@
 
   <!-- Main App Window -->
   <div class="app-window">
-    <!-- Top Bar -->
-    <header class="topbar" role="banner">
-      <div class="topbar-left">
-        <button class="home-btn" id="homeBtn" aria-label="Go to home screen">
-          <svg class="home-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <!-- Mobile Rail Toggle -->
+    <button class="rail-toggle" id="railToggle" aria-label="Toggle navigation">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
+    <!-- Utility Rail -->
+    <nav class="utility-rail" id="utilityRail" role="navigation" aria-label="Main navigation">
+      <div class="rail-top">
+        <button class="rail-btn" id="homeBtn" aria-label="Go to home screen" title="Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>
           </svg>
-          <span class="wordmark">MarlApps</span>
         </button>
-      </div>
-
-      <div class="topbar-center" role="search" aria-label="Search apps">
-        <div class="search-wrapper">
-          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="M21 21l-4.35-4.35"/>
-          </svg>
-          <input
-            type="search"
-            class="search-input"
-            placeholder="Search apps..."
-            id="globalSearch"
-            autocomplete="off"
-            spellcheck="false"
-            aria-label="Search apps"
-          >
-          <kbd class="search-hint" aria-hidden="true">Ctrl+K / L</kbd>
-        </div>
-      </div>
-
-      <div class="topbar-right">
-        <button class="icon-btn" title="Settings" id="topbarSettingsBtn" aria-label="Open settings" aria-expanded="false">
+        <button class="rail-btn" id="topbarSettingsBtn" aria-label="Open settings" title="Settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </button>
       </div>
-    </header>
+      <div class="rail-bottom">
+        <button class="rail-btn" id="userBtn" aria-label="User" title="User" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </button>
+      </div>
+    </nav>
 
     <!-- Body -->
     <div class="app-body">
@@ -81,6 +75,22 @@
       <main class="main-content" id="mainContent" aria-label="App launcher">
         <!-- Grid Toolbar -->
         <div class="grid-toolbar">
+          <div class="search-wrapper" role="search" aria-label="Search apps">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              type="search"
+              class="search-input"
+              placeholder="Search apps..."
+              id="globalSearch"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Search apps"
+            >
+            <kbd class="search-hint" aria-hidden="true">Ctrl+K / L</kbd>
+          </div>
           <div class="toolbar-controls">
             <button class="toolbar-categories-btn" id="toolbarCategoriesBtn" aria-label="Filter by category">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" width="16" height="16">

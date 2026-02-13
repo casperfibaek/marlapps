@@ -52,8 +52,7 @@
   --window-max-width: 1600px;
   --window-max-height: 980px;
   --window-border-radius: 20px;
-  --topbar-height: 60px;
-  --sidebar-width: 300px;
+  --rail-width: 56px;
   --settings-drawer-width: 480px;
 
   /* Component sizes (min 44px for touch targets per WCAG 2.5.8) */

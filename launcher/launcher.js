@@ -262,6 +262,23 @@ class Launcher {
         if (this.currentApp) this.closeApp('home');
         this.setCategory('all');
         this.closeMobileOverlays();
+        this.closeRail();
+      });
+    }
+
+    const railToggle = document.getElementById('railToggle');
+    const utilityRail = document.getElementById('utilityRail');
+    if (railToggle && utilityRail) {
+      railToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        utilityRail.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (utilityRail.classList.contains('open') &&
+            !utilityRail.contains(e.target) &&
+            !railToggle.contains(e.target)) {
+          utilityRail.classList.remove('open');
+        }
       });
     }
 
@@ -381,6 +398,11 @@ class Launcher {
 
   closeMobileOverlays() {
     this.closeMobileCategoriesSheet();
+  }
+
+  closeRail() {
+    const rail = document.getElementById('utilityRail');
+    if (rail) rail.classList.remove('open');
   }
 
   toggleCategoryDropdown() {
@@ -683,6 +705,8 @@ class Launcher {
       console.warn(`App not found: ${appId}`);
       return;
     }
+
+    this.closeRail();
 
     if (this.currentApp && this.currentApp.id === appId) {
       this.persistActiveApp(app.id);

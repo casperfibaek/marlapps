@@ -61,85 +61,88 @@ body {
   backdrop-filter: var(--window-backdrop);
   -webkit-backdrop-filter: var(--window-backdrop);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
   z-index: 1;
 }
 
-/* Top Bar */
-.topbar {
-  height: var(--topbar-height);
-  min-height: var(--topbar-height);
+/* Utility Rail */
+.utility-rail {
+  width: var(--rail-width);
+  min-width: var(--rail-width);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-4);
-  padding: 0 var(--space-5);
-  border-bottom: 1px solid var(--border-secondary);
+  padding: var(--space-3) 0;
   background: var(--surface-tertiary);
-}
-
-.topbar-left {
+  border-right: 1px solid var(--border-secondary);
   flex-shrink: 0;
 }
 
-.home-btn {
+.rail-top {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+}
+
+.rail-bottom {
+  margin-top: auto;
+}
+
+.rail-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
   border-radius: var(--radius-md);
+  color: var(--icon-secondary);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-.home-btn:hover {
+.rail-btn:hover {
   background: var(--surface-hover);
+  color: var(--icon-primary);
 }
 
-.home-btn:focus-visible {
+.rail-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--focus-ring-offset), 0 0 0 4px var(--focus-ring);
 }
 
-.home-icon {
+.rail-btn svg {
   width: 20px;
   height: 20px;
-  color: var(--text-secondary);
-  transition: color var(--transition-fast);
 }
 
-.home-btn:hover .home-icon {
-  color: var(--accent-primary);
+.rail-btn[disabled] {
+  opacity: 0.4;
+  cursor: default;
 }
 
-.wordmark {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-  margin-top: 5px;
+.rail-btn[disabled]:hover {
+  background: transparent;
+  color: var(--icon-secondary);
 }
 
-.topbar-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  padding: 0 var(--space-4);
-  transition: opacity var(--transition-fast);
+/* Mobile Rail Toggle */
+.rail-toggle {
+  display: none;
 }
 
-/* Hide search when app is open */
-body.app-open .topbar-center {
-  opacity: 0;
-  pointer-events: none;
+.rail-toggle svg {
+  width: 20px;
+  height: 20px;
 }
 
 .search-wrapper {
   position: relative;
-  width: 100%;
-  max-width: var(--search-max-width);
+  flex: 1;
+  max-width: 360px;
 }
 
 .search-icon {
@@ -197,48 +200,13 @@ body.app-open .topbar-center {
   pointer-events: none;
 }
 
-.topbar-right {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* Icon Buttons */
-.icon-btn {
-  width: var(--icon-btn-size);
-  height: var(--icon-btn-size);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-full);
-  color: var(--icon-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.icon-btn:hover {
-  background: var(--surface-hover);
-  color: var(--icon-primary);
-}
-
-.icon-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring-offset), 0 0 0 4px var(--focus-ring);
-}
-
-.icon-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
 /* App Body */
 .app-body {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
 }
@@ -331,7 +299,7 @@ body.app-open .topbar-center {
 .grid-toolbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: var(--space-4);
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border-light);
@@ -341,6 +309,7 @@ body.app-open .topbar-center {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  margin-left: auto;
 }
 
 .sort-select {
@@ -1103,16 +1072,50 @@ body.app-open .topbar-center {
 /* Responsive */
 
 @media (max-width: 768px) {
-  /* Safe area handling */
-  .topbar {
-    padding-top: env(safe-area-inset-top, 0);
-    height: calc(var(--topbar-height) + env(safe-area-inset-top, 0));
-  }
-
   .app-window {
     width: 100vw;
     height: 100vh;
     border-radius: 0;
+  }
+
+  /* Hide rail on mobile — toggled via JS */
+  .utility-rail {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal);
+    padding-top: calc(var(--space-3) + env(safe-area-inset-top, 0));
+  }
+
+  .utility-rail.open {
+    transform: translateX(0);
+  }
+
+  /* Show floating toggle button on mobile */
+  .rail-toggle {
+    display: flex;
+    position: fixed;
+    top: calc(var(--space-3) + env(safe-area-inset-top, 0));
+    left: var(--space-3);
+    z-index: 25;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-tertiary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    color: var(--icon-secondary);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Hide toggle when app is open */
+  body.app-open .rail-toggle {
+    display: none;
   }
 
   /* Keep scrollable content clear of bottom safe area */
@@ -1149,7 +1152,6 @@ body.app-open .topbar-center {
   .app-workspace {
     position: fixed;
     inset: 0;
-    top: calc(var(--topbar-height) + env(safe-area-inset-top, 0));
     z-index: 15;
   }
 
@@ -1159,19 +1161,19 @@ body.app-open .topbar-center {
     height: 100%;
     border: none;
   }
+
+  /* Stack grid toolbar on narrow screens */
+  .grid-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .search-wrapper {
+    max-width: none;
+  }
 }
 
 /* Landscape orientation adjustments */
 @media (max-width: 768px) and (orientation: landscape) {
-  .topbar {
-    height: 48px;
-    padding-top: 0;
-  }
-
-  .app-workspace {
-    top: 48px;
-  }
-
   .main-content {
     padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0));
   }
