@@ -1,7 +1,3 @@
-Please remove the left sidebar in the launcher, it is no longer needed as themes can be selected in the categories tab. Also remove the gridTitle in the grid-tool bar
-
-
-Home, search, and settings buttons could be floating - leaving more room for the apps.
 Pomodoro app:
     Clicking settings ships the interface to the left
 

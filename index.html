@@ -66,12 +66,6 @@
       </div>
 
       <div class="topbar-right">
-        <button class="icon-btn topbar-mobile-btn" title="Search" id="topbarSearchBtn" aria-label="Open search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="M21 21l-4.35-4.35"/>
-          </svg>
-        </button>
         <button class="icon-btn" title="Settings" id="topbarSettingsBtn" aria-label="Open settings" aria-expanded="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/>
@@ -228,25 +222,6 @@
 
   <!-- Drawer Overlay -->
   <div class="drawer-overlay" id="drawerOverlay"></div>
-
-  <!-- Mobile Search Overlay -->
-  <div class="mobile-search-overlay hidden" id="mobileSearchOverlay" role="dialog" aria-modal="true" aria-label="Search apps">
-    <div class="mobile-search-header">
-      <input
-        type="search"
-        class="mobile-search-input"
-        placeholder="Search apps..."
-        id="mobileSearchInput"
-        autocomplete="off"
-        spellcheck="false"
-        aria-label="Search apps"
-      >
-      <button class="mobile-search-cancel" id="mobileSearchCancel">Cancel</button>
-    </div>
-    <div class="mobile-search-results" id="mobileSearchResults" role="list" aria-label="Search results" aria-live="polite">
-      <!-- Results rendered by JS -->
-    </div>
-  </div>
 
   <!-- Mobile Categories Sheet -->
   <div class="mobile-sheet hidden" id="mobileCategoriesSheet" role="dialog" aria-modal="true" aria-label="Select category">

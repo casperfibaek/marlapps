@@ -265,11 +265,6 @@ class Launcher {
       });
     }
 
-    const topbarSearchBtn = document.getElementById('topbarSearchBtn');
-    if (topbarSearchBtn) {
-      topbarSearchBtn.addEventListener('click', () => this.openMobileSearch());
-    }
-
     const sortSelect = document.getElementById('sortSelect');
     if (sortSelect) {
       sortSelect.addEventListener('change', (e) => {
@@ -287,20 +282,7 @@ class Launcher {
     }
 
     document.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
-        e.preventDefault();
-        if (window.innerWidth <= 768) this.openMobileSearch();
-        return;
-      }
-
       if (e.key === 'Escape') {
-        const mobileSearchOverlay = document.getElementById('mobileSearchOverlay');
-        if (mobileSearchOverlay && !mobileSearchOverlay.classList.contains('hidden')) {
-          this.closeMobileSearch();
-          e.preventDefault();
-          return;
-        }
-
         const mobileCategoriesSheet = document.getElementById('mobileCategoriesSheet');
         if (mobileCategoriesSheet && !mobileCategoriesSheet.classList.contains('hidden')) {
           this.closeMobileCategoriesSheet();
@@ -349,21 +331,6 @@ class Launcher {
   }
 
   bindMobileEvents() {
-    const mobileSearchCancel = document.getElementById('mobileSearchCancel');
-    const mobileSearchInput = document.getElementById('mobileSearchInput');
-
-    if (mobileSearchCancel) {
-      mobileSearchCancel.addEventListener('click', () => this.closeMobileSearch());
-    }
-
-    if (mobileSearchInput) {
-      let debounceTimer;
-      mobileSearchInput.addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => this.handleMobileSearch(), 150);
-      });
-    }
-
     const mobileCategoriesClose = document.getElementById('mobileCategoriesClose');
     if (mobileCategoriesClose) {
       mobileCategoriesClose.addEventListener('click', () => this.closeMobileCategoriesSheet());
@@ -376,76 +343,6 @@ class Launcher {
         this.closeMobileCategoriesSheet();
       });
     });
-  }
-
-  openMobileSearch() {
-    const overlay = document.getElementById('mobileSearchOverlay');
-    const input = document.getElementById('mobileSearchInput');
-    if (overlay) {
-      overlay.classList.remove('hidden');
-      if (input) {
-        input.focus();
-        input.value = '';
-      }
-    }
-  }
-
-  closeMobileSearch() {
-    const overlay = document.getElementById('mobileSearchOverlay');
-    const results = document.getElementById('mobileSearchResults');
-    if (overlay) overlay.classList.add('hidden');
-    if (results) results.innerHTML = '';
-  }
-
-  handleMobileSearch() {
-    const input = document.getElementById('mobileSearchInput');
-    const results = document.getElementById('mobileSearchResults');
-    if (!input || !results) return;
-
-    const query = input.value.trim();
-    if (!query) {
-      results.innerHTML = '';
-      return;
-    }
-
-    const apps = this.appLoader.searchApps(query);
-    if (apps.length === 0) {
-      results.innerHTML = '<p class="no-results" role="status">No apps found</p>';
-      return;
-    }
-
-    const cardsHtml = apps.map((app) => {
-      const isBackgroundRunning = this.isAppRunningInBackground(app.id);
-      const ariaLabel = this.escapeHtml(this.getLauncherItemAriaLabel(app.name, isBackgroundRunning));
-      return `
-      <div class="app-card${isBackgroundRunning ? ' is-background-running' : ''}" data-app-id="${app.id}" tabindex="0" role="listitem" aria-label="${ariaLabel}">
-        <span class="app-icon-wrap">
-          <span class="background-running-frame" aria-hidden="true"></span>
-          <img class="app-icon" src="${this.appLoader.getAppIconUrl(app)}" alt="" loading="lazy">
-        </span>
-        <div class="app-info">
-          <span class="app-name">${this.escapeHtml(app.name)}</span>
-          <span class="app-description">${this.escapeHtml(app.description)}</span>
-        </div>
-      </div>
-    `;
-    }).join('');
-    results.innerHTML = `<div class="search-results-list">${cardsHtml}</div>`;
-
-    results.querySelectorAll('.app-card').forEach(card => {
-      const openFromSearch = () => {
-        this.openApp(card.dataset.appId);
-        this.closeMobileSearch();
-      };
-      card.addEventListener('click', openFromSearch);
-      card.addEventListener('keydown', (e) => {
-        if (!this.isActivationKey(e.key)) return;
-        e.preventDefault();
-        openFromSearch();
-      });
-    });
-
-    this.refreshBackgroundIndicators();
   }
 
   openMobileCategoriesSheet() {
@@ -483,7 +380,6 @@ class Launcher {
   }
 
   closeMobileOverlays() {
-    this.closeMobileSearch();
     this.closeMobileCategoriesSheet();
   }
 
@@ -573,9 +469,8 @@ class Launcher {
 
     if (!apps) {
       apps = this.appLoader.getAppsByCategory(this.currentCategory);
+      apps = this.sortApps(apps);
     }
-
-    apps = this.sortApps(apps);
 
     const cardsHtml = apps.map((app) => {
       const category = app.categories?.[0] || '';
@@ -830,7 +725,7 @@ class Launcher {
     mainContent.classList.add('hidden');
     workspace.classList.remove('hidden');
     document.body.classList.add('app-open');
-    document.title = `${app.name} - MarlApps`;
+    document.title = app.name;
     this.refreshBackgroundIndicators();
   }
 
