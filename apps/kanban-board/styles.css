@@ -122,6 +122,7 @@
 .column.collapsed .column-header {
   border-bottom: none;
   border-radius: var(--radius-md);
+  cursor: pointer;
 }
 
 @media (min-width: 769px) {

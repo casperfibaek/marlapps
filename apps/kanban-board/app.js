@@ -323,6 +323,14 @@ class KanbanBoard {
       this.toggleColumnCollapse(column.id);
     });
 
+    // Clicking column header expands a collapsed column
+    const columnHeader = columnEl.querySelector('.column-header');
+    columnHeader.addEventListener('click', (e) => {
+      if (!column.collapsed) return;
+      if (e.target.closest('.column-collapse-btn') || e.target.closest('.column-filter-btn') || e.target.closest('.column-filter-dropdown')) return;
+      this.toggleColumnCollapse(column.id);
+    });
+
     // Filter dropdown toggle
     const filterBtn = columnEl.querySelector('.column-filter-btn');
     const filterDropdown = columnEl.querySelector('.column-filter-dropdown');
