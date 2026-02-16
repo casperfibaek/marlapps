@@ -1,7 +1,4 @@
-Drag and drop is still slow on mobile (dragging items don't snappily follow along with youre finger - it properly has to do with animation?)
-The hamburger button still disappears when inside apps on mobile.
-
-Change 'all apps' to 'all'
+In mobile view on the launcher site, please move the 
 
 
 Pomodoro app:
