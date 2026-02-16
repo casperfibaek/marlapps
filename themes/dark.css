@@ -2,27 +2,27 @@
 
 [data-theme="dark"] {
   /* Background layers */
-  --bg-outer: #0a0a0f;
-  --bg-outer-gradient: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 70%);
+  --bg-outer: #0b0b0e;
+  --bg-outer-gradient: radial-gradient(ellipse at center, #1c1c22 0%, #0b0b0e 70%);
   --bg-grain-opacity: 0.03;
 
   /* Window glass effect */
-  --window-fill: rgba(22, 22, 30, 1);
+  --window-fill: rgba(24, 24, 27, 1);
   --window-border: rgba(255, 255, 255, 0.12);
   --window-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
                    0 0 0 1px rgba(255, 255, 255, 0.05);
   --window-backdrop: none;
 
   /* Surface colors */
-  --surface-primary: rgba(30, 30, 40, 1);
-  --surface-secondary: rgba(40, 40, 52, 1);
-  --surface-tertiary: rgba(25, 25, 35, 1);
-  --surface-hover: rgba(55, 55, 70, 1);
-  --surface-active: rgba(65, 65, 82, 1);
+  --surface-primary: rgba(32, 32, 36, 1);
+  --surface-secondary: rgba(42, 42, 47, 1);
+  --surface-tertiary: rgba(27, 27, 30, 1);
+  --surface-hover: rgba(58, 58, 63, 1);
+  --surface-active: rgba(68, 68, 74, 1);
 
   /* Card colors */
-  --card-fill: rgba(35, 35, 48, 1);
-  --card-fill-hover: rgba(45, 45, 60, 1);
+  --card-fill: rgba(38, 38, 42, 1);
+  --card-fill-hover: rgba(48, 48, 53, 1);
   --card-border: rgba(255, 255, 255, 0.12);
   --card-border-hover: rgba(255, 255, 255, 0.2);
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -35,16 +35,16 @@
   --text-disabled: rgba(255, 255, 255, 0.25);
 
   /* Accent colors */
-  --accent-primary: #6366f1;
-  --accent-primary-hover: #818cf8;
-  --accent-primary-active: #4f46e5;
-  --accent-secondary: #8b5cf6;
-  --accent-light: rgba(99, 102, 241, 0.15);
-  --accent-lighter: rgba(99, 102, 241, 0.08);
+  --accent-primary: #7c6ef6;
+  --accent-primary-hover: #9589f8;
+  --accent-primary-active: #6358e0;
+  --accent-secondary: #9b7cfa;
+  --accent-light: rgba(124, 110, 246, 0.15);
+  --accent-lighter: rgba(124, 110, 246, 0.08);
 
   /* Focus & interaction */
-  --focus-ring: rgba(99, 102, 241, 0.6);
-  --focus-ring-offset: rgba(22, 22, 30, 1);
+  --focus-ring: rgba(124, 110, 246, 0.6);
+  --focus-ring-offset: rgba(24, 24, 27, 1);
 
   /* Border colors */
   --border-primary: rgba(255, 255, 255, 0.12);
@@ -62,15 +62,15 @@
   --color-info-light: rgba(59, 130, 246, 0.15);
 
   /* Sidebar */
-  --sidebar-bg: rgba(20, 20, 28, 1);
+  --sidebar-bg: rgba(21, 21, 24, 1);
   --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-item-hover: rgba(255, 255, 255, 0.1);
-  --sidebar-item-active: rgba(99, 102, 241, 0.3);
+  --sidebar-item-active: rgba(124, 110, 246, 0.3);
   --sidebar-item-active-border: var(--accent-primary);
 
   /* Input fields */
-  --input-bg: rgba(15, 15, 22, 1);
-  --input-bg-hover: rgba(20, 20, 28, 1);
+  --input-bg: rgba(16, 16, 19, 1);
+  --input-bg-hover: rgba(21, 21, 24, 1);
   --input-border: rgba(255, 255, 255, 0.15);
   --input-border-hover: rgba(255, 255, 255, 0.2);
   --input-border-focus: var(--accent-primary);
@@ -86,7 +86,7 @@
   --recent-tile-hover-bg: var(--card-fill-hover);
 
   /* Settings drawer */
-  --drawer-bg: rgba(25, 25, 35, 1);
+  --drawer-bg: rgba(27, 27, 30, 1);
   --drawer-border: rgba(255, 255, 255, 0.1);
   --drawer-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
 

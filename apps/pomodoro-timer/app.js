@@ -9,6 +9,7 @@ class PomodoroTimer {
     this.timerInterval = null;
     this.notificationPermissionRequested = false;
     this.lastReportedBackgroundActivity = null;
+    this.completionTimeout = null;
 
     this.initElements();
     this.attachEventListeners();
@@ -28,12 +29,16 @@ class PomodoroTimer {
   initElements() {
     this.timerEl = document.getElementById('timer');
     this.sessionTypeEl = document.getElementById('sessionType');
-    this.pomodoroCountEl = document.getElementById('pomodoroCount');
+    this.pomodoroDotsEl = document.getElementById('pomodoroDots');
     this.startBtn = document.getElementById('startBtn');
     this.pauseBtn = document.getElementById('pauseBtn');
     this.resetBtn = document.getElementById('resetBtn');
+    this.skipBreakBtn = document.getElementById('skipBreakBtn');
     this.settingsToggle = document.getElementById('settingsToggle');
     this.historyToggle = document.getElementById('historyToggle');
+    this.settingsBackdrop = document.getElementById('settingsBackdrop');
+    this.historyBackdrop = document.getElementById('historyBackdrop');
+    this.resetBackdrop = document.getElementById('resetBackdrop');
     this.settingsPanel = document.getElementById('settingsPanel');
     this.historyPanel = document.getElementById('historyPanel');
     this.saveSettingsBtn = document.getElementById('saveSettings');
@@ -41,19 +46,52 @@ class PomodoroTimer {
     this.historyCountEl = document.getElementById('historyCount');
     this.historyListEl = document.getElementById('historyList');
     this.timerDisplay = document.querySelector('.timer-display');
+    this.progressRing = document.getElementById('progressRing');
+    this.completionFlash = document.getElementById('completionFlash');
+    this.completionText = document.getElementById('completionText');
+
+    // Calculate progress ring circumference
+    const radius = 152;
+    this.ringCircumference = 2 * Math.PI * radius;
+    this.progressRing.style.strokeDasharray = this.ringCircumference;
   }
 
   attachEventListeners() {
     this.startBtn.addEventListener('click', () => this.startTimer());
     this.pauseBtn.addEventListener('click', () => this.pauseTimer());
-    this.resetBtn.addEventListener('click', () => this.resetTimer());
-    this.settingsToggle.addEventListener('click', () => this.toggleSettings());
-    this.historyToggle.addEventListener('click', () => this.toggleHistory());
+    this.resetBtn.addEventListener('click', () => this.handleReset());
+    this.skipBreakBtn.addEventListener('click', () => this.skipBreak());
+    this.settingsToggle.addEventListener('click', () => this.openModal('settings'));
+    this.historyToggle.addEventListener('click', () => this.openModal('history'));
     this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
     this.historyDateInput.addEventListener('change', () => this.updateHistoryDisplay());
     document.addEventListener('visibilitychange', () => this.handleDocumentVisibility());
     window.addEventListener('pagehide', () => this.saveState());
     window.addEventListener('beforeunload', () => this.saveState());
+
+    // Modal close buttons
+    document.getElementById('settingsClose').addEventListener('click', () => this.closeModal('settings'));
+    document.getElementById('historyClose').addEventListener('click', () => this.closeModal('history'));
+    document.getElementById('resetClose').addEventListener('click', () => this.closeModal('reset'));
+    document.getElementById('resetCancel').addEventListener('click', () => this.closeModal('reset'));
+    document.getElementById('resetConfirm').addEventListener('click', () => {
+      this.closeModal('reset');
+      this.resetTimer();
+    });
+
+    // Close modals on backdrop click
+    this.settingsBackdrop.addEventListener('click', (e) => {
+      if (e.target === this.settingsBackdrop) this.closeModal('settings');
+    });
+    this.historyBackdrop.addEventListener('click', (e) => {
+      if (e.target === this.historyBackdrop) this.closeModal('history');
+    });
+    this.resetBackdrop.addEventListener('click', (e) => {
+      if (e.target === this.resetBackdrop) this.closeModal('reset');
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => this.handleKeyDown(e));
 
     // Listen for theme changes from parent
     window.addEventListener('message', (event) => {
@@ -66,8 +104,79 @@ class PomodoroTimer {
     });
   }
 
+  handleKeyDown(e) {
+    // Don't handle shortcuts when a modal is open or input is focused
+    const anyModalOpen = this.settingsBackdrop.classList.contains('active')
+      || this.historyBackdrop.classList.contains('active')
+      || this.resetBackdrop.classList.contains('active');
+
+    if (e.key === 'Escape' && anyModalOpen) {
+      this.closeModal('settings');
+      this.closeModal('history');
+      this.closeModal('reset');
+      return;
+    }
+
+    if (anyModalOpen) return;
+
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    switch (e.key) {
+      case ' ':
+        e.preventDefault();
+        if (this.state.isActive) {
+          this.pauseTimer();
+        } else {
+          this.startTimer();
+        }
+        break;
+      case 'r':
+      case 'R':
+        this.handleReset();
+        break;
+      case 's':
+      case 'S':
+        this.openModal('settings');
+        break;
+      case 'h':
+      case 'H':
+        this.openModal('history');
+        break;
+    }
+  }
+
+  // Modal management
+  openModal(name) {
+    const backdrop = this.getBackdrop(name);
+    if (!backdrop) return;
+    backdrop.classList.add('active');
+
+    if (name === 'settings') {
+      this.updateSettingsDisplay();
+    } else if (name === 'history') {
+      this.updateHistoryDisplay();
+    }
+
+    // Focus the close button for accessibility
+    const closeBtn = backdrop.querySelector('.modal-close');
+    if (closeBtn) setTimeout(() => closeBtn.focus(), 50);
+  }
+
+  closeModal(name) {
+    const backdrop = this.getBackdrop(name);
+    if (!backdrop) return;
+    backdrop.classList.remove('active');
+  }
+
+  getBackdrop(name) {
+    if (name === 'settings') return this.settingsBackdrop;
+    if (name === 'history') return this.historyBackdrop;
+    if (name === 'reset') return this.resetBackdrop;
+    return null;
+  }
+
   syncThemeWithParent() {
-    // Try to get theme from parent window or localStorage
     try {
       const savedTheme = localStorage.getItem('marlapps-theme');
       if (savedTheme) {
@@ -131,6 +240,7 @@ class PomodoroTimer {
       shortBreakDuration: 5,
       longBreakDuration: 15,
       autoStartBreaks: false,
+      autoStartWork: false,
       soundEnabled: true
     };
 
@@ -196,6 +306,7 @@ class PomodoroTimer {
       shortBreakDuration: this.clampValue(parseInt(document.getElementById('shortBreakDuration').value, 10), 1, 30, 5),
       longBreakDuration: this.clampValue(parseInt(document.getElementById('longBreakDuration').value, 10), 1, 60, 15),
       autoStartBreaks: document.getElementById('autoStartBreaks').checked,
+      autoStartWork: document.getElementById('autoStartWork').checked,
       soundEnabled: document.getElementById('soundEnabled').checked
     };
 
@@ -204,7 +315,7 @@ class PomodoroTimer {
 
     this.saveData();
     this.updateDisplay();
-    this.toggleSettings();
+    this.closeModal('settings');
 
     if (!this.state.isActive && this.state.timeRemaining === this.getDurationForSession() * 60) {
       this.resetTimer();
@@ -258,24 +369,8 @@ class PomodoroTimer {
     document.getElementById('shortBreakDuration').value = this.settings.shortBreakDuration;
     document.getElementById('longBreakDuration').value = this.settings.longBreakDuration;
     document.getElementById('autoStartBreaks').checked = this.settings.autoStartBreaks;
+    document.getElementById('autoStartWork').checked = this.settings.autoStartWork || false;
     document.getElementById('soundEnabled').checked = this.settings.soundEnabled;
-  }
-
-  toggleSettings() {
-    const nextState = !this.settingsPanel.classList.contains('active');
-    this.settingsPanel.classList.toggle('active', nextState);
-    if (nextState) {
-      this.historyPanel.classList.remove('active');
-    }
-  }
-
-  toggleHistory() {
-    const nextState = !this.historyPanel.classList.contains('active');
-    this.historyPanel.classList.toggle('active', nextState);
-    if (nextState) {
-      this.settingsPanel.classList.remove('active');
-      this.updateHistoryDisplay();
-    }
   }
 
   clampValue(value, min, max, fallback = min) {
@@ -297,6 +392,26 @@ class PomodoroTimer {
     }
   }
 
+  handleReset() {
+    // Show confirmation if timer is actively running or partially elapsed
+    const fullDuration = this.getDurationForSession() * 60;
+    if (this.state.isActive || this.state.timeRemaining < fullDuration) {
+      this.openModal('reset');
+    } else {
+      this.resetTimer();
+    }
+  }
+
+  skipBreak() {
+    if (this.state.sessionType === 'work') return;
+    this.pauseTimer();
+    this.state.sessionType = 'work';
+    this.state.timeRemaining = this.settings.workDuration * 60;
+    this.timerDisplay.classList.remove('break');
+    this.updateDisplay();
+    this.saveState();
+  }
+
   startTimer() {
     this.maybeRequestNotificationPermission();
     this.state.isActive = true;
@@ -309,6 +424,9 @@ class PomodoroTimer {
 
     if (this.state.sessionType !== 'work') {
       this.timerDisplay.classList.add('break');
+      this.skipBreakBtn.style.display = '';
+    } else {
+      this.skipBreakBtn.style.display = 'none';
     }
 
     clearInterval(this.timerInterval);
@@ -350,21 +468,24 @@ class PomodoroTimer {
     this.pauseTimer();
     this.state.timeRemaining = this.getDurationForSession() * 60;
     this.state.targetEndAt = null;
+    this.skipBreakBtn.style.display = 'none';
     this.updateDisplay();
     this.saveState();
   }
 
   completeSession() {
     this.pauseTimer();
-    this.showBrowserNotification();
     this.playNotification();
+    this.showBrowserNotification();
 
-    if (this.state.sessionType === 'work') {
-      // Work session completed
+    const completedType = this.state.sessionType;
+
+    if (completedType === 'work') {
       this.recordPomodoroCompletion();
       this.state.totalWorkSessions += 1;
+      this.showCompletionFlash('Work session complete!');
 
-      if (this.state.totalWorkSessions % 4 === 0) {
+      if (this.state.totalWorkSessions % this.getTargetPomodoros() === 0) {
         this.state.sessionType = 'longBreak';
       } else {
         this.state.sessionType = 'shortBreak';
@@ -372,24 +493,45 @@ class PomodoroTimer {
       const target = this.getTargetPomodoros();
       this.state.pomodoroCount = (this.state.pomodoroCount % target) + 1;
     } else {
-      // Break completed, back to work
+      this.showCompletionFlash('Break complete! Time to focus.');
       this.state.sessionType = 'work';
     }
 
     this.state.timeRemaining = this.getDurationForSession() * 60;
     this.timerDisplay.classList.remove('break');
+    this.skipBreakBtn.style.display = 'none';
 
     if (this.state.sessionType !== 'work') {
       this.timerDisplay.classList.add('break');
+      this.skipBreakBtn.style.display = '';
     }
 
     this.updateDisplay();
     this.saveState();
 
-    // Auto-start break if enabled
+    // Auto-start next session if enabled
     if (this.settings.autoStartBreaks && this.state.sessionType !== 'work') {
-      setTimeout(() => this.startTimer(), 1000);
+      setTimeout(() => this.startTimer(), 1500);
+    } else if (this.settings.autoStartWork && this.state.sessionType === 'work') {
+      setTimeout(() => this.startTimer(), 1500);
     }
+  }
+
+  showCompletionFlash(message) {
+    if (this.completionTimeout) {
+      clearTimeout(this.completionTimeout);
+    }
+    this.completionFlash.classList.remove('active');
+    this.completionText.textContent = message;
+
+    // Force reflow to restart animation
+    void this.completionFlash.offsetWidth;
+    this.completionFlash.classList.add('active');
+
+    this.completionTimeout = setTimeout(() => {
+      this.completionFlash.classList.remove('active');
+      this.completionTimeout = null;
+    }, 2200);
   }
 
   updateDisplay() {
@@ -404,12 +546,49 @@ class PomodoroTimer {
     };
     this.sessionTypeEl.textContent = sessionNames[this.state.sessionType];
 
-    const target = this.getTargetPomodoros();
-    const currentPomodoro = this.clampValue(this.state.pomodoroCount, 1, target, 1);
-    this.pomodoroCountEl.textContent = `Pomodoro ${currentPomodoro} of ${target}`;
+    // Update progress ring
+    this.updateProgressRing();
+
+    // Update pomodoro dots
+    this.updatePomodoroDots();
+
+    // Update skip break button visibility
+    if (this.state.sessionType !== 'work') {
+      this.skipBreakBtn.style.display = '';
+    } else if (!this.state.isActive) {
+      this.skipBreakBtn.style.display = 'none';
+    }
 
     // Update page title
     document.title = `${this.timerEl.textContent} - ${sessionNames[this.state.sessionType]}`;
+  }
+
+  updateProgressRing() {
+    const totalDuration = this.getDurationForSession() * 60;
+    const elapsed = totalDuration - this.state.timeRemaining;
+    const progress = totalDuration > 0 ? elapsed / totalDuration : 0;
+    const offset = this.ringCircumference * (1 - progress);
+    this.progressRing.style.strokeDashoffset = offset;
+  }
+
+  updatePomodoroDots() {
+    const target = this.getTargetPomodoros();
+    const currentPomodoro = this.clampValue(this.state.pomodoroCount, 1, target, 1);
+
+    let html = '';
+    for (let i = 1; i <= target; i++) {
+      let cls = 'pomodoro-dot';
+      if (i < currentPomodoro) {
+        cls += ' completed';
+      } else if (i === currentPomodoro && this.state.sessionType === 'work') {
+        cls += ' current';
+      } else if (i === currentPomodoro && this.state.sessionType !== 'work') {
+        // Just completed this one, show as completed during break
+        cls += ' completed';
+      }
+      html += `<span class="${cls}" aria-label="Pomodoro ${i}${i < currentPomodoro ? ' completed' : i === currentPomodoro ? ' current' : ''}"></span>`;
+    }
+    this.pomodoroDotsEl.innerHTML = html;
   }
 
   hasActiveBackgroundWork() {
@@ -453,9 +632,31 @@ class PomodoroTimer {
 
   recordPomodoroCompletion() {
     const today = this.getDateKey();
-    this.history[today] = (this.history[today] || 0) + 1;
+    if (!this.history[today] || typeof this.history[today] === 'number') {
+      // Migrate old count-only format to new format
+      const oldCount = (typeof this.history[today] === 'number') ? this.history[today] : 0;
+      this.history[today] = {
+        count: oldCount,
+        timestamps: []
+      };
+    }
+    this.history[today].count += 1;
+    this.history[today].timestamps.push(Date.now());
     this.saveData();
     this.updateHistoryDisplay();
+  }
+
+  getHistoryCount(dateKey) {
+    const entry = this.history[dateKey];
+    if (!entry) return 0;
+    if (typeof entry === 'number') return entry;
+    return entry.count || 0;
+  }
+
+  getHistoryTimestamps(dateKey) {
+    const entry = this.history[dateKey];
+    if (!entry || typeof entry === 'number') return [];
+    return entry.timestamps || [];
   }
 
   updateHistoryDisplay() {
@@ -466,7 +667,7 @@ class PomodoroTimer {
     }
 
     const selectedDate = this.historyDateInput.value;
-    const completed = this.history[selectedDate] || 0;
+    const completed = this.getHistoryCount(selectedDate);
     this.historyCountEl.textContent = `${completed} pomodoro${completed === 1 ? '' : 's'} completed`;
     this.renderHistoryList(selectedDate);
   }
@@ -483,39 +684,47 @@ class PomodoroTimer {
       return;
     }
 
-    this.historyListEl.innerHTML = entries.map(([date, count]) => `
+    this.historyListEl.innerHTML = entries.map(([date, data]) => {
+      const count = typeof data === 'number' ? data : data.count || 0;
+      return `
       <div class="history-row${date === selectedDate ? ' active' : ''}">
         <span>${this.formatHistoryDate(date)}</span>
         <span>${count}</span>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   }
 
   playNotification() {
     if (!this.settings.soundEnabled) return;
 
-    // Create a simple beep sound using Web Audio API
+    // Multi-tone ascending chime using Web Audio API
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+      const tones = [523, 659, 784]; // C5, E5, G5 - major chord
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
+      tones.forEach((freq, i) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
 
-      oscillator.frequency.value = 800;
-      oscillator.type = 'sine';
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
 
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        oscillator.frequency.value = freq;
+        oscillator.type = 'sine';
 
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
+        const startTime = audioContext.currentTime + (i * 0.18);
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.25, startTime + 0.04);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.45);
 
-      // Clean up AudioContext after sound plays
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.45);
+      });
+
+      // Clean up AudioContext after all tones play
       setTimeout(() => {
         audioContext.close().catch(() => {});
-      }, 600);
+      }, 1200);
     } catch (e) {
       // Audio notification not available - fail silently
     }
@@ -535,9 +744,9 @@ class PomodoroTimer {
     if (Notification.permission !== 'granted') return;
 
     const sessionNames = {
-      work: 'Work session complete',
-      shortBreak: 'Short break complete',
-      longBreak: 'Long break complete'
+      work: 'Work session complete! Time for a break.',
+      shortBreak: 'Short break over. Ready to focus!',
+      longBreak: 'Long break over. Ready to focus!'
     };
 
     try {

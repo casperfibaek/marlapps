@@ -11,26 +11,46 @@
 </head>
 <body>
   <div class="app-container">
-    <main class="pomodoro-main">
-      <div class="timer-display" id="timerDisplay">
-        <div class="session-type" id="sessionType">Work Session</div>
-        <div class="timer" id="timer">25:00</div>
-        <div class="pomodoro-count" id="pomodoroCount">Pomodoro 1 of 4</div>
+    <main class="pomodoro-main" role="main" aria-label="Pomodoro Timer">
+      <div class="timer-display" id="timerDisplay" role="timer" aria-live="polite">
+        <svg class="progress-ring" viewBox="0 0 320 320" aria-hidden="true">
+          <circle class="progress-ring-bg" cx="160" cy="160" r="152" />
+          <circle class="progress-ring-fill" id="progressRing" cx="160" cy="160" r="152" />
+        </svg>
+        <div class="timer-content">
+          <div class="session-type" id="sessionType">Work Session</div>
+          <div class="timer" id="timer">25:00</div>
+          <div class="pomodoro-dots" id="pomodoroDots" aria-label="Pomodoro progress"></div>
+        </div>
       </div>
 
-      <div class="controls">
-        <button class="btn btn-primary" id="startBtn">Start</button>
-        <button class="btn btn-secondary" id="pauseBtn" disabled>Pause</button>
-        <button class="btn btn-secondary" id="resetBtn">Reset</button>
+      <div class="controls" role="group" aria-label="Timer controls">
+        <button class="btn btn-primary" id="startBtn" aria-label="Start timer">Start</button>
+        <button class="btn btn-secondary" id="pauseBtn" disabled aria-label="Pause timer">Pause</button>
+        <button class="btn btn-secondary" id="resetBtn" aria-label="Reset timer">Reset</button>
+        <button class="btn btn-skip" id="skipBreakBtn" aria-label="Skip break" style="display:none">Skip Break</button>
       </div>
 
       <div class="quick-actions">
-        <button class="btn-settings" id="settingsToggle">Settings</button>
-        <button class="btn-settings" id="historyToggle">History</button>
+        <button class="btn-settings" id="settingsToggle" aria-label="Open settings">Settings</button>
+        <button class="btn-settings" id="historyToggle" aria-label="Open history">History</button>
       </div>
 
-      <div class="settings-panel" id="settingsPanel">
+      <div class="completion-flash" id="completionFlash" aria-live="assertive">
+        <div class="completion-icon" aria-hidden="true"></div>
+        <div class="completion-text" id="completionText"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsBackdrop" role="dialog" aria-modal="true" aria-label="Timer Settings">
+    <div class="modal-content" id="settingsPanel">
+      <div class="modal-header">
         <h3>Timer Settings</h3>
+        <button class="modal-close" id="settingsClose" aria-label="Close settings">&times;</button>
+      </div>
+      <div class="modal-body">
         <div class="setting-item">
           <label for="targetPomodoros">Pomodoros to complete</label>
           <input type="number" id="targetPomodoros" min="1" max="30" value="4">
@@ -55,15 +75,29 @@
         </div>
         <div class="setting-item checkbox">
           <label>
+            <input type="checkbox" id="autoStartWork">
+            <span>Auto-start work sessions</span>
+          </label>
+        </div>
+        <div class="setting-item checkbox">
+          <label>
             <input type="checkbox" id="soundEnabled" checked>
             <span>Enable sound notifications</span>
           </label>
         </div>
         <button class="btn btn-primary" id="saveSettings">Save Settings</button>
       </div>
+    </div>
+  </div>
 
-      <div class="history-panel" id="historyPanel">
+  <!-- History Modal -->
+  <div class="modal-backdrop" id="historyBackdrop" role="dialog" aria-modal="true" aria-label="Pomodoro History">
+    <div class="modal-content" id="historyPanel">
+      <div class="modal-header">
         <h3>Pomodoro History</h3>
+        <button class="modal-close" id="historyClose" aria-label="Close history">&times;</button>
+      </div>
+      <div class="modal-body">
         <div class="setting-item">
           <label for="historyDate">Date</label>
           <input type="date" id="historyDate">
@@ -71,7 +105,24 @@
         <div class="history-count" id="historyCount">0 pomodoros completed</div>
         <div class="history-list" id="historyList"></div>
       </div>
-    </main>
+    </div>
+  </div>
+
+  <!-- Reset Confirmation Modal -->
+  <div class="modal-backdrop" id="resetBackdrop" role="alertdialog" aria-modal="true" aria-label="Confirm reset">
+    <div class="modal-content modal-confirm">
+      <div class="modal-header">
+        <h3>Reset Timer?</h3>
+        <button class="modal-close" id="resetClose" aria-label="Cancel reset">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>You have an active session in progress. Are you sure you want to reset?</p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="resetCancel">Cancel</button>
+          <button class="btn btn-danger" id="resetConfirm">Reset</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
