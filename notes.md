@@ -1,6 +1,5 @@
-Drag and drop is slow on mobile, as in the icons drags slowly. Please make it feel fast like on desktop.
-
-The hamburger button disappears when inside apps.
+Drag and drop is still slow on mobile (dragging items don't snappily follow along with youre finger - it properly has to do with animation?)
+The hamburger button still disappears when inside apps on mobile.
 
 Change 'all apps' to 'all'
 

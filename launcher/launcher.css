@@ -1116,6 +1116,9 @@ body {
     padding: var(--space-2) var(--space-4);
     padding-top: calc(var(--space-2) + env(safe-area-inset-top, 0));
     flex-shrink: 0;
+    position: relative;
+    z-index: 16;
+    background: var(--window-fill);
   }
 
   /* Keep scrollable content clear of bottom safe area */
@@ -1148,11 +1151,13 @@ body {
     padding: var(--space-4);
   }
 
-  /* App workspace takes full screen on mobile */
+  /* App workspace fills remaining space below mobile header */
   .app-workspace {
-    position: fixed;
-    inset: 0;
-    z-index: 15;
+    position: static;
+    inset: auto;
+    flex: 1;
+    min-height: 0;
+    z-index: auto;
   }
 
   /* Ensure iframe fills workspace on mobile */

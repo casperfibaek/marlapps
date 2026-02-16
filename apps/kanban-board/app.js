@@ -1026,8 +1026,6 @@ class KanbanBoard {
   }
 
   showDropIndicator(columnId, clientY, draggedTaskId = null) {
-    this.removeDropIndicator();
-
     const columnEl = document.querySelector(`.column[data-column-id="${columnId}"]`);
     if (!columnEl) return;
 
@@ -1037,38 +1035,46 @@ class KanbanBoard {
     const taskEls = Array.from(tasksContainer.querySelectorAll('.task[data-task-id]'))
       .filter(el => el.dataset.taskId !== draggedTaskId);
 
-    const indicator = document.createElement('div');
-    indicator.className = 'drop-indicator';
-
-    if (taskEls.length === 0) {
-      tasksContainer.prepend(indicator);
-      return;
+    // Reuse existing indicator or create one
+    let indicator = this._dropIndicator;
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'drop-indicator';
+      this._dropIndicator = indicator;
     }
 
-    let inserted = false;
-    for (const taskEl of taskEls) {
-      const rect = taskEl.getBoundingClientRect();
-      const midpoint = rect.top + rect.height / 2;
-      if (clientY < midpoint) {
-        tasksContainer.insertBefore(indicator, taskEl);
-        inserted = true;
-        break;
+    // Determine target position
+    let targetRef = null; // insert before this element, or null = prepend/append
+    if (taskEls.length === 0) {
+      targetRef = tasksContainer.firstChild;
+    } else {
+      for (const taskEl of taskEls) {
+        const rect = taskEl.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+        if (clientY < midpoint) {
+          targetRef = taskEl;
+          break;
+        }
       }
     }
 
-    if (!inserted) {
-      // After the last task
-      const lastTask = taskEls[taskEls.length - 1];
-      if (lastTask.nextSibling) {
-        tasksContainer.insertBefore(indicator, lastTask.nextSibling);
-      } else {
+    // Only move if position actually changed
+    if (targetRef) {
+      if (indicator.nextSibling !== targetRef || indicator.parentNode !== tasksContainer) {
+        tasksContainer.insertBefore(indicator, targetRef);
+      }
+    } else {
+      if (indicator.parentNode !== tasksContainer || indicator.nextSibling !== null) {
         tasksContainer.appendChild(indicator);
       }
     }
   }
 
   removeDropIndicator() {
-    document.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+    if (this._dropIndicator && this._dropIndicator.parentNode) {
+      this._dropIndicator.remove();
+    }
+    this._dropIndicator = null;
   }
 
   generateId() {
