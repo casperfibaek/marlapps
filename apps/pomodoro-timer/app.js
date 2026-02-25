@@ -275,7 +275,8 @@ class PomodoroTimer {
       totalWorkSessions: 0,
       isActive: false,
       lastUpdated: Date.now(),
-      targetEndAt: null
+      targetEndAt: null,
+      sessionStarted: false
     };
 
     const data = this.loadData();
@@ -477,7 +478,9 @@ class PomodoroTimer {
     }
     this.state.timeRemaining = this.getDurationForSession() * 60;
     this.state.targetEndAt = null;
+    this.state.sessionStarted = false;
     this.timerDisplay.classList.toggle('break', this.state.sessionType !== 'work');
+    this.updateControlsVisibility();
     this.updateDisplay();
     this.saveState();
   }
@@ -485,6 +488,7 @@ class PomodoroTimer {
   startTimer() {
     this.maybeRequestNotificationPermission();
     this.state.isActive = true;
+    this.state.sessionStarted = true;
     if (!this.state.targetEndAt) {
       this.state.targetEndAt = Date.now() + (this.state.timeRemaining * 1000);
     }
@@ -541,6 +545,7 @@ class PomodoroTimer {
     this.state.sessionType = 'work';
     this.state.timeRemaining = this.getDurationForSession() * 60;
     this.state.targetEndAt = null;
+    this.state.sessionStarted = false;
     this.timerDisplay.classList.remove('break');
     this.updateControlsVisibility();
     this.updateDisplay();
@@ -575,6 +580,7 @@ class PomodoroTimer {
     }
 
     this.state.timeRemaining = this.getDurationForSession() * 60;
+    this.state.sessionStarted = false;
     this.timerDisplay.classList.toggle('break', this.state.sessionType !== 'work');
     this.updateControlsVisibility();
 
@@ -658,7 +664,7 @@ class PomodoroTimer {
 
   updateControlsVisibility() {
     const fullDuration = this.getDurationForSession() * 60;
-    const isPausedMidSession = !this.state.isActive && this.state.timeRemaining < fullDuration;
+    const isPausedMidSession = !this.state.isActive && (this.state.timeRemaining < fullDuration || this.state.sessionStarted);
 
     if (this.state.isActive || isPausedMidSession) {
       this.controlsIdle.style.display = 'none';
