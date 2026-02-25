@@ -198,17 +198,6 @@ body {
   color: var(--app-text-primary);
 }
 
-.editor-toolbar select {
-  height: 32px;
-  border: 1px solid var(--app-border-light);
-  border-radius: var(--radius-sm);
-  background: var(--app-bg-secondary);
-  color: var(--app-text-secondary);
-  font-size: 0.8rem;
-  padding: 0 var(--space-2);
-  cursor: pointer;
-}
-
 .toolbar-divider {
   width: 1px;
   height: 20px;

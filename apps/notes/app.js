@@ -99,14 +99,7 @@ class NotesApp {
     this.editorToolbar.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-cmd]');
       if (btn) {
-        execToolbarCommand(btn.dataset.cmd);
-      }
-    });
-
-    // Toolbar select (heading)
-    this.editorToolbar.addEventListener('change', (e) => {
-      if (e.target.dataset.cmd === 'formatBlock') {
-        execToolbarCommand('formatBlock', e.target.value);
+        execToolbarCommand(btn.dataset.cmd, btn.dataset.value);
       }
     });
 

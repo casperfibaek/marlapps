@@ -23,6 +23,14 @@ function handleInput() {
 }
 
 function handleKeydown(e) {
+  // Insert tab character
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    document.execCommand('insertText', false, '\t');
+    if (onInputCallback) onInputCallback();
+    return;
+  }
+
   if (e.key === 'Enter' && !e.shiftKey) {
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
