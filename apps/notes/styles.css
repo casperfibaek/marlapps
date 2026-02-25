@@ -84,6 +84,269 @@ body {
   background: var(--app-accent-hover);
 }
 
+/* Notebooks section */
+.notebooks-section {
+  border-bottom: 1px solid var(--app-border-color);
+  flex-shrink: 0;
+}
+
+.notebooks-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-text-tertiary);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.notebooks-toggle:hover {
+  color: var(--app-text-secondary);
+}
+
+.notebooks-toggle-icon {
+  font-size: 0.65rem;
+  transition: transform var(--transition-fast);
+}
+
+.notebooks-section.collapsed .notebooks-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.notebooks-section.collapsed .notebooks-list {
+  display: none;
+}
+
+.notebooks-list {
+  padding-bottom: var(--space-1);
+}
+
+.notebook-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--app-text-secondary);
+  transition: background var(--transition-fast);
+  min-height: 36px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.notebook-item:hover {
+  background: var(--app-bg-hover);
+  color: var(--app-text-primary);
+}
+
+.notebook-item.active {
+  background: var(--app-accent-light);
+  color: var(--app-accent);
+  font-weight: 600;
+}
+
+.notebook-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.notebook-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notebook-count {
+  font-size: 0.75rem;
+  color: var(--app-text-tertiary);
+  background: var(--app-bg-hover);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.notebook-item.active .notebook-count {
+  background: var(--app-accent);
+  color: #fff;
+}
+
+.notebook-create {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--app-text-tertiary);
+  transition: color var(--transition-fast);
+}
+
+.notebook-create:hover {
+  color: var(--app-accent);
+}
+
+.notebook-create-icon {
+  font-size: 1rem;
+  font-weight: 600;
+  width: 20px;
+  text-align: center;
+}
+
+.notebook-create-input,
+.notebook-rename-input {
+  flex: 1;
+  border: 1px solid var(--app-accent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.85rem;
+  background: var(--app-bg-primary);
+  color: var(--app-text-primary);
+  outline: none;
+  margin: var(--space-1) var(--space-4);
+}
+
+/* Drag-and-drop states */
+.notebook-drop-target {
+  background: var(--app-accent-light) !important;
+  outline: 2px dashed var(--app-accent);
+  outline-offset: -2px;
+}
+
+.note-item.dragging {
+  opacity: 0.4;
+}
+
+.note-item[draggable="true"] {
+  cursor: grab;
+}
+
+.note-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Notebook badge on note items */
+.note-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.note-item-header .note-item-title {
+  margin-bottom: 0;
+}
+
+.note-item-notebook {
+  font-size: 0.7rem;
+  color: var(--app-accent);
+  background: var(--app-accent-light);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Context menu */
+.context-menu {
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--app-shadow-md);
+  z-index: 1000;
+  min-width: 140px;
+  overflow: hidden;
+}
+
+.context-menu-item {
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--app-text-primary);
+  transition: background var(--transition-fast);
+}
+
+.context-menu-item:hover {
+  background: var(--app-bg-hover);
+}
+
+.context-menu-item--danger {
+  color: var(--app-danger, #e74c3c);
+}
+
+.context-menu-item--danger:hover {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+/* Move-to-notebook modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--app-bg-secondary);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  width: 100%;
+  max-width: 400px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.modal-header {
+  padding: var(--space-4);
+  font-weight: 600;
+  font-size: 1rem;
+  border-bottom: 1px solid var(--app-border-light);
+  color: var(--app-text-primary);
+}
+
+.modal-option {
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--app-text-primary);
+  transition: background var(--transition-fast);
+  min-height: var(--touch-target-min);
+  display: flex;
+  align-items: center;
+}
+
+.modal-option:hover,
+.modal-option:active {
+  background: var(--app-bg-hover);
+}
+
+.modal-cancel {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-top: 1px solid var(--app-border-light);
+  background: var(--app-bg-tertiary);
+  color: var(--app-text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: var(--touch-target-min);
+}
+
+.modal-cancel:hover {
+  background: var(--app-bg-hover);
+}
+
 /* Note items in sidebar */
 .note-item {
   padding: var(--space-4);

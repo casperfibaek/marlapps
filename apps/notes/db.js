@@ -1,8 +1,9 @@
 // db.js - IndexedDB wrapper for Notes app
 
 const DB_NAME = 'marlapps-notes';
-const STORE_NAME = 'notes';
-const DB_VERSION = 1;
+const NOTES_STORE = 'notes';
+const NOTEBOOKS_STORE = 'notebooks';
+const DB_VERSION = 2;
 
 let dbInstance = null;
 
@@ -14,9 +15,23 @@ export async function openDB() {
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      const oldVersion = event.oldVersion;
+
+      // V1: Create notes store
+      if (oldVersion < 1) {
+        const store = db.createObjectStore(NOTES_STORE, { keyPath: 'id' });
         store.createIndex('updatedAt', 'updatedAt', { unique: false });
+      }
+
+      // V2: Add notebooks store + notebookId index on notes
+      if (oldVersion < 2) {
+        const notebooksStore = db.createObjectStore(NOTEBOOKS_STORE, { keyPath: 'id' });
+        notebooksStore.createIndex('order', 'order', { unique: false });
+
+        // Add notebookId index to existing notes store
+        const tx = event.target.transaction;
+        const notesStore = tx.objectStore(NOTES_STORE);
+        notesStore.createIndex('notebookId', 'notebookId', { unique: false });
       }
     };
 
@@ -44,8 +59,8 @@ async function migrateFromLocalStorage(db) {
 
   // Only migrate if the IndexedDB store is empty
   const count = await new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(NOTES_STORE, 'readonly');
+    const store = tx.objectStore(NOTES_STORE);
     const req = store.count();
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -53,8 +68,8 @@ async function migrateFromLocalStorage(db) {
 
   if (count > 0) return;
 
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
+  const tx = db.transaction(NOTES_STORE, 'readwrite');
+  const store = tx.objectStore(NOTES_STORE);
 
   for (const note of oldNotes) {
     if (!note || typeof note !== 'object' || typeof note.id !== 'string') continue;
@@ -75,7 +90,8 @@ async function migrateFromLocalStorage(db) {
       contentPlainText,
       createdAt,
       updatedAt,
-      version: 1
+      version: 1,
+      notebookId: null
     });
   }
 
@@ -88,15 +104,16 @@ async function migrateFromLocalStorage(db) {
   });
 }
 
+// ── Notes CRUD ──
+
 export async function getAllNotes() {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(NOTES_STORE, 'readonly');
+    const store = tx.objectStore(NOTES_STORE);
     const index = store.index('updatedAt');
     const request = index.getAll();
     request.onsuccess = () => {
-      // Sort descending by updatedAt
       const notes = request.result.sort((a, b) => b.updatedAt - a.updatedAt);
       resolve(notes);
     };
@@ -107,8 +124,8 @@ export async function getAllNotes() {
 export async function getNote(id) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(NOTES_STORE, 'readonly');
+    const store = tx.objectStore(NOTES_STORE);
     const request = store.get(id);
     request.onsuccess = () => resolve(request.result || null);
     request.onerror = () => reject(request.error);
@@ -118,8 +135,8 @@ export async function getNote(id) {
 export async function saveNote(note) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(NOTES_STORE, 'readwrite');
+    const store = tx.objectStore(NOTES_STORE);
     store.put(note);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
@@ -129,8 +146,8 @@ export async function saveNote(note) {
 export async function deleteNote(id) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(NOTES_STORE, 'readwrite');
+    const store = tx.objectStore(NOTES_STORE);
     store.delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
@@ -140,9 +157,62 @@ export async function deleteNote(id) {
 export async function clearAllNotes() {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(NOTES_STORE, 'readwrite');
+    const store = tx.objectStore(NOTES_STORE);
     store.clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ── Notebooks CRUD ──
+
+export async function getAllNotebooks() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(NOTEBOOKS_STORE, 'readonly');
+    const store = tx.objectStore(NOTEBOOKS_STORE);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const notebooks = request.result.sort((a, b) => a.order - b.order);
+      resolve(notebooks);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function saveNotebook(notebook) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(NOTEBOOKS_STORE, 'readwrite');
+    const store = tx.objectStore(NOTEBOOKS_STORE);
+    store.put(notebook);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function deleteNotebook(id) {
+  const db = await openDB();
+
+  // Move all notes in this notebook to uncategorized, then delete notebook
+  const tx = db.transaction([NOTES_STORE, NOTEBOOKS_STORE], 'readwrite');
+  const notesStore = tx.objectStore(NOTES_STORE);
+  const notebooksStore = tx.objectStore(NOTEBOOKS_STORE);
+
+  // Get all notes with this notebookId and set to null
+  const index = notesStore.index('notebookId');
+  const request = index.getAll(id);
+
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => {
+      for (const note of request.result) {
+        note.notebookId = null;
+        notesStore.put(note);
+      }
+      notebooksStore.delete(id);
+    };
+    request.onerror = () => reject(request.error);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

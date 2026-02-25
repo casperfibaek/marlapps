@@ -17,6 +17,13 @@
           <div class="search-container">
             <input type="text" id="searchInput" placeholder="Search notes..." autocomplete="off">
           </div>
+          <div class="notebooks-section" id="notebooksSection">
+            <div class="notebooks-toggle" id="notebooksToggle">
+              <span class="notebooks-toggle-icon">&#9662;</span>
+              <span class="notebooks-toggle-label">Notebooks</span>
+            </div>
+            <div class="notebooks-list" id="notebooksList"></div>
+          </div>
           <div class="notes-list" id="notesList"></div>
           <button id="newNoteBtn" class="fab-new-note" title="New note (Ctrl+N)">+</button>
         </aside>
@@ -72,6 +79,14 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <div class="modal-overlay" id="moveToNotebookModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">Move to Notebook</div>
+      <div class="modal-list" id="moveToNotebookList"></div>
+      <button class="modal-cancel" id="moveToNotebookCancel">Cancel</button>
+    </div>
   </div>
 
   <script type="module" src="app.js"></script>
