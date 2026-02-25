@@ -28,8 +28,7 @@
 .board {
   display: flex;
   gap: var(--space-6);
-  flex: 1;
-  min-height: 500px;
+  align-items: flex-start;
 }
 
 /* Column */
@@ -102,7 +101,7 @@
 }
 
 .column-body {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -254,8 +253,40 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.4;
+  position: relative;
 }
 
+/* Tooltip on hover with 0.5s delay */
+.task-title[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: var(--app-bg-secondary);
+  color: var(--app-text-primary);
+  border: 1px solid var(--app-border-color);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: normal;
+  word-break: break-word;
+  max-width: 260px;
+  min-width: 100px;
+  box-shadow: var(--app-shadow-md);
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  transition-delay: 0s;
+}
+
+.task-title[data-tooltip]:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.5s;
+}
 
 .task-delete {
   background: transparent;
@@ -505,6 +536,128 @@
     var(--app-danger) 52%,
     transparent 52%
   );
+}
+
+/* Column Edit Dropdown */
+.column-edit-wrapper {
+  position: relative;
+}
+
+.column-edit-btn {
+  background: transparent;
+  border: none;
+  color: var(--app-text-tertiary);
+  cursor: pointer;
+  padding: var(--space-1);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-normal);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.column-edit-btn:hover {
+  background: var(--app-bg-hover);
+  color: var(--app-accent);
+}
+
+.column-edit-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--space-1);
+  background: var(--app-bg-primary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--app-shadow-lg);
+  z-index: 100;
+  min-width: 200px;
+  padding: var(--space-2);
+}
+
+.column-edit-dropdown.open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.column-edit-dropdown .edit-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--app-text-primary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background-color var(--transition-normal);
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.column-edit-dropdown .edit-option:hover {
+  background: var(--app-bg-hover);
+}
+
+.column-edit-dropdown .edit-option.danger {
+  color: var(--app-danger);
+}
+
+.column-edit-dropdown .edit-option.danger:hover {
+  background: var(--app-danger-light);
+}
+
+.column-edit-dropdown .edit-separator {
+  height: 1px;
+  background: var(--app-border-color);
+  margin: var(--space-1) 0;
+}
+
+.column-rename-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--app-accent);
+  border-radius: var(--radius-sm);
+  background: var(--app-bg-primary);
+  color: var(--app-text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  outline: none;
+}
+
+/* Add Column Button */
+.add-column-btn {
+  min-width: 280px;
+  background: transparent;
+  border: 2px dashed var(--app-border-color);
+  border-radius: var(--radius-md);
+  color: var(--app-text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  transition: all var(--transition-normal);
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.add-column-btn:hover {
+  background: var(--app-accent);
+  color: white;
+  border-color: var(--app-accent);
 }
 
 /* Toast/Snackbar */

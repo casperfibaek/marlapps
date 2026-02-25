@@ -210,9 +210,9 @@ class KanbanBoard {
       this.hasUnsavedChanges = true;
     });
 
-    // Close filter dropdowns when clicking outside
+    // Close filter and edit dropdowns when clicking outside
     document.addEventListener('click', () => {
-      document.querySelectorAll('.column-filter-dropdown.open').forEach(d => {
+      document.querySelectorAll('.column-filter-dropdown.open, .column-edit-dropdown.open').forEach(d => {
         d.classList.remove('open');
       });
     });
@@ -236,6 +236,18 @@ class KanbanBoard {
       const columnEl = this.createColumnElement(column);
       this.boardEl.appendChild(columnEl);
     });
+
+    // Add "Add Column" button at the end
+    const addColumnBtn = document.createElement('button');
+    addColumnBtn.className = 'add-column-btn';
+    addColumnBtn.textContent = '+ Add Column';
+    addColumnBtn.addEventListener('click', () => {
+      const name = prompt('Column name:');
+      if (name && name.trim()) {
+        this.addColumn(name.trim());
+      }
+    });
+    this.boardEl.appendChild(addColumnBtn);
 
     if (main) {
       main.scrollLeft = scrollLeft;
@@ -289,6 +301,17 @@ class KanbanBoard {
                 </button>
               </div>
             </div>
+            <div class="column-edit-wrapper">
+              <button class="column-edit-btn" aria-label="Edit column">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+              </button>
+              <div class="column-edit-dropdown">
+                <button class="edit-option" data-action="rename">Rename column</button>
+                <div class="edit-separator"></div>
+                <button class="edit-option danger" data-action="clear-tasks">Delete all tasks</button>
+                <button class="edit-option danger" data-action="delete-column">Delete column</button>
+              </div>
+            </div>
             <button class="column-collapse-btn" data-column-id="${column.id}" aria-label="Toggle collapse">
               <span class="collapse-icon">${column.collapsed ? '▶' : '▼'}</span>
             </button>
@@ -327,7 +350,7 @@ class KanbanBoard {
     const columnHeader = columnEl.querySelector('.column-header');
     columnHeader.addEventListener('click', (e) => {
       if (!column.collapsed) return;
-      if (e.target.closest('.column-collapse-btn') || e.target.closest('.column-filter-btn') || e.target.closest('.column-filter-dropdown')) return;
+      if (e.target.closest('.column-collapse-btn') || e.target.closest('.column-filter-btn') || e.target.closest('.column-filter-dropdown') || e.target.closest('.column-edit-wrapper')) return;
       this.toggleColumnCollapse(column.id);
     });
 
@@ -349,6 +372,34 @@ class KanbanBoard {
         e.stopPropagation();
         this.setColorFilter(column.id, option.dataset.color);
         filterDropdown.classList.remove('open');
+      });
+    });
+
+    // Edit dropdown toggle
+    const editBtn = columnEl.querySelector('.column-edit-btn');
+    const editDropdown = columnEl.querySelector('.column-edit-dropdown');
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.column-edit-dropdown.open, .column-filter-dropdown.open').forEach(d => {
+        if (d !== editDropdown) d.classList.remove('open');
+      });
+      editDropdown.classList.toggle('open');
+    });
+
+    // Edit dropdown actions
+    editDropdown.querySelectorAll('.edit-option').forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = option.dataset.action;
+        editDropdown.classList.remove('open');
+
+        if (action === 'rename') {
+          this.startColumnRename(columnEl, column.id);
+        } else if (action === 'clear-tasks') {
+          this.clearColumnTasks(column.id);
+        } else if (action === 'delete-column') {
+          this.deleteColumn(column.id);
+        }
       });
     });
 
@@ -977,6 +1028,90 @@ class KanbanBoard {
 
     column.collapsed = !column.collapsed;
 
+    this.saveBoard();
+    this.renderBoard();
+  }
+
+  startColumnRename(columnEl, columnId) {
+    const titleEl = columnEl.querySelector('.column-title');
+    const currentName = titleEl.textContent;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'column-rename-input';
+    input.value = currentName;
+
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const commit = () => {
+      const newName = input.value.trim();
+      if (newName && newName !== currentName) {
+        this.renameColumn(columnId, newName);
+      } else {
+        this.renderBoard();
+      }
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      } else if (e.key === 'Escape') {
+        this.renderBoard();
+      }
+    });
+
+    input.addEventListener('blur', commit);
+  }
+
+  renameColumn(columnId, newName) {
+    const column = this.board.columns.find(c => c.id === columnId);
+    if (!column) return;
+
+    column.name = newName;
+    this.saveBoard();
+    this.renderBoard();
+  }
+
+  clearColumnTasks(columnId) {
+    const column = this.board.columns.find(c => c.id === columnId);
+    if (!column) return;
+    if (column.tasks.length === 0) return;
+
+    if (!confirm(`Delete all ${column.tasks.length} tasks in "${column.name}"?`)) return;
+
+    column.tasks = [];
+    this.saveBoard();
+    this.renderBoard();
+  }
+
+  deleteColumn(columnId) {
+    const column = this.board.columns.find(c => c.id === columnId);
+    if (!column) return;
+
+    const taskCount = column.tasks.length;
+    const msg = taskCount > 0
+      ? `Delete column "${column.name}" and its ${taskCount} task${taskCount > 1 ? 's' : ''}?`
+      : `Delete column "${column.name}"?`;
+
+    if (!confirm(msg)) return;
+
+    this.board.columns = this.board.columns.filter(c => c.id !== columnId);
+    this.saveBoard();
+    this.renderBoard();
+  }
+
+  addColumn(name) {
+    const id = 'col-' + this.generateId();
+    this.board.columns.push({
+      id,
+      name,
+      tasks: [],
+      collapsed: false,
+      colorFilter: null
+    });
     this.saveBoard();
     this.renderBoard();
   }
