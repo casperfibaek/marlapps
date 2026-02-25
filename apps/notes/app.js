@@ -1,16 +1,37 @@
-// Notes App - Simple note-taking application
+// Notes App - Rich text note-taking with IndexedDB storage
+
+import { openDB, getAllNotes, saveNote, deleteNote } from './db.js';
+import { initEditor, execToolbarCommand, getContentHtml, getContentPlainText, setContent, focus } from './editor.js';
+import { createAutosaver } from './autosave.js';
+import { searchNotes } from './search.js';
+import { downloadMarkdown } from './export-markdown.js';
 
 class NotesApp {
   constructor() {
-    this.notes = this.loadNotes();
+    this.notes = [];
     this.currentNoteId = null;
-    this.autoSaveTimeout = null;
     this.searchTimeout = null;
+    this.autosaver = null;
 
     this.initElements();
     this.initEventListeners();
     this.syncThemeWithParent();
-    this.renderNotesList();
+  }
+
+  async init() {
+    await openDB();
+    this.notes = await getAllNotes();
+
+    this.autosaver = createAutosaver(
+      () => this.saveCurrentNote(),
+      (status) => this.updateSaveStatus(status)
+    );
+
+    initEditor(this.editorContent, {
+      onInput: () => this.autosaver.scheduleSave()
+    });
+
+    this.renderNotesList(this.notes);
   }
 
   initElements() {
@@ -19,12 +40,15 @@ class NotesApp {
     this.emptyState = document.getElementById('emptyState');
     this.noteEditor = document.getElementById('noteEditor');
     this.noteTitleInput = document.getElementById('noteTitleInput');
-    this.noteContentInput = document.getElementById('noteContentInput');
+    this.editorContent = document.getElementById('editorContent');
     this.noteDate = document.getElementById('noteDate');
+    this.saveStatus = document.getElementById('saveStatus');
     this.deleteNoteBtn = document.getElementById('deleteNoteBtn');
+    this.exportMdBtn = document.getElementById('exportMdBtn');
     this.searchInput = document.getElementById('searchInput');
     this.notesLayout = document.querySelector('.notes-layout');
     this.mobileBackBtn = document.getElementById('mobileBackBtn');
+    this.editorToolbar = document.getElementById('editorToolbar');
   }
 
   syncThemeWithParent() {
@@ -37,7 +61,6 @@ class NotesApp {
       // Fail silently
     }
 
-    // Listen for theme changes from parent
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'theme-change') {
         this.applyTheme(event.data.theme);
@@ -52,23 +75,40 @@ class NotesApp {
   initEventListeners() {
     this.newNoteBtn.addEventListener('click', () => this.createNewNote());
     this.deleteNoteBtn.addEventListener('click', () => this.deleteCurrentNote());
+    this.exportMdBtn.addEventListener('click', () => this.exportCurrentNote());
 
-    // Mobile back button
     if (this.mobileBackBtn) {
       this.mobileBackBtn.addEventListener('click', () => this.closeMobileEditor());
     }
 
-    // Debounced search for better performance
+    // Debounced search
     this.searchInput.addEventListener('input', (e) => {
       clearTimeout(this.searchTimeout);
       this.searchTimeout = setTimeout(() => {
-        this.searchNotes(e.target.value);
+        const filtered = searchNotes(this.notes, e.target.value);
+        this.renderNotesList(filtered);
       }, 150);
     });
 
-    // Auto-save on title/content change
-    this.noteTitleInput.addEventListener('input', () => this.scheduleAutoSave());
-    this.noteContentInput.addEventListener('input', () => this.scheduleAutoSave());
+    // Auto-save on title change
+    this.noteTitleInput.addEventListener('input', () => {
+      if (this.autosaver) this.autosaver.scheduleSave();
+    });
+
+    // Toolbar buttons
+    this.editorToolbar.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-cmd]');
+      if (btn) {
+        execToolbarCommand(btn.dataset.cmd);
+      }
+    });
+
+    // Toolbar select (heading)
+    this.editorToolbar.addEventListener('change', (e) => {
+      if (e.target.dataset.cmd === 'formatBlock') {
+        execToolbarCommand('formatBlock', e.target.value);
+      }
+    });
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
@@ -78,65 +118,41 @@ class NotesApp {
       }
     });
 
-    // Force-save before iframe is destroyed
-    window.addEventListener('beforeunload', () => {
-      if (this.autoSaveTimeout) {
-        clearTimeout(this.autoSaveTimeout);
-        this.saveCurrentNote();
-      }
-    });
-
-    window.addEventListener('pagehide', () => {
-      if (this.autoSaveTimeout) {
-        clearTimeout(this.autoSaveTimeout);
-        this.saveCurrentNote();
-      }
-    });
-  }
-
-  loadNotes() {
-    const saved = localStorage.getItem('marlapps-notes');
-    if (!saved) return [];
-
-    try {
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-
-      return parsed
-        .map(note => {
-          if (!note || typeof note !== 'object') return null;
-          if (typeof note.id !== 'string') return null;
-
-          return {
-            id: note.id,
-            title: typeof note.title === 'string' ? note.title : 'Untitled Note',
-            content: typeof note.content === 'string' ? note.content : '',
-            createdAt: typeof note.createdAt === 'string' ? note.createdAt : new Date().toISOString(),
-            updatedAt: typeof note.updatedAt === 'string' ? note.updatedAt : new Date().toISOString()
-          };
-        })
-        .filter(Boolean);
-    } catch {
-      return [];
-    }
-  }
-
-  saveNotes() {
-    localStorage.setItem('marlapps-notes', JSON.stringify(this.notes));
-  }
-
-  createNewNote() {
-    const note = {
-      id: Date.now().toString(),
-      title: 'Untitled Note',
-      content: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    // Flush saves on visibility/unload
+    const flushAndSave = () => {
+      if (this.autosaver) this.autosaver.flushSave();
     };
 
-    this.notes.unshift(note);
-    this.saveNotes();
-    this.renderNotesList();
+    window.addEventListener('beforeunload', flushAndSave);
+    window.addEventListener('pagehide', flushAndSave);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) flushAndSave();
+    });
+
+    // Flush on editor blur
+    this.editorContent.addEventListener('blur', () => {
+      if (this.autosaver) this.autosaver.flushSave();
+    });
+  }
+
+  async createNewNote() {
+    // Flush current note before creating new
+    if (this.autosaver) await this.autosaver.flushSave();
+
+    const now = Date.now();
+    const note = {
+      id: crypto.randomUUID(),
+      title: 'Untitled Note',
+      contentHtml: '<p><br></p>',
+      contentPlainText: '',
+      createdAt: now,
+      updatedAt: now,
+      version: 1
+    };
+
+    await saveNote(note);
+    this.notes = await getAllNotes();
+    this.renderNotesList(this.notes);
     this.openNote(note.id);
   }
 
@@ -144,18 +160,24 @@ class NotesApp {
     return window.innerWidth <= 768;
   }
 
-  openNote(noteId) {
+  async openNote(noteId) {
+    // Flush current note before switching
+    if (this.autosaver) {
+      await this.autosaver.flushSave();
+      this.autosaver.reset();
+    }
+
     this.currentNoteId = noteId;
     const note = this.notes.find(n => n.id === noteId);
-
     if (!note) return;
 
     this.emptyState.style.display = 'none';
     this.noteEditor.style.display = 'flex';
 
     this.noteTitleInput.value = note.title;
-    this.noteContentInput.value = note.content;
+    setContent(note.contentHtml);
     this.updateNoteDate(note.updatedAt);
+    this.updateSaveStatus('saved');
 
     // Update active state in list
     document.querySelectorAll('.note-item').forEach(item => {
@@ -167,54 +189,48 @@ class NotesApp {
       this.notesLayout.classList.add('mobile-editing');
     }
 
-    this.noteContentInput.focus();
+    focus();
   }
 
-  closeMobileEditor() {
-    if (this.autoSaveTimeout) {
-      clearTimeout(this.autoSaveTimeout);
-      this.saveCurrentNote();
-    }
+  async closeMobileEditor() {
+    if (this.autosaver) await this.autosaver.flushSave();
     if (this.notesLayout) {
       this.notesLayout.classList.remove('mobile-editing');
     }
   }
 
-  scheduleAutoSave() {
-    clearTimeout(this.autoSaveTimeout);
-    this.autoSaveTimeout = setTimeout(() => {
-      this.saveCurrentNote();
-    }, 500);
-  }
-
-  saveCurrentNote() {
+  async saveCurrentNote() {
     if (!this.currentNoteId) return;
 
     const note = this.notes.find(n => n.id === this.currentNoteId);
     if (!note) return;
 
     note.title = this.noteTitleInput.value.trim() || 'Untitled Note';
-    note.content = this.noteContentInput.value;
-    note.updatedAt = new Date().toISOString();
+    note.contentHtml = getContentHtml();
+    note.contentPlainText = getContentPlainText();
+    note.updatedAt = Date.now();
+    note.version = (note.version || 0) + 1;
 
-    this.saveNotes();
+    await saveNote(note);
     this.updateNoteDate(note.updatedAt);
-    this.renderNotesList();
+
+    // Re-sort notes list
+    this.notes.sort((a, b) => b.updatedAt - a.updatedAt);
+    this.renderNotesList(this.notes);
 
     // Restore active state after re-render
     const activeItem = document.querySelector(`[data-note-id="${this.currentNoteId}"]`);
-    if (activeItem) {
-      activeItem.classList.add('active');
-    }
+    if (activeItem) activeItem.classList.add('active');
   }
 
-  deleteCurrentNote() {
+  async deleteCurrentNote() {
     if (!this.currentNoteId) return;
-
     if (!confirm('Are you sure you want to delete this note?')) return;
 
+    if (this.autosaver) this.autosaver.reset();
+
+    await deleteNote(this.currentNoteId);
     this.notes = this.notes.filter(n => n.id !== this.currentNoteId);
-    this.saveNotes();
     this.currentNoteId = null;
 
     this.noteEditor.style.display = 'none';
@@ -222,33 +238,28 @@ class NotesApp {
     if (this.notesLayout) {
       this.notesLayout.classList.remove('mobile-editing');
     }
-    this.renderNotesList();
+    this.renderNotesList(this.notes);
   }
 
-  searchNotes(query) {
-    const searchTerm = query.toLowerCase().trim();
-    const items = document.querySelectorAll('.note-item');
-
-    items.forEach(item => {
-      const title = item.querySelector('.note-item-title').textContent.toLowerCase();
-      const preview = item.querySelector('.note-item-preview').textContent.toLowerCase();
-      const matches = title.includes(searchTerm) || preview.includes(searchTerm);
-      item.style.display = matches ? 'block' : 'none';
-    });
+  exportCurrentNote() {
+    if (!this.currentNoteId) return;
+    const note = this.notes.find(n => n.id === this.currentNoteId);
+    if (!note) return;
+    downloadMarkdown(note.title, note.contentHtml);
   }
 
-  renderNotesList() {
-    if (this.notes.length === 0) {
+  renderNotesList(notes) {
+    if (!notes || notes.length === 0) {
       this.notesList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--app-text-tertiary);">No notes yet</div>';
       return;
     }
 
-    this.notesList.innerHTML = this.notes.map(note => {
-      const preview = note.content.substring(0, 60) || 'No content';
+    this.notesList.innerHTML = notes.map(note => {
+      const preview = (note.contentPlainText || '').substring(0, 60) || 'No content';
       const date = this.formatDate(note.updatedAt);
 
       return `
-        <div class="note-item" data-note-id="${note.id}">
+        <div class="note-item${note.id === this.currentNoteId ? ' active' : ''}" data-note-id="${note.id}">
           <div class="note-item-title">${this.escapeHtml(note.title)}</div>
           <div class="note-item-preview">${this.escapeHtml(preview)}</div>
           <div class="note-item-date">${date}</div>
@@ -256,20 +267,31 @@ class NotesApp {
       `;
     }).join('');
 
-    // Add click listeners
-    document.querySelectorAll('.note-item').forEach(item => {
+    this.notesList.querySelectorAll('.note-item').forEach(item => {
       item.addEventListener('click', () => {
         this.openNote(item.dataset.noteId);
       });
     });
   }
 
-  updateNoteDate(dateString) {
-    this.noteDate.textContent = `Last edited: ${this.formatDate(dateString)}`;
+  updateSaveStatus(status) {
+    if (!this.saveStatus) return;
+    const labels = {
+      saved: 'Saved',
+      unsaved: 'Unsaved changes',
+      saving: 'Saving…',
+      failed: 'Save failed'
+    };
+    this.saveStatus.textContent = labels[status] || '';
+    this.saveStatus.className = `save-status save-status--${status}`;
   }
 
-  formatDate(dateString) {
-    const date = new Date(dateString);
+  updateNoteDate(timestamp) {
+    this.noteDate.textContent = this.formatDate(timestamp);
+  }
+
+  formatDate(timestamp) {
+    const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
@@ -291,7 +313,7 @@ class NotesApp {
   }
 }
 
-// Initialize the app
 document.addEventListener('DOMContentLoaded', () => {
-  new NotesApp();
+  const app = new NotesApp();
+  app.init();
 });

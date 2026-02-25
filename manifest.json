@@ -101,7 +101,7 @@
     {
       "name": "Notes",
       "short_name": "Notes",
-      "description": "Quick note-taking with search",
+      "description": "Rich-text note-taking with search and Markdown export",
       "url": "./index.html?app=notes",
       "icons": [
         {

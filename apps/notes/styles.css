@@ -19,24 +19,6 @@ body {
   height: 100vh;
 }
 
-.app-header {
-  background: var(--app-bg-secondary);
-  padding: var(--space-4) var(--space-6);
-  box-shadow: var(--app-shadow-sm);
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--app-border-color);
-}
-
-.app-title {
-  font-size: 1.3rem;
-  flex: 1;
-  font-weight: 600;
-  color: var(--app-accent);
-}
-
 .notes-main {
   flex: 1;
   overflow: hidden;
@@ -48,7 +30,9 @@ body {
   height: 100%;
 }
 
+/* Sidebar */
 .notes-sidebar {
+  position: relative;
   background: var(--app-bg-secondary);
   border-right: 1px solid var(--app-border-color);
   display: flex;
@@ -68,9 +52,39 @@ body {
 .notes-list {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   -webkit-overflow-scrolling: touch;
 }
 
+/* FAB new note button */
+.fab-new-note {
+  position: absolute;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--app-accent);
+  color: #fff;
+  border: none;
+  font-size: 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--app-shadow-md);
+  transition: background var(--transition-fast);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+}
+
+.fab-new-note:hover {
+  background: var(--app-accent-hover);
+}
+
+/* Note items in sidebar */
 .note-item {
   padding: var(--space-4);
   border-bottom: 1px solid var(--app-border-light);
@@ -114,6 +128,7 @@ body {
   margin-top: var(--space-1);
 }
 
+/* Editor container */
 .note-editor-container {
   display: flex;
   flex-direction: column;
@@ -132,6 +147,7 @@ body {
   border: 1px solid var(--app-border-color);
 }
 
+/* Title input */
 .note-title-input {
   padding: var(--space-6);
   border: none;
@@ -151,40 +167,201 @@ body {
   outline: none;
 }
 
-.note-content-input {
+/* Editor toolbar */
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--app-border-light);
+  background: var(--app-bg-tertiary);
+  flex-wrap: wrap;
+}
+
+.editor-toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--app-text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.editor-toolbar button:hover {
+  background: var(--app-bg-hover);
+  color: var(--app-text-primary);
+}
+
+.editor-toolbar select {
+  height: 32px;
+  border: 1px solid var(--app-border-light);
+  border-radius: var(--radius-sm);
+  background: var(--app-bg-secondary);
+  color: var(--app-text-secondary);
+  font-size: 0.8rem;
+  padding: 0 var(--space-2);
+  cursor: pointer;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--app-border-light);
+  margin: 0 var(--space-1);
+}
+
+/* Contenteditable editor */
+.editor-content {
   flex: 1;
   padding: var(--space-6);
-  border: none;
   font-size: 1rem;
   line-height: 1.7;
-  resize: none;
-  font-family: inherit;
+  overflow-y: auto;
+  min-height: 0;
   background: var(--app-bg-secondary);
   color: var(--app-text-primary);
-  -webkit-tap-highlight-color: transparent;
   -webkit-overflow-scrolling: touch;
-}
-
-.note-content-input::placeholder {
-  color: var(--app-text-tertiary);
-}
-
-.note-content-input:focus {
   outline: none;
 }
 
+.editor-content:empty::before {
+  content: attr(placeholder);
+  color: var(--app-text-tertiary);
+  pointer-events: none;
+}
+
+.editor-content h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0.5em 0 0.3em;
+  color: var(--app-text-primary);
+}
+
+.editor-content h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.3em;
+  color: var(--app-text-primary);
+}
+
+.editor-content h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.3em;
+  color: var(--app-text-primary);
+}
+
+.editor-content p {
+  margin: 0.3em 0;
+}
+
+.editor-content ul,
+.editor-content ol {
+  margin: 0.3em 0;
+  padding-left: 1.5em;
+}
+
+.editor-content li {
+  margin: 0.15em 0;
+}
+
+.editor-content hr {
+  border: none;
+  border-top: 2px solid var(--app-border-color);
+  margin: 1em 0;
+}
+
+/* Footer */
 .note-footer {
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-6);
   border-top: 1px solid var(--app-border-light);
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: var(--app-bg-tertiary);
+  flex-shrink: 0;
+}
+
+.note-footer-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+}
+
+.save-status {
+  color: var(--app-text-secondary);
+}
+
+.save-status--saved {
+  color: var(--app-success, #27ae60);
+}
+
+.save-status--unsaved {
+  color: var(--app-accent);
+}
+
+.save-status--saving {
+  color: var(--app-text-tertiary);
+}
+
+.save-status--failed {
+  color: var(--app-danger, #e74c3c);
+}
+
+.footer-dot {
+  color: var(--app-text-tertiary);
 }
 
 .note-date {
   font-size: 0.85rem;
   color: var(--app-text-secondary);
+}
+
+.note-footer-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.8rem;
+}
+
+.btn-secondary {
+  background: var(--app-bg-hover);
+  color: var(--app-text-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background: var(--app-bg-secondary);
+  color: var(--app-text-primary);
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--app-text-tertiary);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-4);
 }
 
 /* Mobile back button (hidden on desktop) */
@@ -207,7 +384,6 @@ body {
     display: none;
   }
 
-  /* When a note is open on mobile: hide sidebar, show editor */
   .notes-layout.mobile-editing .notes-sidebar {
     display: none;
   }
@@ -237,5 +413,15 @@ body {
 
   .mobile-back-btn:active {
     opacity: 0.7;
+  }
+
+  .editor-toolbar {
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .note-footer {
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
   }
 }

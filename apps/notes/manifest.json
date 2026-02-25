@@ -2,12 +2,12 @@
   "id": "notes",
   "name": "Notes",
   "shortName": "Notes",
-  "description": "Quick note-taking with search",
+  "description": "Rich-text note-taking with search and Markdown export",
   "icon": "icon.svg",
   "entry": "index.html",
   "categories": ["Notes"],
   "order": 4,
-  "storageKeys": ["marlapps-notes"],
-  "version": "1.0.0",
+  "storageKeys": ["marlapps-notes-idb"],
+  "version": "2.0.0",
   "author": "MarlApps"
 }

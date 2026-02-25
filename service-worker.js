@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v99';
+const CACHE_NAME = 'marlapps-v101';
 const urlsToCache = [
   './',
   './index.html',
@@ -53,9 +53,14 @@ const urlsToCache = [
   './apps/todo-list/styles.css',
 
   './apps/notes/app.js',
+  './apps/notes/autosave.js',
+  './apps/notes/db.js',
+  './apps/notes/editor.js',
+  './apps/notes/export-markdown.js',
   './apps/notes/icon.svg',
   './apps/notes/index.html',
   './apps/notes/manifest.json',
+  './apps/notes/search.js',
   './apps/notes/styles.css',
 
   './apps/habits/app.js',
