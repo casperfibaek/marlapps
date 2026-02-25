@@ -28,7 +28,7 @@
         <!-- Idle state buttons -->
         <div class="controls-idle" id="controlsIdle">
           <button class="btn btn-start-work" id="startWorkBtn" aria-label="Start work session">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M12 5v13"/><path d="M9.5 9h5"/><path d="M10 13h4"/></svg>
             Start Work
           </button>
           <button class="btn btn-start-break" id="startBreakBtn" aria-label="Start break">
@@ -36,19 +36,16 @@
             Start Break
           </button>
         </div>
-        <!-- Active state buttons -->
+        <!-- Active state buttons (icon-only) -->
         <div class="controls-active" id="controlsActive" style="display:none">
           <button class="btn btn-icon btn-skip-action" id="skipBtn" aria-label="Skip to next session">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
-            Skip
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
           </button>
           <button class="btn btn-icon btn-pause-action" id="pauseBtn" aria-label="Pause timer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-            Pause
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
           </button>
           <button class="btn btn-icon btn-stop-action" id="stopBtn" aria-label="Stop timer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>
-            Stop
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>
           </button>
         </div>
       </div>
@@ -74,10 +71,6 @@
       </div>
       <div class="modal-body">
         <div class="setting-item">
-          <label for="targetPomodoros">Pomodoros to complete</label>
-          <input type="number" id="targetPomodoros" min="1" max="30" value="4">
-        </div>
-        <div class="setting-item">
           <label for="workDuration">Work Duration (minutes)</label>
           <input type="number" id="workDuration" min="1" max="60" value="25">
         </div>
@@ -88,6 +81,10 @@
         <div class="setting-item">
           <label for="longBreakDuration">Long Break (minutes)</label>
           <input type="number" id="longBreakDuration" min="1" max="60" value="15">
+        </div>
+        <div class="setting-item">
+          <label for="longBreakInterval">Long break every X pomodoros</label>
+          <input type="number" id="longBreakInterval" min="1" max="30" value="4">
         </div>
         <div class="setting-item checkbox">
           <label>

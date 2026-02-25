@@ -66,7 +66,7 @@ class PomodoroTimer {
     this.startWorkBtn.addEventListener('click', () => this.startWorkSession());
     this.startBreakBtn.addEventListener('click', () => this.startBreakSession());
     this.skipBtn.addEventListener('click', () => this.skipToNext());
-    this.pauseBtn.addEventListener('click', () => this.pauseTimer());
+    this.pauseBtn.addEventListener('click', () => this.togglePause());
     this.stopBtn.addEventListener('click', () => this.handleReset());
     this.settingsToggle.addEventListener('click', () => this.openModal('settings'));
     this.historyToggle.addEventListener('click', () => this.openModal('history'));
@@ -242,7 +242,7 @@ class PomodoroTimer {
 
   loadSettings() {
     const defaultSettings = {
-      targetPomodoros: 4,
+      longBreakInterval: 4,
       workDuration: 25,
       shortBreakDuration: 5,
       longBreakDuration: 15,
@@ -256,7 +256,15 @@ class PomodoroTimer {
       return defaultSettings;
     }
 
-    return { ...defaultSettings, ...data.settings };
+    const settings = { ...defaultSettings, ...data.settings };
+
+    // Migrate old targetPomodoros setting
+    if (!('longBreakInterval' in data.settings) && 'targetPomodoros' in data.settings) {
+      settings.longBreakInterval = data.settings.targetPomodoros;
+    }
+    delete settings.targetPomodoros;
+
+    return settings;
   }
 
   loadState() {
@@ -305,12 +313,17 @@ class PomodoroTimer {
     const today = this.getDateKey();
     const lastDate = this.state.lastSessionDate;
 
-    if (lastDate && lastDate !== today && !this.state.isActive) {
+    if (lastDate && lastDate !== today) {
+      // Always reset the long break counters on a new day
       this.state.pomodoroCount = 1;
       this.state.totalWorkSessions = 0;
-      this.state.sessionType = 'work';
-      this.state.timeRemaining = this.settings.workDuration * 60;
-      this.state.targetEndAt = null;
+
+      // Only reset the session state if not actively running
+      if (!this.state.isActive) {
+        this.state.sessionType = 'work';
+        this.state.timeRemaining = this.settings.workDuration * 60;
+        this.state.targetEndAt = null;
+      }
     }
 
     this.state.lastSessionDate = today;
@@ -323,7 +336,7 @@ class PomodoroTimer {
 
   saveSettings() {
     this.settings = {
-      targetPomodoros: this.clampValue(parseInt(document.getElementById('targetPomodoros').value, 10), 1, 30, 4),
+      longBreakInterval: this.clampValue(parseInt(document.getElementById('longBreakInterval').value, 10), 1, 30, 4),
       workDuration: this.clampValue(parseInt(document.getElementById('workDuration').value, 10), 1, 60, 25),
       shortBreakDuration: this.clampValue(parseInt(document.getElementById('shortBreakDuration').value, 10), 1, 30, 5),
       longBreakDuration: this.clampValue(parseInt(document.getElementById('longBreakDuration').value, 10), 1, 60, 15),
@@ -332,8 +345,8 @@ class PomodoroTimer {
       soundEnabled: document.getElementById('soundEnabled').checked
     };
 
-    const target = this.getTargetPomodoros();
-    this.state.pomodoroCount = ((Math.max(1, this.state.pomodoroCount) - 1) % target) + 1;
+    const interval = this.getLongBreakInterval();
+    this.state.pomodoroCount = ((Math.max(1, this.state.pomodoroCount) - 1) % interval) + 1;
 
     this.saveData();
     this.updateDisplay();
@@ -386,7 +399,7 @@ class PomodoroTimer {
   }
 
   updateSettingsDisplay() {
-    document.getElementById('targetPomodoros').value = this.getTargetPomodoros();
+    document.getElementById('longBreakInterval').value = this.getLongBreakInterval();
     document.getElementById('workDuration').value = this.settings.workDuration;
     document.getElementById('shortBreakDuration').value = this.settings.shortBreakDuration;
     document.getElementById('longBreakDuration').value = this.settings.longBreakDuration;
@@ -400,8 +413,8 @@ class PomodoroTimer {
     return Math.min(max, Math.max(min, safe));
   }
 
-  getTargetPomodoros() {
-    return this.clampValue(this.settings.targetPomodoros, 1, 30, 4);
+  getLongBreakInterval() {
+    return this.clampValue(this.settings.longBreakInterval, 1, 30, 4);
   }
 
   getDurationForSession() {
@@ -437,7 +450,7 @@ class PomodoroTimer {
   startBreakSession() {
     if (this.state.sessionType === 'work') {
       // Determine break type based on completed pomodoros
-      if (this.state.totalWorkSessions > 0 && this.state.totalWorkSessions % this.getTargetPomodoros() === 0) {
+      if (this.state.totalWorkSessions > 0 && this.state.totalWorkSessions % this.getLongBreakInterval() === 0) {
         this.state.sessionType = 'longBreak';
       } else {
         this.state.sessionType = 'shortBreak';
@@ -453,7 +466,7 @@ class PomodoroTimer {
     this.pauseTimer();
     if (this.state.sessionType === 'work') {
       // Skip work -> go to break
-      if (this.state.totalWorkSessions > 0 && this.state.totalWorkSessions % this.getTargetPomodoros() === 0) {
+      if (this.state.totalWorkSessions > 0 && this.state.totalWorkSessions % this.getLongBreakInterval() === 0) {
         this.state.sessionType = 'longBreak';
       } else {
         this.state.sessionType = 'shortBreak';
@@ -539,6 +552,9 @@ class PomodoroTimer {
     this.playNotification();
     this.showBrowserNotification();
 
+    // Reset counters if day changed while app was open
+    this.checkDailyReset();
+
     const completedType = this.state.sessionType;
 
     if (completedType === 'work') {
@@ -546,13 +562,13 @@ class PomodoroTimer {
       this.state.totalWorkSessions += 1;
       this.showCompletionFlash('Work session complete!');
 
-      if (this.state.totalWorkSessions % this.getTargetPomodoros() === 0) {
+      if (this.state.totalWorkSessions % this.getLongBreakInterval() === 0) {
         this.state.sessionType = 'longBreak';
       } else {
         this.state.sessionType = 'shortBreak';
       }
-      const target = this.getTargetPomodoros();
-      this.state.pomodoroCount = (this.state.pomodoroCount % target) + 1;
+      const interval = this.getLongBreakInterval();
+      this.state.pomodoroCount = (this.state.pomodoroCount % interval) + 1;
     } else {
       this.showCompletionFlash('Break complete! Time to focus.');
       this.state.sessionType = 'work';
@@ -621,7 +637,7 @@ class PomodoroTimer {
   }
 
   updatePomodoroDots() {
-    const target = this.getTargetPomodoros();
+    const target = this.getLongBreakInterval();
     const currentPomodoro = this.clampValue(this.state.pomodoroCount, 1, target, 1);
 
     let html = '';
@@ -641,12 +657,38 @@ class PomodoroTimer {
   }
 
   updateControlsVisibility() {
-    if (this.state.isActive) {
+    const fullDuration = this.getDurationForSession() * 60;
+    const isPausedMidSession = !this.state.isActive && this.state.timeRemaining < fullDuration;
+
+    if (this.state.isActive || isPausedMidSession) {
       this.controlsIdle.style.display = 'none';
       this.controlsActive.style.display = '';
     } else {
       this.controlsIdle.style.display = '';
       this.controlsActive.style.display = 'none';
+    }
+
+    // Toggle Pause/Resume button appearance
+    this.updatePauseButton();
+  }
+
+  updatePauseButton() {
+    if (this.state.isActive) {
+      this.pauseBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+      this.pauseBtn.setAttribute('aria-label', 'Pause timer');
+      this.pauseBtn.className = 'btn btn-icon btn-pause-action';
+    } else {
+      this.pauseBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+      this.pauseBtn.setAttribute('aria-label', 'Resume timer');
+      this.pauseBtn.className = 'btn btn-icon btn-resume-action';
+    }
+  }
+
+  togglePause() {
+    if (this.state.isActive) {
+      this.pauseTimer();
+    } else {
+      this.startTimer();
     }
   }
 

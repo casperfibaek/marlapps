@@ -193,14 +193,18 @@ body {
   background: var(--app-accent-hover);
 }
 
-/* Active state buttons */
+/* Active state buttons (icon-only) */
 .btn-icon {
   border: none;
-  font-weight: 600;
-  border-radius: var(--radius-md);
+  border-radius: 50%;
   cursor: pointer;
   transition: all var(--transition-normal);
-  min-height: var(--input-min-height);
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
@@ -221,6 +225,15 @@ body {
 
 .btn-pause-action:hover {
   filter: brightness(0.9);
+}
+
+.btn-resume-action {
+  background: var(--app-success);
+  color: white;
+}
+
+.btn-resume-action:hover {
+  background: var(--app-success-hover);
 }
 
 .btn-stop-action {
@@ -555,15 +568,13 @@ body {
     font-size: 1rem;
   }
 
-  .controls-idle,
-  .controls-active {
+  .controls-idle {
     flex-direction: column;
     width: 100%;
     max-width: 240px;
   }
 
-  .controls-idle .btn,
-  .controls-active .btn {
+  .controls-idle .btn {
     width: 100%;
     justify-content: center;
   }
