@@ -25,19 +25,31 @@ export async function openDB() {
 
       // V2: Add notebooks store + notebookId index on notes
       if (oldVersion < 2) {
-        const notebooksStore = db.createObjectStore(NOTEBOOKS_STORE, { keyPath: 'id' });
-        notebooksStore.createIndex('order', 'order', { unique: false });
+        if (!db.objectStoreNames.contains(NOTEBOOKS_STORE)) {
+          const notebooksStore = db.createObjectStore(NOTEBOOKS_STORE, { keyPath: 'id' });
+          notebooksStore.createIndex('order', 'order', { unique: false });
+        }
 
         // Add notebookId index to existing notes store
         const tx = event.target.transaction;
         const notesStore = tx.objectStore(NOTES_STORE);
-        notesStore.createIndex('notebookId', 'notebookId', { unique: false });
+        if (!notesStore.indexNames.contains('notebookId')) {
+          notesStore.createIndex('notebookId', 'notebookId', { unique: false });
+        }
       }
+    };
+
+    request.onblocked = () => {
+      console.warn('Notes DB upgrade blocked - close other tabs with this app');
     };
 
     request.onsuccess = async (event) => {
       dbInstance = event.target.result;
-      await migrateFromLocalStorage(dbInstance);
+      try {
+        await migrateFromLocalStorage(dbInstance);
+      } catch (err) {
+        console.error('Migration failed:', err);
+      }
       resolve(dbInstance);
     };
 

@@ -29,9 +29,15 @@ class NotesApp {
   }
 
   async init() {
-    await openDB();
-    this.notes = await getAllNotes();
-    this.notebooks = await getAllNotebooks();
+    try {
+      await openDB();
+      this.notes = await getAllNotes();
+      this.notebooks = await getAllNotebooks();
+    } catch (err) {
+      console.error('Notes DB init failed:', err);
+      this.notes = [];
+      this.notebooks = [];
+    }
 
     this.autosaver = createAutosaver(
       () => this.saveCurrentNote(),
@@ -305,7 +311,10 @@ class NotesApp {
     createBtn.replaceWith(input);
     input.focus();
 
+    let finished = false;
     const finish = async () => {
+      if (finished) return;
+      finished = true;
       const name = input.value.trim();
       if (name) {
         await this.createNotebook(name);
@@ -319,6 +328,7 @@ class NotesApp {
         finish();
       }
       if (e.key === 'Escape') {
+        finished = true;
         this.renderNotebooks();
       }
     });
