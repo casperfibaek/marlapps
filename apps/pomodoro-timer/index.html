@@ -25,10 +25,32 @@
       </div>
 
       <div class="controls" role="group" aria-label="Timer controls">
-        <button class="btn btn-primary" id="startBtn" aria-label="Start timer">Start</button>
-        <button class="btn btn-secondary" id="pauseBtn" disabled aria-label="Pause timer">Pause</button>
-        <button class="btn btn-secondary" id="resetBtn" aria-label="Reset timer">Reset</button>
-        <button class="btn btn-skip" id="skipBreakBtn" aria-label="Skip break" style="display:none">Skip Break</button>
+        <!-- Idle state buttons -->
+        <div class="controls-idle" id="controlsIdle">
+          <button class="btn btn-start-work" id="startWorkBtn" aria-label="Start work session">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            Start Work
+          </button>
+          <button class="btn btn-start-break" id="startBreakBtn" aria-label="Start break">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+            Start Break
+          </button>
+        </div>
+        <!-- Active state buttons -->
+        <div class="controls-active" id="controlsActive" style="display:none">
+          <button class="btn btn-icon btn-skip-action" id="skipBtn" aria-label="Skip to next session">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
+            Skip
+          </button>
+          <button class="btn btn-icon btn-pause-action" id="pauseBtn" aria-label="Pause timer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            Pause
+          </button>
+          <button class="btn btn-icon btn-stop-action" id="stopBtn" aria-label="Stop timer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>
+            Stop
+          </button>
+        </div>
       </div>
 
       <div class="quick-actions">

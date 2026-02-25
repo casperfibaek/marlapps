@@ -10,9 +10,12 @@ class PomodoroTimer {
     this.notificationPermissionRequested = false;
     this.lastReportedBackgroundActivity = null;
     this.completionTimeout = null;
+    this.lastSaveTime = 0;
 
+    this.checkDailyReset();
     this.initElements();
     this.attachEventListeners();
+    this.updateControlsVisibility();
     this.updateDisplay();
     this.updateSettingsDisplay();
     this.updateHistoryDisplay();
@@ -30,10 +33,13 @@ class PomodoroTimer {
     this.timerEl = document.getElementById('timer');
     this.sessionTypeEl = document.getElementById('sessionType');
     this.pomodoroDotsEl = document.getElementById('pomodoroDots');
-    this.startBtn = document.getElementById('startBtn');
+    this.controlsIdle = document.getElementById('controlsIdle');
+    this.controlsActive = document.getElementById('controlsActive');
+    this.startWorkBtn = document.getElementById('startWorkBtn');
+    this.startBreakBtn = document.getElementById('startBreakBtn');
+    this.skipBtn = document.getElementById('skipBtn');
     this.pauseBtn = document.getElementById('pauseBtn');
-    this.resetBtn = document.getElementById('resetBtn');
-    this.skipBreakBtn = document.getElementById('skipBreakBtn');
+    this.stopBtn = document.getElementById('stopBtn');
     this.settingsToggle = document.getElementById('settingsToggle');
     this.historyToggle = document.getElementById('historyToggle');
     this.settingsBackdrop = document.getElementById('settingsBackdrop');
@@ -57,10 +63,11 @@ class PomodoroTimer {
   }
 
   attachEventListeners() {
-    this.startBtn.addEventListener('click', () => this.startTimer());
+    this.startWorkBtn.addEventListener('click', () => this.startWorkSession());
+    this.startBreakBtn.addEventListener('click', () => this.startBreakSession());
+    this.skipBtn.addEventListener('click', () => this.skipToNext());
     this.pauseBtn.addEventListener('click', () => this.pauseTimer());
-    this.resetBtn.addEventListener('click', () => this.handleReset());
-    this.skipBreakBtn.addEventListener('click', () => this.skipBreak());
+    this.stopBtn.addEventListener('click', () => this.handleReset());
     this.settingsToggle.addEventListener('click', () => this.openModal('settings'));
     this.historyToggle.addEventListener('click', () => this.openModal('history'));
     this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
@@ -294,6 +301,21 @@ class PomodoroTimer {
     return data.history;
   }
 
+  checkDailyReset() {
+    const today = this.getDateKey();
+    const lastDate = this.state.lastSessionDate;
+
+    if (lastDate && lastDate !== today && !this.state.isActive) {
+      this.state.pomodoroCount = 1;
+      this.state.totalWorkSessions = 0;
+      this.state.sessionType = 'work';
+      this.state.timeRemaining = this.settings.workDuration * 60;
+      this.state.targetEndAt = null;
+    }
+
+    this.state.lastSessionDate = today;
+  }
+
   saveData() {
     const data = { settings: this.settings, state: this.state, history: this.history };
     localStorage.setItem('marlapps-pomodoro-timer', JSON.stringify(data));
@@ -402,12 +424,47 @@ class PomodoroTimer {
     }
   }
 
-  skipBreak() {
-    if (this.state.sessionType === 'work') return;
+  startWorkSession() {
+    if (this.state.sessionType !== 'work') {
+      this.state.sessionType = 'work';
+      this.state.timeRemaining = this.settings.workDuration * 60;
+      this.state.targetEndAt = null;
+      this.timerDisplay.classList.remove('break');
+    }
+    this.startTimer();
+  }
+
+  startBreakSession() {
+    if (this.state.sessionType === 'work') {
+      // Determine break type based on completed pomodoros
+      if (this.state.totalWorkSessions > 0 && this.state.totalWorkSessions % this.getTargetPomodoros() === 0) {
+        this.state.sessionType = 'longBreak';
+      } else {
+        this.state.sessionType = 'shortBreak';
+      }
+      this.state.timeRemaining = this.getDurationForSession() * 60;
+      this.state.targetEndAt = null;
+      this.timerDisplay.classList.add('break');
+    }
+    this.startTimer();
+  }
+
+  skipToNext() {
     this.pauseTimer();
-    this.state.sessionType = 'work';
-    this.state.timeRemaining = this.settings.workDuration * 60;
-    this.timerDisplay.classList.remove('break');
+    if (this.state.sessionType === 'work') {
+      // Skip work -> go to break
+      if (this.state.totalWorkSessions > 0 && this.state.totalWorkSessions % this.getTargetPomodoros() === 0) {
+        this.state.sessionType = 'longBreak';
+      } else {
+        this.state.sessionType = 'shortBreak';
+      }
+    } else {
+      // Skip break -> go to work
+      this.state.sessionType = 'work';
+    }
+    this.state.timeRemaining = this.getDurationForSession() * 60;
+    this.state.targetEndAt = null;
+    this.timerDisplay.classList.toggle('break', this.state.sessionType !== 'work');
     this.updateDisplay();
     this.saveState();
   }
@@ -418,16 +475,13 @@ class PomodoroTimer {
     if (!this.state.targetEndAt) {
       this.state.targetEndAt = Date.now() + (this.state.timeRemaining * 1000);
     }
-    this.startBtn.disabled = true;
-    this.pauseBtn.disabled = false;
     this.timerDisplay.classList.add('active');
 
     if (this.state.sessionType !== 'work') {
       this.timerDisplay.classList.add('break');
-      this.skipBreakBtn.style.display = '';
-    } else {
-      this.skipBreakBtn.style.display = 'none';
     }
+
+    this.updateControlsVisibility();
 
     clearInterval(this.timerInterval);
     this.timerInterval = setInterval(() => this.tickTimer(), 1000);
@@ -442,7 +496,13 @@ class PomodoroTimer {
 
     this.state.timeRemaining = Math.max(0, Math.ceil((this.state.targetEndAt - Date.now()) / 1000));
     this.updateDisplay();
-    this.saveState();
+
+    // Throttle localStorage writes to every 5 seconds (saves are also forced on pause/visibility change)
+    const now = Date.now();
+    if (now - this.lastSaveTime >= 5000) {
+      this.lastSaveTime = now;
+      this.saveState();
+    }
 
     if (this.state.timeRemaining <= 0) {
       this.completeSession();
@@ -455,9 +515,8 @@ class PomodoroTimer {
       this.state.timeRemaining = Math.max(0, Math.ceil((this.state.targetEndAt - Date.now()) / 1000));
     }
     this.state.targetEndAt = null;
-    this.startBtn.disabled = false;
-    this.pauseBtn.disabled = true;
     this.timerDisplay.classList.remove('active');
+    this.updateControlsVisibility();
 
     clearInterval(this.timerInterval);
     this.saveState();
@@ -466,9 +525,11 @@ class PomodoroTimer {
 
   resetTimer() {
     this.pauseTimer();
+    this.state.sessionType = 'work';
     this.state.timeRemaining = this.getDurationForSession() * 60;
     this.state.targetEndAt = null;
-    this.skipBreakBtn.style.display = 'none';
+    this.timerDisplay.classList.remove('break');
+    this.updateControlsVisibility();
     this.updateDisplay();
     this.saveState();
   }
@@ -498,13 +559,8 @@ class PomodoroTimer {
     }
 
     this.state.timeRemaining = this.getDurationForSession() * 60;
-    this.timerDisplay.classList.remove('break');
-    this.skipBreakBtn.style.display = 'none';
-
-    if (this.state.sessionType !== 'work') {
-      this.timerDisplay.classList.add('break');
-      this.skipBreakBtn.style.display = '';
-    }
+    this.timerDisplay.classList.toggle('break', this.state.sessionType !== 'work');
+    this.updateControlsVisibility();
 
     this.updateDisplay();
     this.saveState();
@@ -552,13 +608,6 @@ class PomodoroTimer {
     // Update pomodoro dots
     this.updatePomodoroDots();
 
-    // Update skip break button visibility
-    if (this.state.sessionType !== 'work') {
-      this.skipBreakBtn.style.display = '';
-    } else if (!this.state.isActive) {
-      this.skipBreakBtn.style.display = 'none';
-    }
-
     // Update page title
     document.title = `${this.timerEl.textContent} - ${sessionNames[this.state.sessionType]}`;
   }
@@ -589,6 +638,16 @@ class PomodoroTimer {
       html += `<span class="${cls}" aria-label="Pomodoro ${i}${i < currentPomodoro ? ' completed' : i === currentPomodoro ? ' current' : ''}"></span>`;
     }
     this.pomodoroDotsEl.innerHTML = html;
+  }
+
+  updateControlsVisibility() {
+    if (this.state.isActive) {
+      this.controlsIdle.style.display = 'none';
+      this.controlsActive.style.display = '';
+    } else {
+      this.controlsIdle.style.display = '';
+      this.controlsActive.style.display = 'none';
+    }
   }
 
   hasActiveBackgroundWork() {

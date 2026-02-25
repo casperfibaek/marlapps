@@ -78,7 +78,6 @@ body {
   stroke: var(--app-accent);
   stroke-width: 4;
   stroke-linecap: round;
-  stroke-dasharray: 955;
   stroke-dashoffset: 0;
   transition: stroke-dashoffset 1s linear, stroke var(--transition-normal);
 }
@@ -130,6 +129,12 @@ body {
 /* Controls */
 .controls {
   display: flex;
+  justify-content: center;
+}
+
+.controls-idle,
+.controls-active {
+  display: flex;
   gap: var(--space-4);
   flex-wrap: wrap;
   justify-content: center;
@@ -139,6 +144,9 @@ body {
   padding: var(--space-4) var(--space-8);
   font-size: 1.1rem;
   box-shadow: var(--app-shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .btn:not(:disabled):hover {
@@ -146,20 +154,15 @@ body {
   box-shadow: var(--app-shadow-md);
 }
 
-.btn-primary {
+.btn svg {
+  flex-shrink: 0;
+}
+
+/* Idle state buttons */
+.btn-start-work {
   background: var(--app-success);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--app-success-hover);
-}
-
-.btn-skip {
-  background: var(--app-accent);
   color: white;
   border: none;
-  padding: var(--space-4) var(--space-8);
-  font-size: 1.1rem;
   font-weight: 600;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -169,10 +172,72 @@ body {
   touch-action: manipulation;
 }
 
-.btn-skip:hover {
+.btn-start-work:hover {
+  background: var(--app-success-hover);
+}
+
+.btn-start-break {
+  background: var(--app-accent);
+  color: white;
+  border: none;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  min-height: var(--input-min-height);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.btn-start-break:hover {
   background: var(--app-accent-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--app-shadow-md);
+}
+
+/* Active state buttons */
+.btn-icon {
+  border: none;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  min-height: var(--input-min-height);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.btn-skip-action {
+  background: var(--app-accent);
+  color: white;
+}
+
+.btn-skip-action:hover {
+  background: var(--app-accent-hover);
+}
+
+.btn-pause-action {
+  background: var(--app-warning, #F39C12);
+  color: white;
+}
+
+.btn-pause-action:hover {
+  filter: brightness(0.9);
+}
+
+.btn-stop-action {
+  background: var(--app-danger);
+  color: white;
+}
+
+.btn-stop-action:hover {
+  filter: brightness(0.9);
+}
+
+.btn-primary {
+  background: var(--app-success);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--app-success-hover);
 }
 
 .btn-danger {
@@ -490,18 +555,17 @@ body {
     font-size: 1rem;
   }
 
-  .controls {
+  .controls-idle,
+  .controls-active {
     flex-direction: column;
     width: 100%;
     max-width: 240px;
   }
 
-  .btn {
+  .controls-idle .btn,
+  .controls-active .btn {
     width: 100%;
-  }
-
-  .btn-skip {
-    width: 100%;
+    justify-content: center;
   }
 
   .quick-actions {

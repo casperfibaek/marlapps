@@ -114,10 +114,6 @@
   display: none;
 }
 
-.column.collapsed {
-  /* Body is hidden via .column-body.collapsed, column keeps its width */
-}
-
 .column.collapsed .column-header {
   border-bottom: none;
   border-radius: var(--radius-md);
@@ -177,6 +173,30 @@
   background: var(--app-info-light);
 }
 
+/* Column Drag Reorder */
+.column-header[draggable="true"] {
+  cursor: grab;
+}
+
+.column-header[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.column.column-dragging {
+  opacity: 0.5;
+  transform: rotate(1deg);
+}
+
+.column-drop-indicator {
+  width: 3px;
+  min-height: 100px;
+  background: var(--app-accent);
+  border-radius: 2px;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px var(--app-accent);
+  align-self: flex-start;
+}
+
 /* Task Card */
 .task {
   background: var(--app-bg-primary);
@@ -194,11 +214,6 @@
   align-items: center;
   gap: var(--space-2);
   min-height: 56px;
-}
-
-.task:not([data-color]) {
-  border: 1px solid var(--app-border-color);
-  border-left: 1px solid var(--app-border-color);
 }
 
 .task[data-color="red"] { border-left: 4px solid #E74C3C; }

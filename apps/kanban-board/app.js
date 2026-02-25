@@ -35,8 +35,8 @@ class KanbanBoard {
     this.justDragged = false;
 
     this.initElements();
-    this.renderBoard();
     this.attachEventListeners();
+    this.renderBoard();
     this.syncThemeWithParent();
   }
 
@@ -93,9 +93,7 @@ class KanbanBoard {
         { id: 'inprogress', name: 'In Progress', tasks: [], collapsed: false },
         { id: 'done', name: 'Done', tasks: [], collapsed: false }
       ],
-      settings: {
-        activeColorFilter: null
-      }
+      settings: {}
     };
 
     const saved = localStorage.getItem('marlapps-kanban-board');
@@ -222,6 +220,21 @@ class KanbanBoard {
       this.undoDelete();
     });
 
+    // Board-level drag handlers for column reordering (attached once, not per-render)
+    this.boardEl.addEventListener('dragover', (e) => {
+      if (!this.currentDragColumnId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      this.showColumnDropIndicator(e.clientX);
+    });
+    this.boardEl.addEventListener('drop', (e) => {
+      if (!this.currentDragColumnId) return;
+      e.preventDefault();
+      const targetIndex = this.getColumnDropIndex(e.clientX, this.currentDragColumnId);
+      this.moveColumn(this.currentDragColumnId, targetIndex);
+      this.currentDragColumnId = null;
+      this.removeColumnDropIndicator();
+    });
   }
 
   renderBoard() {
@@ -340,6 +353,28 @@ class KanbanBoard {
       tasksContainer.appendChild(emptyState);
     }
 
+    // Column header drag for reordering
+    const columnHeader = columnEl.querySelector('.column-header');
+    columnHeader.draggable = true;
+    columnHeader.addEventListener('dragstart', (e) => {
+      // Don't start column drag from interactive elements
+      if (e.target.closest('.column-filter-btn, .column-filter-dropdown, .column-edit-wrapper, .column-collapse-btn, .column-rename-input')) {
+        e.preventDefault();
+        return;
+      }
+      this.currentDragColumnId = column.id;
+      columnEl.classList.add('column-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('columnId', column.id);
+      // Needed so task drop handlers can distinguish column vs task drags
+      e.stopPropagation();
+    });
+    columnHeader.addEventListener('dragend', () => {
+      columnEl.classList.remove('column-dragging');
+      this.currentDragColumnId = null;
+      this.removeColumnDropIndicator();
+    });
+
     // Collapse button event
     const collapseBtn = columnEl.querySelector('.column-collapse-btn');
     collapseBtn.addEventListener('click', () => {
@@ -347,7 +382,6 @@ class KanbanBoard {
     });
 
     // Clicking column header expands a collapsed column
-    const columnHeader = columnEl.querySelector('.column-header');
     columnHeader.addEventListener('click', (e) => {
       if (!column.collapsed) return;
       if (e.target.closest('.column-collapse-btn') || e.target.closest('.column-filter-btn') || e.target.closest('.column-filter-dropdown') || e.target.closest('.column-edit-wrapper')) return;
@@ -768,6 +802,7 @@ class KanbanBoard {
   }
 
   handleDragOver(e) {
+    if (this.currentDragColumnId) return; // Column drag handled at board level
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 
@@ -779,6 +814,7 @@ class KanbanBoard {
   }
 
   handleDragEnter(e) {
+    if (this.currentDragColumnId) return;
     e.preventDefault();
     const dropTarget = e.currentTarget;
     const depth = Number.parseInt(dropTarget.dataset.dragDepth || '0', 10) + 1;
@@ -797,6 +833,7 @@ class KanbanBoard {
   }
 
   handleDrop(e, targetColumnId) {
+    if (this.currentDragColumnId) return; // Column drag handled at board level
     e.preventDefault();
     e.stopPropagation();
 
@@ -944,15 +981,11 @@ class KanbanBoard {
     if (!confirm(`Delete task "${taskTitle}"?`)) return;
 
     // Find column and task index
-    let deletedFromColumn = null;
-    let deletedTaskIndex = -1;
+    let found = false;
 
     for (const column of this.board.columns) {
       const taskIndex = column.tasks.findIndex(t => t.id === taskId);
       if (taskIndex !== -1) {
-        deletedFromColumn = column.id;
-        deletedTaskIndex = taskIndex;
-
         // Store for undo (deep copy)
         this.deletedTaskState = {
           task: { ...column.tasks[taskIndex] },
@@ -962,11 +995,12 @@ class KanbanBoard {
 
         // Remove task
         column.tasks.splice(taskIndex, 1);
+        found = true;
         break;
       }
     }
 
-    if (!deletedFromColumn) return;
+    if (!found) return;
 
     this.saveBoard();
     this.renderBoard();
@@ -979,15 +1013,6 @@ class KanbanBoard {
     for (const column of this.board.columns) {
       const task = column.tasks.find(t => t.id === taskId);
       if (task) return task;
-    }
-    return null;
-  }
-
-  findTaskColumn(taskId) {
-    for (const column of this.board.columns) {
-      if (column.tasks.find(t => t.id === taskId)) {
-        return column.id;
-      }
     }
     return null;
   }
@@ -1218,6 +1243,91 @@ class KanbanBoard {
       this._dropIndicator.remove();
     }
     this._dropIndicator = null;
+  }
+
+  // Column reorder helpers
+  showColumnDropIndicator(clientX) {
+    let indicator = this._columnDropIndicator;
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'column-drop-indicator';
+      this._columnDropIndicator = indicator;
+    }
+
+    const columnEls = Array.from(this.boardEl.querySelectorAll('.column'))
+      .filter(el => el.dataset.columnId !== this.currentDragColumnId);
+
+    if (columnEls.length === 0) {
+      this.boardEl.insertBefore(indicator, this.boardEl.firstChild);
+      return;
+    }
+
+    // Find insert position based on horizontal midpoints
+    let targetRef = null;
+    for (const colEl of columnEls) {
+      const rect = colEl.getBoundingClientRect();
+      const midpoint = rect.left + rect.width / 2;
+      if (clientX < midpoint) {
+        targetRef = colEl;
+        break;
+      }
+    }
+
+    if (targetRef) {
+      if (indicator.nextElementSibling !== targetRef || indicator.parentNode !== this.boardEl) {
+        this.boardEl.insertBefore(indicator, targetRef);
+      }
+    } else {
+      // After all columns, but before the add-column button
+      const addBtn = this.boardEl.querySelector('.add-column-btn');
+      if (addBtn && (indicator.nextElementSibling !== addBtn || indicator.parentNode !== this.boardEl)) {
+        this.boardEl.insertBefore(indicator, addBtn);
+      }
+    }
+  }
+
+  removeColumnDropIndicator() {
+    if (this._columnDropIndicator && this._columnDropIndicator.parentNode) {
+      this._columnDropIndicator.remove();
+    }
+    this._columnDropIndicator = null;
+  }
+
+  getColumnDropIndex(clientX, draggedColumnId) {
+    const columnEls = Array.from(this.boardEl.querySelectorAll('.column'))
+      .filter(el => el.dataset.columnId !== draggedColumnId);
+
+    for (let i = 0; i < columnEls.length; i++) {
+      const rect = columnEls[i].getBoundingClientRect();
+      const midpoint = rect.left + rect.width / 2;
+      if (clientX < midpoint) {
+        // Find the actual index in board.columns for this column
+        const targetColId = columnEls[i].dataset.columnId;
+        const targetIdx = this.board.columns.findIndex(c => c.id === targetColId);
+        return targetIdx;
+      }
+    }
+
+    return this.board.columns.length;
+  }
+
+  moveColumn(columnId, targetIndex) {
+    const sourceIndex = this.board.columns.findIndex(c => c.id === columnId);
+    if (sourceIndex === -1) return;
+
+    // Adjust target if source is before target
+    let insertIndex = targetIndex;
+    if (sourceIndex < insertIndex) {
+      insertIndex -= 1;
+    }
+
+    if (sourceIndex === insertIndex) return;
+
+    const column = this.board.columns.splice(sourceIndex, 1)[0];
+    this.board.columns.splice(insertIndex, 0, column);
+
+    this.saveBoard();
+    this.renderBoard();
   }
 
   generateId() {
