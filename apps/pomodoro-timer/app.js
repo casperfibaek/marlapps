@@ -51,6 +51,7 @@ class PomodoroTimer {
     this.historyDateInput = document.getElementById('historyDate');
     this.historyCountEl = document.getElementById('historyCount');
     this.historyListEl = document.getElementById('historyList');
+    this.resetTodayBtn = document.getElementById('resetTodayBtn');
     this.timerDisplay = document.querySelector('.timer-display');
     this.progressRing = document.getElementById('progressRing');
     this.completionFlash = document.getElementById('completionFlash');
@@ -72,6 +73,7 @@ class PomodoroTimer {
     this.historyToggle.addEventListener('click', () => this.openModal('history'));
     this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
     this.historyDateInput.addEventListener('change', () => this.updateHistoryDisplay());
+    this.resetTodayBtn.addEventListener('click', () => this.resetTodayCount());
     document.addEventListener('visibilitychange', () => this.handleDocumentVisibility());
     window.addEventListener('pagehide', () => this.saveState());
     window.addEventListener('beforeunload', () => this.saveState());
@@ -774,9 +776,35 @@ class PomodoroTimer {
     }
 
     const selectedDate = this.historyDateInput.value;
+    const today = this.getDateKey();
     const completed = this.getHistoryCount(selectedDate);
     this.historyCountEl.textContent = `${completed} pomodoro${completed === 1 ? '' : 's'} completed`;
+
+    // Only show reset button when viewing today and there's something to reset
+    if (this.resetTodayBtn) {
+      this.resetTodayBtn.style.display = (selectedDate === today && completed > 0) ? '' : 'none';
+    }
+
     this.renderHistoryList(selectedDate);
+  }
+
+  resetTodayCount() {
+    const today = this.getDateKey();
+    const count = this.getHistoryCount(today);
+    if (count === 0) return;
+
+    if (!confirm(`Reset today's ${count} pomodoro${count === 1 ? '' : 's'}? This cannot be undone.`)) return;
+
+    // Clear today's history
+    delete this.history[today];
+
+    // Reset daily session counters
+    this.state.totalWorkSessions = 0;
+    this.state.pomodoroCount = 1;
+
+    this.saveData();
+    this.updateDisplay();
+    this.updateHistoryDisplay();
   }
 
   renderHistoryList(selectedDate) {

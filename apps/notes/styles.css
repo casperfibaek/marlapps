@@ -178,15 +178,9 @@ body {
   color: #fff;
 }
 
+/* New Notebook / create row */
 .notebook-create {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
-  font-size: 0.85rem;
   color: var(--app-text-tertiary);
-  transition: color var(--transition-fast);
 }
 
 .notebook-create:hover {
@@ -196,21 +190,132 @@ body {
 .notebook-create-icon {
   font-size: 1rem;
   font-weight: 600;
-  width: 20px;
-  text-align: center;
 }
 
-.notebook-create-input,
-.notebook-rename-input {
+/* Settings gear button (inside notebook-item row) */
+.notebook-settings-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--app-text-tertiary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+  flex-shrink: 0;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.notebook-item:hover .notebook-settings-btn,
+.notebook-item.active .notebook-settings-btn {
+  display: flex;
+}
+
+.notebook-settings-btn:hover {
+  color: var(--app-text-primary);
+  background: var(--app-bg-hover);
+}
+
+/* Inline input for create/rename (fits inside notebook-item row) */
+.notebook-inline-input {
   flex: 1;
+  min-width: 0;
   border: 1px solid var(--app-accent);
   border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-2);
-  font-size: 0.85rem;
+  padding: 2px var(--space-2);
+  font-size: 0.88rem;
   background: var(--app-bg-primary);
   color: var(--app-text-primary);
   outline: none;
-  margin: var(--space-1) var(--space-4);
+}
+
+/* Settings popover */
+.notebook-settings-popover {
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--app-shadow-md);
+  z-index: 1000;
+  min-width: 170px;
+  overflow: hidden;
+}
+
+.popover-section {
+  padding: var(--space-2) var(--space-3);
+}
+
+.popover-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.color-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch.active {
+  border-color: var(--app-text-primary);
+}
+
+.color-swatch--default {
+  background: var(--app-text-tertiary);
+  position: relative;
+}
+
+.color-swatch--default::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: var(--radius-full);
+  background: var(--app-bg-secondary);
+}
+
+.popover-divider {
+  height: 1px;
+  background: var(--app-border-light);
+}
+
+.popover-action {
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--app-text-primary);
+  transition: background var(--transition-fast);
+}
+
+.popover-action:hover {
+  background: var(--app-bg-hover);
+}
+
+.popover-action--danger {
+  color: var(--app-danger, #e74c3c);
+}
+
+.popover-action--danger:hover {
+  background: rgba(231, 76, 60, 0.1);
 }
 
 /* Drag-and-drop states */
@@ -254,35 +359,13 @@ body {
   flex-shrink: 0;
 }
 
-/* Context menu */
-.context-menu {
-  background: var(--app-bg-secondary);
-  border: 1px solid var(--app-border-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--app-shadow-md);
-  z-index: 1000;
-  min-width: 140px;
-  overflow: hidden;
-}
-
-.context-menu-item {
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
-  font-size: 0.88rem;
-  color: var(--app-text-primary);
-  transition: background var(--transition-fast);
-}
-
-.context-menu-item:hover {
-  background: var(--app-bg-hover);
-}
-
-.context-menu-item--danger {
-  color: var(--app-danger, #e74c3c);
-}
-
-.context-menu-item--danger:hover {
-  background: rgba(231, 76, 60, 0.1);
+.color-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  margin-right: var(--space-2);
+  flex-shrink: 0;
 }
 
 /* Move-to-notebook modal */

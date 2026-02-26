@@ -6,6 +6,18 @@ import { createAutosaver } from './autosave.js';
 import { searchNotes } from './search.js';
 import { downloadMarkdown } from './export-markdown.js';
 
+const NOTEBOOK_COLORS = [
+  { name: 'Default', value: null },
+  { name: 'Red', value: '#e74c3c' },
+  { name: 'Orange', value: '#f39c12' },
+  { name: 'Yellow', value: '#f1c40f' },
+  { name: 'Green', value: '#27ae60' },
+  { name: 'Blue', value: '#3498db' },
+  { name: 'Purple', value: '#9b59b6' },
+  { name: 'Pink', value: '#e91e63' },
+  { name: 'Teal', value: '#00bcd4' },
+];
+
 class NotesApp {
   constructor() {
     this.notes = [];
@@ -175,13 +187,19 @@ class NotesApp {
         if (e.target === this.moveToModal) this.closeMoveToModal();
       });
     }
+
+    // Close any open popover when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.notebook-settings-popover') && !e.target.closest('.notebook-settings-btn')) {
+        this.closeSettingsPopover();
+      }
+    });
   }
 
   // ── Notebook filtering ──
 
   getFilteredNotes() {
     if (this.currentNotebookId === null) {
-      // "All Notes"
       return this.notes;
     }
     if (this.currentNotebookId === '__uncategorized__') {
@@ -224,40 +242,36 @@ class NotesApp {
     // User notebooks
     for (const nb of this.notebooks) {
       const count = this.notes.filter(n => n.notebookId === nb.id).length;
+      const colorStyle = nb.color ? ` style="color: ${nb.color}"` : '';
       html += `<div class="notebook-item${this.currentNotebookId === nb.id ? ' active' : ''}" data-notebook-id="${nb.id}">
-        <span class="notebook-icon">&#128213;</span>
+        <span class="notebook-icon"${colorStyle}>&#128213;</span>
         <span class="notebook-name">${this.escapeHtml(nb.name)}</span>
+        <button class="notebook-settings-btn" data-notebook-id="${nb.id}" title="Notebook settings">&#9881;</button>
         <span class="notebook-count">${count}</span>
       </div>`;
     }
 
-    // "+ New Notebook" button
-    html += `<div class="notebook-create" id="notebookCreateBtn">
-      <span class="notebook-create-icon">+</span>
-      <span>New Notebook</span>
+    // "+ New Notebook" button (same row structure as notebook-item for alignment)
+    html += `<div class="notebook-item notebook-create" id="notebookCreateBtn">
+      <span class="notebook-icon notebook-create-icon">+</span>
+      <span class="notebook-name">New Notebook</span>
     </div>`;
 
     this.notebooksList.innerHTML = html;
 
     // Bind click events on notebook items
-    this.notebooksList.querySelectorAll('.notebook-item').forEach(item => {
+    this.notebooksList.querySelectorAll('.notebook-item:not(.notebook-create)').forEach(item => {
       const nbId = item.dataset.notebookId;
 
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        // Don't select notebook when clicking settings button
+        if (e.target.closest('.notebook-settings-btn')) return;
         if (nbId === '__all__') {
           this.selectNotebook(null);
         } else {
           this.selectNotebook(nbId);
         }
       });
-
-      // Context menu for user notebooks (not All/Uncategorized)
-      if (nbId !== '__all__' && nbId !== '__uncategorized__') {
-        item.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          this.showNotebookContextMenu(nbId, e);
-        });
-      }
 
       // Drop target for drag-and-drop
       item.addEventListener('dragover', (e) => {
@@ -277,7 +291,7 @@ class NotesApp {
         if (!noteId) return;
 
         let targetNotebookId = null;
-        if (nbId === '__all__') return; // Can't drop on "All Notes"
+        if (nbId === '__all__') return;
         if (nbId === '__uncategorized__') {
           targetNotebookId = null;
         } else {
@@ -288,11 +302,95 @@ class NotesApp {
       });
     });
 
+    // Bind settings gear buttons
+    this.notebooksList.querySelectorAll('.notebook-settings-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleSettingsPopover(btn.dataset.notebookId, btn);
+      });
+    });
+
     // Bind create notebook button
     const createBtn = document.getElementById('notebookCreateBtn');
     if (createBtn) {
       createBtn.addEventListener('click', () => this.promptCreateNotebook());
     }
+  }
+
+  // ── Notebook settings popover ──
+
+  toggleSettingsPopover(notebookId, anchorBtn) {
+    // If already open for this notebook, close it
+    const existing = document.querySelector(`.notebook-settings-popover[data-for="${notebookId}"]`);
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    this.closeSettingsPopover();
+
+    const nb = this.notebooks.find(n => n.id === notebookId);
+    if (!nb) return;
+
+    const popover = document.createElement('div');
+    popover.className = 'notebook-settings-popover';
+    popover.dataset.for = notebookId;
+
+    // Color picker
+    const colorGrid = NOTEBOOK_COLORS.map(c => {
+      const isActive = (nb.color || null) === c.value;
+      const swatch = c.value
+        ? `<span class="color-swatch${isActive ? ' active' : ''}" data-color="${c.value}" style="background: ${c.value}" title="${c.name}"></span>`
+        : `<span class="color-swatch color-swatch--default${isActive ? ' active' : ''}" data-color="" title="Default"></span>`;
+      return swatch;
+    }).join('');
+
+    popover.innerHTML = `
+      <div class="popover-section">
+        <div class="popover-label">Color</div>
+        <div class="color-picker-grid">${colorGrid}</div>
+      </div>
+      <div class="popover-divider"></div>
+      <div class="popover-action" data-action="rename">Rename</div>
+      <div class="popover-action popover-action--danger" data-action="delete">Delete</div>
+    `;
+
+    // Position below the gear button
+    const rect = anchorBtn.getBoundingClientRect();
+    popover.style.position = 'fixed';
+    popover.style.left = `${Math.min(rect.left, window.innerWidth - 180)}px`;
+    popover.style.top = `${rect.bottom + 4}px`;
+
+    document.body.appendChild(popover);
+
+    // Color swatch clicks
+    popover.querySelectorAll('.color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const color = swatch.dataset.color || null;
+        nb.color = color;
+        nb.updatedAt = Date.now();
+        await saveNotebook(nb);
+        this.notebooks = await getAllNotebooks();
+        this.closeSettingsPopover();
+        this.renderNotebooks();
+      });
+    });
+
+    // Action clicks
+    popover.querySelectorAll('.popover-action').forEach(action => {
+      action.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const act = action.dataset.action;
+        this.closeSettingsPopover();
+        if (act === 'rename') this.renameNotebook(notebookId);
+        if (act === 'delete') this.deleteNotebookById(notebookId);
+      });
+    });
+  }
+
+  closeSettingsPopover() {
+    document.querySelectorAll('.notebook-settings-popover').forEach(p => p.remove());
   }
 
   // ── Notebook CRUD ──
@@ -301,14 +399,23 @@ class NotesApp {
     const createBtn = document.getElementById('notebookCreateBtn');
     if (!createBtn) return;
 
-    // Replace button with inline input
+    // Replace the create button with an input inside the same row structure
+    const wrapper = document.createElement('div');
+    wrapper.className = 'notebook-item notebook-create-row';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'notebook-icon notebook-create-icon';
+    iconSpan.textContent = '+';
+
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'notebook-create-input';
+    input.className = 'notebook-inline-input';
     input.placeholder = 'Notebook name...';
     input.maxLength = 50;
 
-    createBtn.replaceWith(input);
+    wrapper.appendChild(iconSpan);
+    wrapper.appendChild(input);
+    createBtn.replaceWith(wrapper);
     input.focus();
 
     let finished = false;
@@ -317,6 +424,13 @@ class NotesApp {
       finished = true;
       const name = input.value.trim();
       if (name) {
+        const error = this.validateNotebookName(name);
+        if (error) {
+          alert(error);
+          finished = false;
+          input.focus();
+          return;
+        }
         await this.createNotebook(name);
       }
       this.renderNotebooks();
@@ -336,12 +450,24 @@ class NotesApp {
     input.addEventListener('blur', finish);
   }
 
+  validateNotebookName(name, excludeId = null) {
+    const normalized = name.toLowerCase().trim();
+    const duplicate = this.notebooks.find(
+      nb => nb.name.toLowerCase().trim() === normalized && nb.id !== excludeId
+    );
+    if (duplicate) {
+      return `A notebook named "${duplicate.name}" already exists.`;
+    }
+    return null;
+  }
+
   async createNotebook(name) {
     const now = Date.now();
     const maxOrder = this.notebooks.reduce((max, nb) => Math.max(max, nb.order), 0);
     const notebook = {
       id: crypto.randomUUID(),
       name,
+      color: null,
       order: maxOrder + 1,
       createdAt: now,
       updatedAt: now
@@ -362,15 +488,19 @@ class NotesApp {
     const nameSpan = item.querySelector('.notebook-name');
     const originalName = nb.name;
 
-    // Replace name span with input
+    // Replace name span with inline input
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'notebook-rename-input';
+    input.className = 'notebook-inline-input';
     input.value = nb.name;
     input.maxLength = 50;
     nameSpan.replaceWith(input);
     input.focus();
     input.select();
+
+    // Hide the settings button while renaming
+    const settingsBtn = item.querySelector('.notebook-settings-btn');
+    if (settingsBtn) settingsBtn.style.display = 'none';
 
     let finished = false;
     const finish = async () => {
@@ -378,6 +508,13 @@ class NotesApp {
       finished = true;
       const newName = input.value.trim();
       if (newName && newName !== originalName) {
+        const error = this.validateNotebookName(newName, notebookId);
+        if (error) {
+          alert(error);
+          finished = false;
+          input.focus();
+          return;
+        }
         nb.name = newName;
         nb.updatedAt = Date.now();
         await saveNotebook(nb);
@@ -419,7 +556,6 @@ class NotesApp {
     });
     this.notebooks = await getAllNotebooks();
 
-    // If we were viewing this notebook, switch to All Notes
     if (this.currentNotebookId === notebookId) {
       this.currentNotebookId = null;
     }
@@ -428,53 +564,12 @@ class NotesApp {
     this.renderNotesList(this.getFilteredNotes());
   }
 
-  showNotebookContextMenu(notebookId, event) {
-    // Remove existing context menu
-    this.closeContextMenu();
-
-    const menu = document.createElement('div');
-    menu.className = 'context-menu';
-    menu.innerHTML = `
-      <div class="context-menu-item" data-action="rename">Rename</div>
-      <div class="context-menu-item context-menu-item--danger" data-action="delete">Delete</div>
-    `;
-
-    // Position near click
-    menu.style.position = 'fixed';
-    menu.style.left = `${event.clientX}px`;
-    menu.style.top = `${event.clientY}px`;
-
-    document.body.appendChild(menu);
-
-    menu.addEventListener('click', (e) => {
-      const action = e.target.dataset.action;
-      this.closeContextMenu();
-      if (action === 'rename') this.renameNotebook(notebookId);
-      if (action === 'delete') this.deleteNotebookById(notebookId);
-    });
-
-    // Close on any outside click
-    setTimeout(() => {
-      const closer = (e) => {
-        if (!menu.contains(e.target)) {
-          this.closeContextMenu();
-          document.removeEventListener('click', closer);
-        }
-      };
-      document.addEventListener('click', closer);
-    }, 0);
-  }
-
-  closeContextMenu() {
-    document.querySelectorAll('.context-menu').forEach(m => m.remove());
-  }
-
   // ── Move note to notebook ──
 
   async moveNoteToNotebook(noteId, notebookId) {
     const note = this.notes.find(n => n.id === noteId);
     if (!note) return;
-    if (note.notebookId === notebookId) return; // Already in this notebook
+    if (note.notebookId === notebookId) return;
 
     note.notebookId = notebookId;
     note.updatedAt = Date.now();
@@ -491,7 +586,8 @@ class NotesApp {
 
     let html = `<div class="modal-option" data-notebook-id="__uncategorized__">Uncategorized</div>`;
     for (const nb of this.notebooks) {
-      html += `<div class="modal-option" data-notebook-id="${nb.id}">${this.escapeHtml(nb.name)}</div>`;
+      const colorDot = nb.color ? `<span class="color-dot" style="background: ${nb.color}"></span>` : '';
+      html += `<div class="modal-option" data-notebook-id="${nb.id}">${colorDot}${this.escapeHtml(nb.name)}</div>`;
     }
 
     this.moveToList.innerHTML = html;
@@ -516,11 +612,9 @@ class NotesApp {
   // ── Notes CRUD ──
 
   async createNewNote() {
-    // Flush current note before creating new
     if (this.autosaver) await this.autosaver.flushSave();
 
     const now = Date.now();
-    // Assign to current notebook (unless viewing All Notes)
     let notebookId = null;
     if (this.currentNotebookId && this.currentNotebookId !== '__uncategorized__') {
       notebookId = this.currentNotebookId;
@@ -541,7 +635,11 @@ class NotesApp {
     this.notes = await getAllNotes();
     this.renderNotebooks();
     this.renderNotesList(this.getFilteredNotes());
-    this.openNote(note.id);
+    await this.openNote(note.id);
+
+    // Select the title so user can immediately type a name
+    this.noteTitleInput.focus();
+    this.noteTitleInput.select();
   }
 
   isMobile() {
@@ -549,7 +647,6 @@ class NotesApp {
   }
 
   async openNote(noteId) {
-    // Flush current note before switching
     if (this.autosaver) {
       await this.autosaver.flushSave();
       this.autosaver.reset();
@@ -567,12 +664,10 @@ class NotesApp {
     this.updateNoteDate(note.updatedAt);
     this.updateSaveStatus('saved');
 
-    // Update active state in list
     document.querySelectorAll('.note-item').forEach(item => {
       item.classList.toggle('active', item.dataset.noteId === noteId);
     });
 
-    // On mobile, switch to editor view
     if (this.isMobile() && this.notesLayout) {
       this.notesLayout.classList.add('mobile-editing');
     }
@@ -602,12 +697,10 @@ class NotesApp {
     await saveNote(note);
     this.updateNoteDate(note.updatedAt);
 
-    // Re-sort notes list
     this.notes.sort((a, b) => b.updatedAt - a.updatedAt);
     this.renderNotesList(this.getFilteredNotes());
     this.renderNotebooks();
 
-    // Restore active state after re-render
     const activeItem = document.querySelector(`[data-note-id="${this.currentNoteId}"]`);
     if (activeItem) activeItem.classList.add('active');
   }
@@ -650,12 +743,12 @@ class NotesApp {
       const preview = (note.contentPlainText || '').substring(0, 60) || 'No content';
       const date = this.formatDate(note.updatedAt);
 
-      // Show notebook badge if viewing "All Notes"
       let notebookBadge = '';
       if (this.currentNotebookId === null && note.notebookId) {
         const nb = this.notebooks.find(n => n.id === note.notebookId);
         if (nb) {
-          notebookBadge = `<span class="note-item-notebook">${this.escapeHtml(nb.name)}</span>`;
+          const badgeStyle = nb.color ? ` style="color: ${nb.color}; background: ${nb.color}22"` : '';
+          notebookBadge = `<span class="note-item-notebook"${badgeStyle}>${this.escapeHtml(nb.name)}</span>`;
         }
       }
 
@@ -671,7 +764,6 @@ class NotesApp {
       `;
     }).join('');
 
-    // Bind click + drag events
     this.notesList.querySelectorAll('.note-item').forEach(item => {
       const noteId = item.dataset.noteId;
 
@@ -679,7 +771,6 @@ class NotesApp {
         this.openNote(noteId);
       });
 
-      // Drag start
       item.addEventListener('dragstart', (e) => {
         this.dragNoteId = noteId;
         e.dataTransfer.setData('text/plain', noteId);
@@ -690,14 +781,12 @@ class NotesApp {
       item.addEventListener('dragend', () => {
         item.classList.remove('dragging');
         this.dragNoteId = null;
-        // Remove all drop target highlights
         document.querySelectorAll('.notebook-drop-target').forEach(el => el.classList.remove('notebook-drop-target'));
       });
 
       // Long-press for mobile "Move to"
-      item.addEventListener('touchstart', (e) => {
+      item.addEventListener('touchstart', () => {
         this.longPressTimer = setTimeout(() => {
-          e.preventDefault();
           if (this.notebooks.length > 0) {
             this.showMoveToModal(noteId);
           }
