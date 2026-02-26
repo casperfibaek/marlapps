@@ -399,13 +399,30 @@ body {
   flex-shrink: 0;
 }
 
-.color-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
-  margin-right: var(--space-2);
+/* Colored notebook icon (replaces emoji + color dot) */
+.notebook-color-icon {
+  width: 16px;
+  height: 18px;
+  border-radius: 3px;
   flex-shrink: 0;
+  position: relative;
+  display: inline-block;
+}
+
+.notebook-color-icon::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 0.5px;
+}
+
+.notebook-color-icon--default {
+  background: var(--app-text-tertiary);
+  opacity: 0.4;
 }
 
 /* Move-to-notebook modal */

@@ -264,11 +264,16 @@
 .task-title {
   font-weight: 600;
   font-size: 0.95rem;
+  line-height: 1.4;
+  position: relative;
+  min-width: 0;
+}
+
+.task-title-text {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.4;
-  position: relative;
 }
 
 /* Tooltip on hover with 0.5s delay */
@@ -316,11 +321,12 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  transition: opacity var(--transition-normal), background-color var(--transition-normal);
+  transition: opacity var(--transition-normal), visibility var(--transition-normal), background-color var(--transition-normal);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   flex-shrink: 0;
-  opacity: 0.4;
+  opacity: 0;
+  visibility: hidden;
 }
 
 .task-delete:hover,
@@ -331,11 +337,13 @@
 .task:hover .task-delete,
 .task:focus-within .task-delete {
   opacity: 1;
+  visibility: visible;
 }
 
 @media (hover: none) {
   .task .task-delete {
     opacity: 0.7;
+    visibility: visible;
   }
 }
 
@@ -730,19 +738,20 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .kanban-main {
+    padding: var(--space-2);
+  }
+
   .board {
     flex-direction: column;
+    gap: var(--space-4);
+    width: 100%;
   }
 
   .column {
-    max-width: 100%;
-  }
-
-  .kanban-main {
-    padding: var(--space-2) var(--space-3);
-  }
-
-  .column {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
     height: auto;
     max-height: 60vh;
   }

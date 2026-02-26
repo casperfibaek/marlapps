@@ -276,10 +276,11 @@ class NotesApp {
     for (const nb of this.notebooks) {
       const count = countMap[nb.id] || 0;
       const validColor = safeColor(nb.color);
-      const colorDot = validColor ? `<span class="color-dot" style="background: ${validColor}"></span>` : '';
+      const iconStyle = validColor ? ` style="background:${validColor}"` : '';
+      const iconClass = validColor ? 'notebook-color-icon' : 'notebook-color-icon notebook-color-icon--default';
       html += `<div class="notebook-item${this.currentNotebookId === nb.id ? ' active' : ''}" data-notebook-id="${nb.id}" draggable="true">
         <span class="notebook-drag-handle" title="Drag to reorder">⠿</span>
-        <span class="notebook-icon">&#128213;</span>${colorDot}
+        <span class="${iconClass}"${iconStyle}></span>
         <span class="notebook-name">${this.escapeHtml(nb.name)}</span>
         <button class="notebook-settings-btn" data-notebook-id="${nb.id}" title="Notebook settings">&#9881;</button>
         <span class="notebook-count">${count}</span>
@@ -729,8 +730,9 @@ class NotesApp {
     let html = `<div class="modal-option" data-notebook-id="__uncategorized__">Uncategorized</div>`;
     for (const nb of this.notebooks) {
       const modalColor = safeColor(nb.color);
-      const colorDot = modalColor ? `<span class="color-dot" style="background: ${modalColor}"></span>` : '';
-      html += `<div class="modal-option" data-notebook-id="${nb.id}">${colorDot}${this.escapeHtml(nb.name)}</div>`;
+      const modalIconStyle = modalColor ? ` style="background:${modalColor}"` : '';
+      const modalIconClass = modalColor ? 'notebook-color-icon' : 'notebook-color-icon notebook-color-icon--default';
+      html += `<div class="modal-option" data-notebook-id="${nb.id}"><span class="${modalIconClass}"${modalIconStyle}></span>${this.escapeHtml(nb.name)}</div>`;
     }
 
     this.moveToList.innerHTML = html;
