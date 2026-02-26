@@ -14,8 +14,8 @@ function safeColor(color) {
   return VALID_NOTEBOOK_COLORS.has(color) ? color : null;
 }
 
-const NB_ALL = NB_ALL;
-const NB_UNCATEGORIZED = NB_UNCATEGORIZED;
+const NB_ALL = '__all__';
+const NB_UNCATEGORIZED = '__uncategorized__';
 
 const NOTEBOOK_COLORS = [
   { name: 'Default', value: null },
