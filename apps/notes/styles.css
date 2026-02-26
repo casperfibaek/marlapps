@@ -753,7 +753,7 @@ body {
   margin-bottom: var(--space-4);
 }
 
-/* Mobile back button (hidden on desktop) */
+/* Mobile back button (hidden on desktop, shown in footer on mobile) */
 .mobile-back-btn {
   display: none;
 }
@@ -786,22 +786,7 @@ body {
   }
 
   .mobile-back-btn {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    background: none;
-    border: none;
-    color: var(--app-accent);
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: var(--space-2);
-    min-height: var(--touch-target-min);
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .mobile-back-btn:active {
-    opacity: 0.7;
+    display: inline-flex;
   }
 
   .editor-toolbar {

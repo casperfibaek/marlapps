@@ -469,7 +469,7 @@ class KanbanBoard {
 
     taskEl.innerHTML = `
       <div class="task-content">
-        <div class="task-title" data-tooltip="${this.escapeHtml(task.title)}"><span class="task-title-text">${this.escapeHtml(task.title)}</span></div>
+        <div class="task-title">${this.escapeHtml(task.title)}</div>
       </div>
       <button class="task-delete" data-task-id="${task.id}" aria-label="Delete task">×</button>
     `;
