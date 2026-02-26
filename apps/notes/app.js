@@ -372,7 +372,10 @@ class NotesApp {
     input.focus();
     input.select();
 
+    let finished = false;
     const finish = async () => {
+      if (finished) return;
+      finished = true;
       const newName = input.value.trim();
       if (newName && newName !== originalName) {
         nb.name = newName;
@@ -389,6 +392,7 @@ class NotesApp {
         finish();
       }
       if (e.key === 'Escape') {
+        finished = true;
         this.renderNotebooks();
       }
     });
