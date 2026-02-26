@@ -151,10 +151,20 @@ body {
 }
 
 .notebook-icon {
-  font-size: 0.9rem;
   flex-shrink: 0;
   width: 20px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--app-text-tertiary);
+}
+
+.notebook-icon svg {
+  display: block;
+}
+
+.notebook-item.active .notebook-icon {
+  color: var(--app-accent);
 }
 
 .notebook-name {
@@ -397,32 +407,6 @@ body {
   border-radius: var(--radius-full);
   white-space: nowrap;
   flex-shrink: 0;
-}
-
-/* Colored notebook icon (replaces emoji + color dot) */
-.notebook-color-icon {
-  width: 16px;
-  height: 18px;
-  border-radius: 3px;
-  flex-shrink: 0;
-  position: relative;
-  display: inline-block;
-}
-
-.notebook-color-icon::after {
-  content: '';
-  position: absolute;
-  left: 4px;
-  top: 2px;
-  bottom: 2px;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 0.5px;
-}
-
-.notebook-color-icon--default {
-  background: var(--app-text-tertiary);
-  opacity: 0.4;
 }
 
 /* Move-to-notebook modal */

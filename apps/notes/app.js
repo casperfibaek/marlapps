@@ -29,6 +29,13 @@ const NOTEBOOK_COLORS = [
   { name: 'Teal', value: '#00bcd4' },
 ];
 
+// SVG icons (use currentColor so they respond to CSS color)
+const ICON_ALL_NOTES = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="9" height="12" rx="1"/><line x1="7" y1="5" x2="10" y2="5"/><line x1="7" y1="8" x2="10" y2="8"/><line x1="7" y1="11" x2="9" y2="11"/><line x1="2" y1="4" x2="4" y2="4"/><line x1="2" y1="7" x2="4" y2="7"/><line x1="2" y1="10" x2="4" y2="10"/></svg>';
+
+const ICON_UNCATEGORIZED = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2" width="10" height="12" rx="1"/><line x1="6" y1="5" x2="10" y2="5"/><line x1="6" y1="8" x2="10" y2="8"/></svg>';
+
+const ICON_NOTEBOOK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" stroke="none"><rect x="3" y="1" width="10" height="14" rx="2" opacity="0.15"/><rect x="3" y="1" width="10" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="6" y1="1" x2="6" y2="15" stroke="currentColor" stroke-width="1.3"/></svg>';
+
 class NotesApp {
   constructor() {
     this.notes = [];
@@ -258,7 +265,7 @@ class NotesApp {
 
     // "All Notes" entry
     html += `<div class="notebook-item${this.currentNotebookId === null ? ' active' : ''}" data-notebook-id="__all__">
-      <span class="notebook-icon">&#128209;</span>
+      <span class="notebook-icon">${ICON_ALL_NOTES}</span>
       <span class="notebook-name">All Notes</span>
       <span class="notebook-count">${allCount}</span>
     </div>`;
@@ -266,7 +273,7 @@ class NotesApp {
     // "Uncategorized" entry (only show if there are notebooks)
     if (this.notebooks.length > 0) {
       html += `<div class="notebook-item${this.currentNotebookId === NB_UNCATEGORIZED ? ' active' : ''}" data-notebook-id="__uncategorized__">
-        <span class="notebook-icon">&#128196;</span>
+        <span class="notebook-icon">${ICON_UNCATEGORIZED}</span>
         <span class="notebook-name">Uncategorized</span>
         <span class="notebook-count">${uncategorizedCount}</span>
       </div>`;
@@ -276,11 +283,10 @@ class NotesApp {
     for (const nb of this.notebooks) {
       const count = countMap[nb.id] || 0;
       const validColor = safeColor(nb.color);
-      const iconStyle = validColor ? ` style="background:${validColor}"` : '';
-      const iconClass = validColor ? 'notebook-color-icon' : 'notebook-color-icon notebook-color-icon--default';
+      const colorStyle = validColor ? ` style="color:${validColor}"` : '';
       html += `<div class="notebook-item${this.currentNotebookId === nb.id ? ' active' : ''}" data-notebook-id="${nb.id}" draggable="true">
         <span class="notebook-drag-handle" title="Drag to reorder">⠿</span>
-        <span class="${iconClass}"${iconStyle}></span>
+        <span class="notebook-icon"${colorStyle}>${ICON_NOTEBOOK}</span>
         <span class="notebook-name">${this.escapeHtml(nb.name)}</span>
         <button class="notebook-settings-btn" data-notebook-id="${nb.id}" title="Notebook settings">&#9881;</button>
         <span class="notebook-count">${count}</span>
@@ -730,9 +736,8 @@ class NotesApp {
     let html = `<div class="modal-option" data-notebook-id="__uncategorized__">Uncategorized</div>`;
     for (const nb of this.notebooks) {
       const modalColor = safeColor(nb.color);
-      const modalIconStyle = modalColor ? ` style="background:${modalColor}"` : '';
-      const modalIconClass = modalColor ? 'notebook-color-icon' : 'notebook-color-icon notebook-color-icon--default';
-      html += `<div class="modal-option" data-notebook-id="${nb.id}"><span class="${modalIconClass}"${modalIconStyle}></span>${this.escapeHtml(nb.name)}</div>`;
+      const modalColorStyle = modalColor ? ` style="color:${modalColor}"` : '';
+      html += `<div class="modal-option" data-notebook-id="${nb.id}"><span class="notebook-icon"${modalColorStyle}>${ICON_NOTEBOOK}</span>${this.escapeHtml(nb.name)}</div>`;
     }
 
     this.moveToList.innerHTML = html;
