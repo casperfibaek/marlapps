@@ -1,10 +1,21 @@
 // Notes App - Rich text note-taking with IndexedDB storage
 
-import { openDB, getAllNotes, saveNote, deleteNote, getAllNotebooks, saveNotebook, deleteNotebook as dbDeleteNotebook } from './db.js';
+import { openDB, getAllNotes, saveNote, saveAllNotes, deleteNote, getAllNotebooks, saveNotebook, saveAllNotebooks, deleteNotebook as dbDeleteNotebook } from './db.js';
 import { initEditor, execToolbarCommand, getContentHtml, getContentPlainText, setContent, focus } from './editor.js';
 import { createAutosaver } from './autosave.js';
 import { searchNotes } from './search.js';
 import { downloadMarkdown } from './export-markdown.js';
+
+const VALID_NOTEBOOK_COLORS = new Set([
+  '#e74c3c', '#f39c12', '#f1c40f', '#27ae60', '#3498db', '#9b59b6', '#e91e63', '#00bcd4'
+]);
+
+function safeColor(color) {
+  return VALID_NOTEBOOK_COLORS.has(color) ? color : null;
+}
+
+const NB_ALL = NB_ALL;
+const NB_UNCATEGORIZED = NB_UNCATEGORIZED;
 
 const NOTEBOOK_COLORS = [
   { name: 'Default', value: null },
@@ -28,15 +39,11 @@ class NotesApp {
     this.searchTimeout = null;
     this.autosaver = null;
 
-    // Drag state
-    this.dragNoteId = null;
-
     // Long-press state for mobile
     this.longPressTimer = null;
-    this.longPressNoteId = null;
 
     this.initElements();
-    this.initEventListeners();
+    this.attachEventListeners();
     this.syncThemeWithParent();
   }
 
@@ -112,7 +119,7 @@ class NotesApp {
     document.documentElement.setAttribute('data-theme', theme);
   }
 
-  initEventListeners() {
+  attachEventListeners() {
     this.newNoteBtn.addEventListener('click', () => this.createNewNote());
     this.deleteNoteBtn.addEventListener('click', () => this.deleteCurrentNote());
     this.exportMdBtn.addEventListener('click', () => this.exportCurrentNote());
@@ -198,14 +205,31 @@ class NotesApp {
 
   // ── Notebook filtering ──
 
+  isInSpecificNotebook() {
+    return this.currentNotebookId !== null && this.currentNotebookId !== NB_UNCATEGORIZED;
+  }
+
   getFilteredNotes() {
+    let filtered;
     if (this.currentNotebookId === null) {
-      return this.notes;
+      filtered = this.notes;
+    } else if (this.currentNotebookId === NB_UNCATEGORIZED) {
+      filtered = this.notes.filter(n => !n.notebookId);
+    } else {
+      filtered = this.notes.filter(n => n.notebookId === this.currentNotebookId);
     }
-    if (this.currentNotebookId === '__uncategorized__') {
-      return this.notes.filter(n => !n.notebookId);
+
+    // In a specific notebook, sort by manual order (falling back to updatedAt)
+    if (this.isInSpecificNotebook()) {
+      filtered.sort((a, b) => {
+        const orderA = a.order != null ? a.order : Infinity;
+        const orderB = b.order != null ? b.order : Infinity;
+        if (orderA !== orderB) return orderA - orderB;
+        return b.updatedAt - a.updatedAt;
+      });
     }
-    return this.notes.filter(n => n.notebookId === this.currentNotebookId);
+
+    return filtered;
   }
 
   selectNotebook(notebookId) {
@@ -218,8 +242,17 @@ class NotesApp {
   // ── Notebook rendering ──
 
   renderNotebooks() {
+    // Single-pass count map
+    const countMap = {};
+    let uncategorizedCount = 0;
+    for (const n of this.notes) {
+      if (n.notebookId) {
+        countMap[n.notebookId] = (countMap[n.notebookId] || 0) + 1;
+      } else {
+        uncategorizedCount++;
+      }
+    }
     const allCount = this.notes.length;
-    const uncategorizedCount = this.notes.filter(n => !n.notebookId).length;
 
     let html = '';
 
@@ -232,7 +265,7 @@ class NotesApp {
 
     // "Uncategorized" entry (only show if there are notebooks)
     if (this.notebooks.length > 0) {
-      html += `<div class="notebook-item${this.currentNotebookId === '__uncategorized__' ? ' active' : ''}" data-notebook-id="__uncategorized__">
+      html += `<div class="notebook-item${this.currentNotebookId === NB_UNCATEGORIZED ? ' active' : ''}" data-notebook-id="__uncategorized__">
         <span class="notebook-icon">&#128196;</span>
         <span class="notebook-name">Uncategorized</span>
         <span class="notebook-count">${uncategorizedCount}</span>
@@ -241,10 +274,12 @@ class NotesApp {
 
     // User notebooks
     for (const nb of this.notebooks) {
-      const count = this.notes.filter(n => n.notebookId === nb.id).length;
-      const colorStyle = nb.color ? ` style="color: ${nb.color}"` : '';
-      html += `<div class="notebook-item${this.currentNotebookId === nb.id ? ' active' : ''}" data-notebook-id="${nb.id}">
-        <span class="notebook-icon"${colorStyle}>&#128213;</span>
+      const count = countMap[nb.id] || 0;
+      const validColor = safeColor(nb.color);
+      const colorDot = validColor ? `<span class="color-dot" style="background: ${validColor}"></span>` : '';
+      html += `<div class="notebook-item${this.currentNotebookId === nb.id ? ' active' : ''}" data-notebook-id="${nb.id}" draggable="true">
+        <span class="notebook-drag-handle" title="Drag to reorder">⠿</span>
+        <span class="notebook-icon">&#128213;</span>${colorDot}
         <span class="notebook-name">${this.escapeHtml(nb.name)}</span>
         <button class="notebook-settings-btn" data-notebook-id="${nb.id}" title="Notebook settings">&#9881;</button>
         <span class="notebook-count">${count}</span>
@@ -266,15 +301,16 @@ class NotesApp {
       item.addEventListener('click', (e) => {
         // Don't select notebook when clicking settings button
         if (e.target.closest('.notebook-settings-btn')) return;
-        if (nbId === '__all__') {
+        if (nbId === NB_ALL) {
           this.selectNotebook(null);
         } else {
           this.selectNotebook(nbId);
         }
       });
 
-      // Drop target for drag-and-drop
+      // Drop target for note-to-notebook drag-and-drop (not notebook reorder)
       item.addEventListener('dragover', (e) => {
+        if (e.dataTransfer.types.includes('application/notebook-id')) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         item.classList.add('notebook-drop-target');
@@ -285,20 +321,75 @@ class NotesApp {
       });
 
       item.addEventListener('drop', (e) => {
+        if (e.dataTransfer.types.includes('application/notebook-id')) return;
         e.preventDefault();
         item.classList.remove('notebook-drop-target');
         const noteId = e.dataTransfer.getData('text/plain');
         if (!noteId) return;
 
         let targetNotebookId = null;
-        if (nbId === '__all__') return;
-        if (nbId === '__uncategorized__') {
+        if (nbId === NB_ALL) return;
+        if (nbId === NB_UNCATEGORIZED) {
           targetNotebookId = null;
         } else {
           targetNotebookId = nbId;
         }
 
         this.moveNoteToNotebook(noteId, targetNotebookId);
+      });
+    });
+
+    // Bind notebook reorder drag events on user notebooks
+    const draggableNbs = this.notebooksList.querySelectorAll('.notebook-item[draggable="true"]');
+    draggableNbs.forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        // Only start notebook reorder if dragging from a notebook item (not a note)
+        e.dataTransfer.setData('application/notebook-id', item.dataset.notebookId);
+        e.dataTransfer.effectAllowed = 'move';
+        item.classList.add('dragging');
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        this.notebooksList.querySelectorAll('.notebook-drop-line').forEach(el => el.remove());
+      });
+
+      item.addEventListener('dragover', (e) => {
+        // Only handle notebook reorder drags, not note-to-notebook drags
+        if (!e.dataTransfer.types.includes('application/notebook-id')) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        // Show drop line indicator
+        const rect = item.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const position = e.clientY < midY ? 'before' : 'after';
+
+        this.notebooksList.querySelectorAll('.notebook-drop-line').forEach(el => el.remove());
+        const line = document.createElement('div');
+        line.className = 'notebook-drop-line';
+        if (position === 'before') {
+          item.before(line);
+        } else {
+          item.after(line);
+        }
+      });
+
+      item.addEventListener('drop', (e) => {
+        const draggedId = e.dataTransfer.getData('application/notebook-id');
+        if (!draggedId) return;
+        e.preventDefault();
+
+        this.notebooksList.querySelectorAll('.notebook-drop-line').forEach(el => el.remove());
+
+        const targetId = item.dataset.notebookId;
+        if (draggedId === targetId) return;
+
+        const rect = item.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const insertBefore = e.clientY < midY;
+
+        this.reorderNotebooks(draggedId, targetId, insertBefore);
       });
     });
 
@@ -315,6 +406,47 @@ class NotesApp {
     if (createBtn) {
       createBtn.addEventListener('click', () => this.promptCreateNotebook());
     }
+  }
+
+  async reorderNotebooks(draggedId, targetId, insertBefore) {
+    const draggedIdx = this.notebooks.findIndex(nb => nb.id === draggedId);
+    if (draggedIdx === -1) return;
+
+    const [dragged] = this.notebooks.splice(draggedIdx, 1);
+    const targetIdx = this.notebooks.findIndex(nb => nb.id === targetId);
+    if (targetIdx === -1) return;
+
+    const insertIdx = insertBefore ? targetIdx : targetIdx + 1;
+    this.notebooks.splice(insertIdx, 0, dragged);
+
+    // Recalculate order values
+    for (let i = 0; i < this.notebooks.length; i++) {
+      this.notebooks[i].order = i;
+    }
+
+    await saveAllNotebooks(this.notebooks);
+    this.renderNotebooks();
+  }
+
+  async reorderNotes(draggedId, targetId, insertBefore) {
+    const filtered = this.getFilteredNotes();
+    const draggedIdx = filtered.findIndex(n => n.id === draggedId);
+    if (draggedIdx === -1) return;
+
+    const [dragged] = filtered.splice(draggedIdx, 1);
+    const targetIdx = filtered.findIndex(n => n.id === targetId);
+    if (targetIdx === -1) return;
+
+    const insertIdx = insertBefore ? targetIdx : targetIdx + 1;
+    filtered.splice(insertIdx, 0, dragged);
+
+    // Recalculate order values for notes in this notebook
+    for (let i = 0; i < filtered.length; i++) {
+      filtered[i].order = i;
+    }
+
+    await saveAllNotes(filtered);
+    this.renderNotesList(this.getFilteredNotes());
   }
 
   // ── Notebook settings popover ──
@@ -355,13 +487,19 @@ class NotesApp {
       <div class="popover-action popover-action--danger" data-action="delete">Delete</div>
     `;
 
-    // Position below the gear button
+    // Position below the gear button, flip above if near bottom
     const rect = anchorBtn.getBoundingClientRect();
     popover.style.position = 'fixed';
     popover.style.left = `${Math.min(rect.left, window.innerWidth - 180)}px`;
-    popover.style.top = `${rect.bottom + 4}px`;
 
     document.body.appendChild(popover);
+
+    const popoverHeight = popover.offsetHeight;
+    if (rect.bottom + 4 + popoverHeight > window.innerHeight) {
+      popover.style.top = `${rect.top - popoverHeight - 4}px`;
+    } else {
+      popover.style.top = `${rect.bottom + 4}px`;
+    }
 
     // Color swatch clicks
     popover.querySelectorAll('.color-swatch').forEach(swatch => {
@@ -419,6 +557,7 @@ class NotesApp {
     input.focus();
 
     let finished = false;
+    const onBlur = () => finish();
     const finish = async () => {
       if (finished) return;
       finished = true;
@@ -426,8 +565,10 @@ class NotesApp {
       if (name) {
         const error = this.validateNotebookName(name);
         if (error) {
+          input.removeEventListener('blur', onBlur);
           alert(error);
           finished = false;
+          input.addEventListener('blur', onBlur);
           input.focus();
           return;
         }
@@ -447,7 +588,7 @@ class NotesApp {
       }
     });
 
-    input.addEventListener('blur', finish);
+    input.addEventListener('blur', onBlur);
   }
 
   validateNotebookName(name, excludeId = null) {
@@ -503,6 +644,7 @@ class NotesApp {
     if (settingsBtn) settingsBtn.style.display = 'none';
 
     let finished = false;
+    const onBlur = () => finish();
     const finish = async () => {
       if (finished) return;
       finished = true;
@@ -510,8 +652,10 @@ class NotesApp {
       if (newName && newName !== originalName) {
         const error = this.validateNotebookName(newName, notebookId);
         if (error) {
+          input.removeEventListener('blur', onBlur);
           alert(error);
           finished = false;
+          input.addEventListener('blur', onBlur);
           input.focus();
           return;
         }
@@ -534,7 +678,7 @@ class NotesApp {
       }
     });
 
-    input.addEventListener('blur', finish);
+    input.addEventListener('blur', onBlur);
   }
 
   async deleteNotebookById(notebookId) {
@@ -550,10 +694,8 @@ class NotesApp {
 
     await dbDeleteNotebook(notebookId);
 
-    // Update local state
-    this.notes.forEach(n => {
-      if (n.notebookId === notebookId) n.notebookId = null;
-    });
+    // Refresh from DB to stay in sync
+    this.notes = await getAllNotes();
     this.notebooks = await getAllNotebooks();
 
     if (this.currentNotebookId === notebookId) {
@@ -586,7 +728,8 @@ class NotesApp {
 
     let html = `<div class="modal-option" data-notebook-id="__uncategorized__">Uncategorized</div>`;
     for (const nb of this.notebooks) {
-      const colorDot = nb.color ? `<span class="color-dot" style="background: ${nb.color}"></span>` : '';
+      const modalColor = safeColor(nb.color);
+      const colorDot = modalColor ? `<span class="color-dot" style="background: ${modalColor}"></span>` : '';
       html += `<div class="modal-option" data-notebook-id="${nb.id}">${colorDot}${this.escapeHtml(nb.name)}</div>`;
     }
 
@@ -596,7 +739,7 @@ class NotesApp {
     this.moveToList.querySelectorAll('.modal-option').forEach(opt => {
       opt.addEventListener('click', () => {
         const nbId = opt.dataset.notebookId;
-        const targetId = nbId === '__uncategorized__' ? null : nbId;
+        const targetId = nbId === NB_UNCATEGORIZED ? null : nbId;
         this.moveNoteToNotebook(noteId, targetId);
         this.closeMoveToModal();
       });
@@ -616,7 +759,7 @@ class NotesApp {
 
     const now = Date.now();
     let notebookId = null;
-    if (this.currentNotebookId && this.currentNotebookId !== '__uncategorized__') {
+    if (this.currentNotebookId && this.currentNotebookId !== NB_UNCATEGORIZED) {
       notebookId = this.currentNotebookId;
     }
 
@@ -697,9 +840,11 @@ class NotesApp {
     await saveNote(note);
     this.updateNoteDate(note.updatedAt);
 
-    this.notes.sort((a, b) => b.updatedAt - a.updatedAt);
+    // Only re-sort by updatedAt in All Notes / Uncategorized views
+    if (!this.isInSpecificNotebook()) {
+      this.notes.sort((a, b) => b.updatedAt - a.updatedAt);
+    }
     this.renderNotesList(this.getFilteredNotes());
-    this.renderNotebooks();
 
     const activeItem = document.querySelector(`[data-note-id="${this.currentNoteId}"]`);
     if (activeItem) activeItem.classList.add('active');
@@ -724,8 +869,9 @@ class NotesApp {
     this.renderNotesList(this.getFilteredNotes());
   }
 
-  exportCurrentNote() {
+  async exportCurrentNote() {
     if (!this.currentNoteId) return;
+    if (this.autosaver) await this.autosaver.flushSave();
     const note = this.notes.find(n => n.id === this.currentNoteId);
     if (!note) return;
     downloadMarkdown(note.title, note.contentHtml);
@@ -747,7 +893,8 @@ class NotesApp {
       if (this.currentNotebookId === null && note.notebookId) {
         const nb = this.notebooks.find(n => n.id === note.notebookId);
         if (nb) {
-          const badgeStyle = nb.color ? ` style="color: ${nb.color}; background: ${nb.color}22"` : '';
+          const badgeColor = safeColor(nb.color);
+          const badgeStyle = badgeColor ? ` style="color: ${badgeColor}; background: ${badgeColor}22"` : '';
           notebookBadge = `<span class="note-item-notebook"${badgeStyle}>${this.escapeHtml(nb.name)}</span>`;
         }
       }
@@ -772,7 +919,6 @@ class NotesApp {
       });
 
       item.addEventListener('dragstart', (e) => {
-        this.dragNoteId = noteId;
         e.dataTransfer.setData('text/plain', noteId);
         e.dataTransfer.effectAllowed = 'move';
         item.classList.add('dragging');
@@ -780,9 +926,45 @@ class NotesApp {
 
       item.addEventListener('dragend', () => {
         item.classList.remove('dragging');
-        this.dragNoteId = null;
         document.querySelectorAll('.notebook-drop-target').forEach(el => el.classList.remove('notebook-drop-target'));
+        this.notesList.querySelectorAll('.note-drop-line').forEach(el => el.remove());
       });
+
+      // Note reorder within a specific notebook
+      if (this.isInSpecificNotebook()) {
+        item.addEventListener('dragover', (e) => {
+          if (e.dataTransfer.types.includes('application/notebook-id')) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+
+          const rect = item.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          const position = e.clientY < midY ? 'before' : 'after';
+
+          this.notesList.querySelectorAll('.note-drop-line').forEach(el => el.remove());
+          const line = document.createElement('div');
+          line.className = 'note-drop-line';
+          if (position === 'before') {
+            item.before(line);
+          } else {
+            item.after(line);
+          }
+        });
+
+        item.addEventListener('drop', (e) => {
+          const draggedNoteId = e.dataTransfer.getData('text/plain');
+          if (!draggedNoteId || draggedNoteId === noteId) return;
+          e.preventDefault();
+          e.stopPropagation();
+          this.notesList.querySelectorAll('.note-drop-line').forEach(el => el.remove());
+
+          const rect = item.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          const insertBefore = e.clientY < midY;
+
+          this.reorderNotes(draggedNoteId, noteId, insertBefore);
+        });
+      }
 
       // Long-press for mobile "Move to"
       item.addEventListener('touchstart', () => {
@@ -838,9 +1020,8 @@ class NotesApp {
   }
 
   escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+               .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 }
 

@@ -133,17 +133,6 @@ export async function getAllNotes() {
   });
 }
 
-export async function getNote(id) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(NOTES_STORE, 'readonly');
-    const store = tx.objectStore(NOTES_STORE);
-    const request = store.get(id);
-    request.onsuccess = () => resolve(request.result || null);
-    request.onerror = () => reject(request.error);
-  });
-}
-
 export async function saveNote(note) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -166,12 +155,14 @@ export async function deleteNote(id) {
   });
 }
 
-export async function clearAllNotes() {
+export async function saveAllNotes(notes) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(NOTES_STORE, 'readwrite');
     const store = tx.objectStore(NOTES_STORE);
-    store.clear();
+    for (const note of notes) {
+      store.put(note);
+    }
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -199,6 +190,19 @@ export async function saveNotebook(notebook) {
     const tx = db.transaction(NOTEBOOKS_STORE, 'readwrite');
     const store = tx.objectStore(NOTEBOOKS_STORE);
     store.put(notebook);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function saveAllNotebooks(notebooks) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(NOTEBOOKS_STORE, 'readwrite');
+    const store = tx.objectStore(NOTEBOOKS_STORE);
+    for (const nb of notebooks) {
+      store.put(nb);
+    }
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

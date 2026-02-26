@@ -194,7 +194,8 @@ body {
 
 /* Settings gear button (inside notebook-item row) */
 .notebook-settings-btn {
-  display: none;
+  display: flex;
+  visibility: hidden;
   align-items: center;
   justify-content: center;
   width: 24px;
@@ -212,7 +213,7 @@ body {
 
 .notebook-item:hover .notebook-settings-btn,
 .notebook-item.active .notebook-settings-btn {
-  display: flex;
+  visibility: visible;
 }
 
 .notebook-settings-btn:hover {
@@ -318,7 +319,46 @@ body {
   background: rgba(231, 76, 60, 0.1);
 }
 
+/* Notebook drag handle */
+.notebook-drag-handle {
+  font-size: 0.75rem;
+  color: var(--app-text-tertiary);
+  cursor: grab;
+  flex-shrink: 0;
+  visibility: hidden;
+  user-select: none;
+  width: 12px;
+  text-align: center;
+}
+
+.notebook-item:hover .notebook-drag-handle {
+  visibility: visible;
+}
+
+.notebook-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Notebook drop line indicator */
+.notebook-drop-line {
+  height: 2px;
+  background: var(--app-accent);
+  margin: 0 var(--space-4);
+  border-radius: 1px;
+}
+
 /* Drag-and-drop states */
+.notebook-item.dragging {
+  opacity: 0.4;
+}
+
+/* Note drop line indicator */
+.note-drop-line {
+  height: 2px;
+  background: var(--app-accent);
+  margin: 0;
+}
+
 .notebook-drop-target {
   background: var(--app-accent-light) !important;
   outline: 2px dashed var(--app-accent);
@@ -682,6 +722,19 @@ body {
 .btn-secondary:hover {
   background: var(--app-bg-secondary);
   color: var(--app-text-primary);
+}
+
+.btn-danger {
+  background: var(--app-danger, #e74c3c);
+  color: #fff;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.btn-danger:hover {
+  background: #c0392b;
 }
 
 /* Empty state */

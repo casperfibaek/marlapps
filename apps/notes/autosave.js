@@ -42,10 +42,6 @@ export function createAutosaver(saveFn, onStatusChange) {
     }
   }
 
-  function isDirty() {
-    return dirty;
-  }
-
   function reset() {
     dirty = false;
     if (timer) {
@@ -54,5 +50,5 @@ export function createAutosaver(saveFn, onStatusChange) {
     }
   }
 
-  return { scheduleSave, flushSave, isDirty, reset };
+  return { scheduleSave, flushSave, reset };
 }
