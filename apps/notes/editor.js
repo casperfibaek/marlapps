@@ -402,6 +402,52 @@ function toggleList(listTag) {
   }
 }
 
+// ── Block normalization ──
+// Ensures all direct children of the editor are valid block elements (P, H1-H3, UL, OL, HR)
+
+const VALID_DIRECT_CHILDREN = new Set(['P', 'H1', 'H2', 'H3', 'UL', 'OL', 'HR']);
+
+function normalizeBlocks() {
+  if (!editorEl) return;
+
+  const children = Array.from(editorEl.childNodes);
+  for (const child of children) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      // Wrap bare text nodes in <p>
+      if (child.textContent.trim() === '') {
+        editorEl.removeChild(child);
+        continue;
+      }
+      const p = document.createElement('p');
+      child.replaceWith(p);
+      p.appendChild(child);
+      continue;
+    }
+
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      if (child.tagName === 'BR') {
+        // Stray <br> at top level → remove or wrap
+        editorEl.removeChild(child);
+        continue;
+      }
+      if (!VALID_DIRECT_CHILDREN.has(child.tagName)) {
+        // Convert DIV, SPAN, or any other invalid block to <p>
+        const p = document.createElement('p');
+        while (child.firstChild) p.appendChild(child.firstChild);
+        if (!p.hasChildNodes()) p.appendChild(document.createElement('br'));
+        child.replaceWith(p);
+      }
+    }
+  }
+
+  // Ensure editor is never empty
+  if (!editorEl.firstChild) {
+    const p = document.createElement('p');
+    p.innerHTML = '<br>';
+    editorEl.appendChild(p);
+  }
+}
+
 // ── Toolbar state reflection ──
 
 function updateToolbarState() {
@@ -588,6 +634,7 @@ function handleBeforeInput(e) {
 }
 
 function handleInput() {
+  normalizeBlocks();
   pushUndoSnapshot();
   if (onInputCallback) onInputCallback();
 }
@@ -648,6 +695,44 @@ function handleKeydown(e) {
         sel.addRange(newRange);
 
         if (onInputCallback) onInputCallback();
+        return;
+      }
+
+      // When pressing Enter at the end of a heading, create a <p> instead of another heading
+      const tag = block.tagName;
+      if (tag === 'H1' || tag === 'H2' || tag === 'H3') {
+        e.preventDefault();
+        pushUndoSnapshot();
+
+        // Split content: keep what's before cursor in heading, move rest to new <p>
+        const newP = document.createElement('p');
+        const afterRange = document.createRange();
+        afterRange.setStart(range.endContainer, range.endOffset);
+        afterRange.setEndAfter(block.lastChild || block);
+        const afterContent = afterRange.extractContents();
+
+        if (afterContent.textContent.trim() || afterContent.querySelector('*')) {
+          newP.appendChild(afterContent);
+        } else {
+          newP.innerHTML = '<br>';
+        }
+
+        // If heading is now empty, add a <br> placeholder
+        if (!block.textContent.trim() && !block.querySelector('*')) {
+          block.innerHTML = '<br>';
+        }
+
+        block.after(newP);
+
+        // Place cursor at start of new paragraph
+        const newRange = document.createRange();
+        newRange.setStart(newP, 0);
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+
+        if (onInputCallback) onInputCallback();
+        return;
       }
     }
   }
@@ -693,6 +778,7 @@ function handlePaste(e) {
     sel.addRange(newRange);
   }
 
+  normalizeBlocks();
   if (onInputCallback) onInputCallback();
 }
 
@@ -799,6 +885,7 @@ export function getContentPlainText() {
 export function setContent(html) {
   if (!editorEl) return;
   editorEl.innerHTML = html || '<p><br></p>';
+  normalizeBlocks();
   undoStack.length = 0;
   redoStack.length = 0;
   pushUndoSnapshot();

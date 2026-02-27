@@ -451,6 +451,12 @@ body {
   color: var(--app-text-primary);
 }
 
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.8rem;
+  min-height: auto;
+}
+
 .btn-reset-today {
   padding: var(--space-1) var(--space-3);
   font-size: 0.78rem;

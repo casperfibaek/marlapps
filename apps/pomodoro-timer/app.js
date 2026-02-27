@@ -782,7 +782,7 @@ class PomodoroTimer {
 
     // Show reset button when there's something to reset for the selected date
     if (this.resetTodayBtn) {
-      this.resetTodayBtn.style.display = completed > 0 ? '' : 'none';
+      this.resetTodayBtn.style.display = completed > 0 ? 'inline-flex' : 'none';
     }
 
     this.renderHistoryList(selectedDate);

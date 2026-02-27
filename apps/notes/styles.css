@@ -483,8 +483,9 @@ body {
 .note-item {
   padding: var(--space-4);
   border-bottom: 1px solid var(--app-border-light);
+  border-left: 3px solid transparent;
   cursor: pointer;
-  transition: background var(--transition-normal);
+  transition: background var(--transition-normal), border-color var(--transition-normal);
   min-height: 64px;
   -webkit-tap-highlight-color: transparent;
 }
@@ -496,7 +497,7 @@ body {
 
 .note-item.active {
   background: var(--app-accent-light);
-  border-left: 3px solid var(--app-accent);
+  border-left-color: var(--app-accent);
 }
 
 .note-item-title {
