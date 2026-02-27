@@ -593,6 +593,12 @@ body {
   color: var(--app-text-primary);
 }
 
+.editor-toolbar button.active {
+  background: var(--app-accent-light);
+  color: var(--app-accent);
+  font-weight: 700;
+}
+
 .toolbar-divider {
   width: 1px;
   height: 20px;
