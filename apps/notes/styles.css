@@ -244,6 +244,14 @@ body {
   outline: none;
 }
 
+.notebook-inline-input--error {
+  border-color: var(--app-danger, #e74c3c);
+}
+
+.notebook-inline-input--error::placeholder {
+  color: var(--app-danger, #e74c3c);
+}
+
 /* Settings popover */
 .notebook-settings-popover {
   background: var(--app-bg-secondary);

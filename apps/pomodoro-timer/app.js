@@ -780,27 +780,31 @@ class PomodoroTimer {
     const completed = this.getHistoryCount(selectedDate);
     this.historyCountEl.textContent = `${completed} pomodoro${completed === 1 ? '' : 's'} completed`;
 
-    // Only show reset button when viewing today and there's something to reset
+    // Show reset button when there's something to reset for the selected date
     if (this.resetTodayBtn) {
-      this.resetTodayBtn.style.display = (selectedDate === today && completed > 0) ? '' : 'none';
+      this.resetTodayBtn.style.display = completed > 0 ? '' : 'none';
     }
 
     this.renderHistoryList(selectedDate);
   }
 
   resetTodayCount() {
-    const today = this.getDateKey();
-    const count = this.getHistoryCount(today);
+    const selectedDate = this.historyDateInput.value || this.getDateKey();
+    const count = this.getHistoryCount(selectedDate);
     if (count === 0) return;
 
-    if (!confirm(`Reset today's ${count} pomodoro${count === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    const today = this.getDateKey();
+    const label = selectedDate === today ? "today's" : this.formatHistoryDate(selectedDate) + "'s";
+    if (!confirm(`Reset ${label} ${count} pomodoro${count === 1 ? '' : 's'}? This cannot be undone.`)) return;
 
-    // Clear today's history
-    delete this.history[today];
+    // Clear the selected date's history
+    delete this.history[selectedDate];
 
-    // Reset daily session counters
-    this.state.totalWorkSessions = 0;
-    this.state.pomodoroCount = 1;
+    // Reset daily session counters if clearing today
+    if (selectedDate === today) {
+      this.state.totalWorkSessions = 0;
+      this.state.pomodoroCount = 1;
+    }
 
     this.saveData();
     this.updateDisplay();

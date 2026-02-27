@@ -1,6 +1,13 @@
 // Kanban Board App with drag-and-drop and localStorage persistence
 
 class KanbanBoard {
+  // Constants
+  static LONG_PRESS_MS = 400;
+  static TOUCH_MOVE_THRESHOLD_PX = 10;
+  static AUTO_SCROLL_EDGE_PX = 60;
+  static AUTO_SCROLL_MAX_SPEED = 12;
+  static UNDO_TIMEOUT_MS = 8000;
+
   constructor() {
     this.migrateStorage();
     this.board = this.loadBoard();
@@ -10,6 +17,7 @@ class KanbanBoard {
     this.hasUnsavedChanges = false;
     this.deletedTaskState = null;
     this.undoTimeoutId = null;
+    this._pendingConfirm = null;
 
     // Touch drag state
     this.touchDragState = {
@@ -27,8 +35,6 @@ class KanbanBoard {
     // Drag animation state
     this.dragAnimState = {
       rafId: null,
-      pendingX: 0,
-      pendingY: 0,
       columnCache: null
     };
 
@@ -54,6 +60,19 @@ class KanbanBoard {
     this.undoToast = document.getElementById('undoToast');
     this.toastMessage = document.getElementById('toastMessage');
     this.toastUndo = document.getElementById('toastUndo');
+
+    // Confirm dialog elements
+    this.confirmModal = document.getElementById('confirmModal');
+    this.confirmTitle = document.getElementById('confirmTitle');
+    this.confirmMessage = document.getElementById('confirmMessage');
+    this.confirmOkBtn = document.getElementById('confirmOk');
+    this.confirmCancelBtn = document.getElementById('confirmCancel');
+
+    // Prompt dialog elements
+    this.promptModal = document.getElementById('promptModal');
+    this.promptForm = document.getElementById('promptForm');
+    this.promptInput = document.getElementById('promptInput');
+    this.promptCancelBtn = document.getElementById('promptCancel');
   }
 
   syncThemeWithParent() {
@@ -158,7 +177,11 @@ class KanbanBoard {
   }
 
   saveBoard() {
-    localStorage.setItem('marlapps-kanban-board', JSON.stringify(this.board));
+    try {
+      localStorage.setItem('marlapps-kanban-board', JSON.stringify(this.board));
+    } catch (e) {
+      console.error('Failed to save board:', e);
+    }
   }
 
   attachEventListeners() {
@@ -177,9 +200,12 @@ class KanbanBoard {
       }
     });
 
-    // Keyboard support
+    // Keyboard support (skip if a confirm/prompt dialog is open — they handle their own Escape)
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.taskModal.classList.contains('active')) {
+      if (e.key !== 'Escape') return;
+      if (this.confirmModal.classList.contains('active')) return;
+      if (this.promptModal.classList.contains('active')) return;
+      if (this.taskModal.classList.contains('active')) {
         this.closeModal();
       }
     });
@@ -193,10 +219,12 @@ class KanbanBoard {
     });
 
     // Delete button in modal
-    this.deleteTaskBtn.addEventListener('click', () => {
+    this.deleteTaskBtn.addEventListener('click', async () => {
       if (this.editingTaskId) {
-        this.deleteTask(this.editingTaskId);
-        this.closeModal();
+        const taskId = this.editingTaskId;
+        this.hasUnsavedChanges = false;
+        await this.closeModal();
+        await this.deleteTask(taskId);
       }
     });
 
@@ -235,6 +263,14 @@ class KanbanBoard {
       this.currentDragColumnId = null;
       this.removeColumnDropIndicator();
     });
+
+    // Persist data when app is closed / hidden
+    const flush = () => this.saveBoard();
+    window.addEventListener('beforeunload', flush);
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.saveBoard();
+    });
   }
 
   renderBoard() {
@@ -254,10 +290,10 @@ class KanbanBoard {
     const addColumnBtn = document.createElement('button');
     addColumnBtn.className = 'add-column-btn';
     addColumnBtn.textContent = '+ Add Column';
-    addColumnBtn.addEventListener('click', () => {
-      const name = prompt('Column name:');
-      if (name && name.trim()) {
-        this.addColumn(name.trim());
+    addColumnBtn.addEventListener('click', async () => {
+      const name = await this.showPrompt('Add Column', 'Column name:', 'Enter column name');
+      if (name) {
+        this.addColumn(name);
       }
     });
     this.boardEl.appendChild(addColumnBtn);
@@ -272,6 +308,8 @@ class KanbanBoard {
     const columnEl = document.createElement('div');
     columnEl.className = `column ${column.collapsed ? 'collapsed' : ''}`;
     columnEl.dataset.columnId = column.id;
+    columnEl.setAttribute('role', 'listitem');
+    columnEl.setAttribute('aria-label', column.name);
 
     // Filter tasks based on this column's color filter
     const columnFilter = column.colorFilter || null;
@@ -292,10 +330,10 @@ class KanbanBoard {
           <div class="column-controls">
             <span class="task-count">${countText}</span>
             <div class="column-filter-wrapper">
-              <button class="column-filter-btn ${columnFilter ? 'active' : ''}" aria-label="Filter by color">
+              <button class="column-filter-btn ${columnFilter ? 'active' : ''}" aria-label="Filter by color" aria-expanded="false" aria-haspopup="true">
                 ${filterIcon}
               </button>
-              <div class="column-filter-dropdown">
+              <div class="column-filter-dropdown" role="menu">
                 <button class="filter-option ${!columnFilter ? 'active' : ''}" data-color="all">All</button>
                 <button class="filter-option ${columnFilter === 'red' ? 'active' : ''}" data-color="red">
                   <span class="filter-color-dot" style="background: #E74C3C;"></span> Red
@@ -315,10 +353,10 @@ class KanbanBoard {
               </div>
             </div>
             <div class="column-edit-wrapper">
-              <button class="column-edit-btn" aria-label="Edit column">
+              <button class="column-edit-btn" aria-label="Edit column" aria-expanded="false" aria-haspopup="true">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
               </button>
-              <div class="column-edit-dropdown">
+              <div class="column-edit-dropdown" role="menu">
                 <button class="edit-option" data-action="rename">Rename column</button>
                 <div class="edit-separator"></div>
                 <button class="edit-option danger" data-action="clear-tasks">Delete all tasks</button>
@@ -332,7 +370,7 @@ class KanbanBoard {
         </div>
       </div>
       <div class="column-body ${column.collapsed ? 'collapsed' : ''}">
-        <div class="tasks scrollable" data-column-id="${column.id}"></div>
+        <div class="tasks scrollable" data-column-id="${column.id}" role="list" aria-label="${this.escapeHtml(column.name)} tasks"></div>
         <button class="add-task-btn" data-column-id="${column.id}">+ Add Task</button>
       </div>
     `;
@@ -395,9 +433,13 @@ class KanbanBoard {
       e.stopPropagation();
       // Close any other open dropdowns
       document.querySelectorAll('.column-filter-dropdown.open').forEach(d => {
-        if (d !== filterDropdown) d.classList.remove('open');
+        if (d !== filterDropdown) {
+          d.classList.remove('open');
+          d.previousElementSibling?.setAttribute('aria-expanded', 'false');
+        }
       });
-      filterDropdown.classList.toggle('open');
+      const isOpen = filterDropdown.classList.toggle('open');
+      filterBtn.setAttribute('aria-expanded', isOpen.toString());
     });
 
     // Filter option clicks
@@ -417,7 +459,8 @@ class KanbanBoard {
       document.querySelectorAll('.column-edit-dropdown.open, .column-filter-dropdown.open').forEach(d => {
         if (d !== editDropdown) d.classList.remove('open');
       });
-      editDropdown.classList.toggle('open');
+      const isOpen = editDropdown.classList.toggle('open');
+      editBtn.setAttribute('aria-expanded', isOpen.toString());
     });
 
     // Edit dropdown actions
@@ -462,6 +505,8 @@ class KanbanBoard {
     taskEl.className = 'task';
     taskEl.draggable = true;
     taskEl.tabIndex = 0;
+    taskEl.setAttribute('role', 'listitem');
+    taskEl.setAttribute('aria-label', task.title);
     taskEl.dataset.taskId = task.id;
     if (task.color) {
       taskEl.dataset.color = task.color;
@@ -524,7 +569,7 @@ class KanbanBoard {
     // Long press to start dragging
     this.touchDragState.longPressTimer = setTimeout(() => {
       this.startTouchDrag(taskEl, touch);
-    }, 400);
+    }, KanbanBoard.LONG_PRESS_MS);
   }
 
   startTouchDrag(taskEl, touch) {
@@ -572,7 +617,7 @@ class KanbanBoard {
     const deltaY = Math.abs(touch.clientY - this.touchDragState.startY);
 
     // Cancel long press if moved too much before drag started
-    if (!this.touchDragState.isDragging && (deltaX > 10 || deltaY > 10)) {
+    if (!this.touchDragState.isDragging && (deltaX > KanbanBoard.TOUCH_MOVE_THRESHOLD_PX || deltaY > KanbanBoard.TOUCH_MOVE_THRESHOLD_PX)) {
       clearTimeout(this.touchDragState.longPressTimer);
       this.resetTouchDragState();
       return;
@@ -619,8 +664,8 @@ class KanbanBoard {
   }
 
   autoScrollDuringDrag(touchY) {
-    const edgeZone = 60;
-    const maxSpeed = 12;
+    const edgeZone = KanbanBoard.AUTO_SCROLL_EDGE_PX;
+    const maxSpeed = KanbanBoard.AUTO_SCROLL_MAX_SPEED;
     const scrollContainer = document.querySelector('.kanban-main');
     if (!scrollContainer) return;
 
@@ -656,7 +701,8 @@ class KanbanBoard {
     }
 
     if (this.touchDragState.isDragging) {
-      // Find drop target
+      // Refresh rects for accurate final drop position
+      this.cacheColumnRects();
       const touch = e.changedTouches[0];
       const targetColumn = this.findColumnAtPoint(touch.clientX, touch.clientY);
 
@@ -734,23 +780,15 @@ class KanbanBoard {
   }
 
   findColumnAtPoint(x, y) {
-    const cached = this.dragAnimState.columnCache;
+    let cached = this.dragAnimState.columnCache;
+    if (!cached) {
+      this.cacheColumnRects();
+      cached = this.dragAnimState.columnCache;
+    }
     if (cached) {
-      // Refresh rects for final drop accuracy
-      for (const entry of cached) {
-        entry.rect = entry.el.getBoundingClientRect();
-      }
       for (const { columnId, rect } of cached) {
         if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
           return columnId;
-        }
-      }
-    } else {
-      const columns = document.querySelectorAll('.column');
-      for (const col of columns) {
-        const rect = col.getBoundingClientRect();
-        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-          return col.dataset.columnId;
         }
       }
     }
@@ -764,17 +802,21 @@ class KanbanBoard {
     const targetColumnEl = document.querySelector(`.column[data-column-id="${targetColumnId}"]`);
     if (!targetColumnEl) return targetColumn.tasks.length;
 
+    // Use only visible DOM task elements (respects color filter)
     const visibleTaskEls = Array.from(targetColumnEl.querySelectorAll('.task[data-task-id]'))
       .filter(taskEl => taskEl.dataset.taskId !== draggedTaskId);
 
     if (visibleTaskEls.length === 0) {
+      // If filtered and empty, insert at end; if unfiltered and empty, also end
       return targetColumn.tasks.length;
     }
 
+    // Find which visible task the cursor is above
     for (const taskEl of visibleTaskEls) {
       const rect = taskEl.getBoundingClientRect();
       const midpoint = rect.top + (rect.height / 2);
       if (clientY < midpoint) {
+        // Map this visible task back to its actual index in the full array
         const beforeTaskIndex = targetColumn.tasks.findIndex(t => t.id === taskEl.dataset.taskId);
         if (beforeTaskIndex !== -1) {
           return beforeTaskIndex;
@@ -782,7 +824,10 @@ class KanbanBoard {
       }
     }
 
-    return targetColumn.tasks.length;
+    // Cursor is below all visible tasks — insert after the last visible task's real position
+    const lastVisibleId = visibleTaskEls[visibleTaskEls.length - 1].dataset.taskId;
+    const lastVisibleIndex = targetColumn.tasks.findIndex(t => t.id === lastVisibleId);
+    return lastVisibleIndex !== -1 ? lastVisibleIndex + 1 : targetColumn.tasks.length;
   }
 
   handleDragStart(e) {
@@ -923,8 +968,8 @@ class KanbanBoard {
     this.taskTitleInput.focus();
   }
 
-  closeModal() {
-    if (!this.checkUnsavedChanges()) return;
+  async closeModal() {
+    if (!await this.checkUnsavedChanges()) return;
 
     this.taskModal.classList.remove('active');
     this.currentColumnId = null;
@@ -971,14 +1016,13 @@ class KanbanBoard {
     this.closeModal();
   }
 
-  deleteTask(taskId) {
+  async deleteTask(taskId) {
     const task = this.findTask(taskId);
     if (!task) return;
 
     const taskTitle = task.title;
 
-    // Confirmation dialog
-    if (!confirm(`Delete task "${taskTitle}"?`)) return;
+    if (!await this.showConfirm('Delete Task', `Delete task "${taskTitle}"?`)) return;
 
     // Find column and task index
     let found = false;
@@ -1028,9 +1072,9 @@ class KanbanBoard {
     });
   }
 
-  checkUnsavedChanges() {
+  async checkUnsavedChanges() {
     if (!this.hasUnsavedChanges) return true;
-    return confirm('You have unsaved changes. Are you sure you want to close?');
+    return this.showConfirm('Unsaved Changes', 'You have unsaved changes. Are you sure you want to close?', 'Discard');
   }
 
   setColorFilter(columnId, color) {
@@ -1100,19 +1144,19 @@ class KanbanBoard {
     this.renderBoard();
   }
 
-  clearColumnTasks(columnId) {
+  async clearColumnTasks(columnId) {
     const column = this.board.columns.find(c => c.id === columnId);
     if (!column) return;
     if (column.tasks.length === 0) return;
 
-    if (!confirm(`Delete all ${column.tasks.length} tasks in "${column.name}"?`)) return;
+    if (!await this.showConfirm('Clear Tasks', `Delete all ${column.tasks.length} tasks in "${column.name}"?`)) return;
 
     column.tasks = [];
     this.saveBoard();
     this.renderBoard();
   }
 
-  deleteColumn(columnId) {
+  async deleteColumn(columnId) {
     const column = this.board.columns.find(c => c.id === columnId);
     if (!column) return;
 
@@ -1121,7 +1165,7 @@ class KanbanBoard {
       ? `Delete column "${column.name}" and its ${taskCount} task${taskCount > 1 ? 's' : ''}?`
       : `Delete column "${column.name}"?`;
 
-    if (!confirm(msg)) return;
+    if (!await this.showConfirm('Delete Column', msg)) return;
 
     this.board.columns = this.board.columns.filter(c => c.id !== columnId);
     this.saveBoard();
@@ -1153,11 +1197,10 @@ class KanbanBoard {
     // Show toast
     this.undoToast.classList.add('show');
 
-    // Auto-hide after 8 seconds
     this.undoTimeoutId = setTimeout(() => {
       this.hideUndoToast();
       this.deletedTaskState = null;
-    }, 8000);
+    }, KanbanBoard.UNDO_TIMEOUT_MS);
   }
 
   hideUndoToast() {
@@ -1330,8 +1373,68 @@ class KanbanBoard {
     this.renderBoard();
   }
 
+  showConfirm(title, message, okLabel = 'Delete') {
+    return new Promise((resolve) => {
+      this.confirmTitle.textContent = title;
+      this.confirmMessage.textContent = message;
+      this.confirmOkBtn.textContent = okLabel;
+      this.confirmModal.classList.add('active');
+      this.confirmOkBtn.focus();
+
+      const cleanup = () => {
+        this.confirmModal.classList.remove('active');
+        this.confirmOkBtn.removeEventListener('click', onOk);
+        this.confirmCancelBtn.removeEventListener('click', onCancel);
+        this.confirmModal.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onKey);
+      };
+      const onOk = () => { cleanup(); resolve(true); };
+      const onCancel = () => { cleanup(); resolve(false); };
+      const onBackdrop = (e) => { if (e.target === this.confirmModal) onCancel(); };
+      const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
+
+      this.confirmOkBtn.addEventListener('click', onOk);
+      this.confirmCancelBtn.addEventListener('click', onCancel);
+      this.confirmModal.addEventListener('click', onBackdrop);
+      document.addEventListener('keydown', onKey);
+    });
+  }
+
+  showPrompt(title, label, placeholder = '') {
+    return new Promise((resolve) => {
+      document.getElementById('promptTitle').textContent = title;
+      this.promptInput.value = '';
+      this.promptInput.placeholder = placeholder;
+      this.promptInput.previousElementSibling.textContent = label;
+      this.promptModal.classList.add('active');
+      this.promptInput.focus();
+
+      const cleanup = () => {
+        this.promptModal.classList.remove('active');
+        this.promptForm.removeEventListener('submit', onSubmit);
+        this.promptCancelBtn.removeEventListener('click', onCancel);
+        this.promptModal.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onKey);
+      };
+      const onSubmit = (e) => {
+        e.preventDefault();
+        const val = this.promptInput.value.trim();
+        cleanup();
+        resolve(val || null);
+      };
+      const onCancel = () => { cleanup(); resolve(null); };
+      const onBackdrop = (e) => { if (e.target === this.promptModal) onCancel(); };
+      const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
+
+      this.promptForm.addEventListener('submit', onSubmit);
+      this.promptCancelBtn.addEventListener('click', onCancel);
+      this.promptModal.addEventListener('click', onBackdrop);
+      document.addEventListener('keydown', onKey);
+    });
+  }
+
   generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    return crypto.randomUUID();
   }
 
   escapeHtml(text) {

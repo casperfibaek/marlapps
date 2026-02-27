@@ -11,24 +11,24 @@
 </head>
 <body>
   <div class="app-container">
-    <main class="kanban-main">
-      <div class="board" id="board">
+    <main class="kanban-main" role="main" aria-label="Kanban Board">
+      <div class="board" id="board" role="list" aria-label="Board columns">
         <!-- Columns will be dynamically generated -->
       </div>
     </main>
 
     <!-- Task Modal -->
-    <div class="modal" id="taskModal">
+    <div class="modal" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-content">
         <h2 id="modalTitle">Add Task</h2>
         <form id="taskForm">
           <div class="form-group">
             <label for="taskTitle">Task Title:</label>
-            <input type="text" id="taskTitle" required placeholder="Enter task title">
+            <input type="text" id="taskTitle" required placeholder="Enter task title" maxlength="200">
           </div>
           <div class="form-group">
             <label for="taskDescription">Description (optional):</label>
-            <textarea id="taskDescription" rows="4" placeholder="Enter task description"></textarea>
+            <textarea id="taskDescription" rows="4" placeholder="Enter task description" maxlength="2000"></textarea>
           </div>
 
           <!-- Color Selector -->
@@ -60,6 +60,35 @@
             <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
             <button type="button" class="btn btn-danger" id="deleteTaskBtn" style="display: none;">Delete</button>
             <button type="submit" class="btn btn-primary">Save Task</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Confirm Dialog -->
+    <div class="modal" id="confirmModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="modal-content modal-confirm">
+        <h2 id="confirmTitle">Confirm</h2>
+        <p id="confirmMessage"></p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="confirmCancel">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmOk">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prompt Dialog -->
+    <div class="modal" id="promptModal" role="dialog" aria-modal="true" aria-labelledby="promptTitle">
+      <div class="modal-content">
+        <h2 id="promptTitle">Column Name</h2>
+        <form id="promptForm">
+          <div class="form-group">
+            <label for="promptInput">Name:</label>
+            <input type="text" id="promptInput" required placeholder="Enter column name">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="promptCancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">OK</button>
           </div>
         </form>
       </div>

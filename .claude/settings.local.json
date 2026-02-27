@@ -4,7 +4,8 @@
       "Bash(wc:*)",
       "Bash(del \"c:\\\\Users\\\\caspe\\\\Desktop\\\\marlapps\\\\pwa-test.html\")",
       "Bash(test:*)",
-      "Bash(node build.js:*)"
+      "Bash(node build.js:*)",
+      "Bash(find /home/casper/Desktop/marlapps/apps -name \"*.html\" -exec grep -l \"sidebar\\\\|panel\\\\|toggle\\\\|modal\" {} ;)"
     ]
   }
 }

@@ -959,6 +959,11 @@ body {
   text-overflow: clip;
 }
 
+/* Rail Overlay (mobile: closes rail when tapping outside) */
+.rail-overlay {
+  display: none;
+}
+
 /* Drawer Overlay */
 .drawer-overlay {
   position: fixed;
@@ -1107,6 +1112,14 @@ body {
 
   .utility-rail.open {
     transform: translateX(0);
+  }
+
+  .rail-overlay.visible {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 19;
+    background: rgba(0, 0, 0, 0.3);
   }
 
   /* Show mobile header with hamburger */

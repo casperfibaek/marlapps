@@ -268,16 +268,23 @@ class Launcher {
 
     const railToggle = document.getElementById('railToggle');
     const utilityRail = document.getElementById('utilityRail');
+    const railOverlay = document.getElementById('railOverlay');
     if (railToggle && utilityRail) {
       railToggle.addEventListener('click', (e) => {
         e.stopPropagation();
         utilityRail.classList.toggle('open');
+        if (railOverlay) railOverlay.classList.toggle('visible', utilityRail.classList.contains('open'));
       });
+      if (railOverlay) {
+        railOverlay.addEventListener('click', () => {
+          this.closeRail();
+        });
+      }
       document.addEventListener('click', (e) => {
         if (utilityRail.classList.contains('open') &&
             !utilityRail.contains(e.target) &&
             !railToggle.contains(e.target)) {
-          utilityRail.classList.remove('open');
+          this.closeRail();
         }
       });
     }
@@ -403,6 +410,8 @@ class Launcher {
   closeRail() {
     const rail = document.getElementById('utilityRail');
     if (rail) rail.classList.remove('open');
+    const overlay = document.getElementById('railOverlay');
+    if (overlay) overlay.classList.remove('visible');
   }
 
   toggleCategoryDropdown() {

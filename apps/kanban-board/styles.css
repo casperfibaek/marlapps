@@ -41,7 +41,7 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--app-border-color);
-  max-height: calc(100vh - 24px);
+  max-height: calc(100vh - var(--space-4) - var(--space-4));
 }
 
 .column-header {
@@ -425,6 +425,9 @@
   min-height: var(--input-min-height);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
 }
 
 .add-task-btn:hover,
@@ -521,6 +524,17 @@
     var(--app-danger) 52%,
     transparent 52%
   );
+}
+
+/* Confirm/Prompt Modal */
+.modal-confirm {
+  max-width: 380px;
+}
+
+.modal-confirm p {
+  color: var(--app-text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-6);
 }
 
 /* Column Edit Dropdown */
@@ -715,7 +729,7 @@
     max-width: none;
     width: 100%;
     height: auto;
-    max-height: 60vh;
+    max-height: none;
   }
 
   .add-column-btn {

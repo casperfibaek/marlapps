@@ -407,15 +407,31 @@ function handlePaste(e) {
 function sanitizeNode(node) {
   const children = Array.from(node.childNodes);
   for (const child of children) {
+    if (child.nodeType === Node.COMMENT_NODE) {
+      node.removeChild(child);
+      continue;
+    }
+
     if (child.nodeType === Node.ELEMENT_NODE) {
-      // Remove all attributes
+      // Remove dangerous elements entirely (including children)
+      const tag = child.tagName;
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'IFRAME' ||
+          tag === 'OBJECT' || tag === 'EMBED' || tag === 'LINK' ||
+          tag === 'META' || tag === 'FORM' || tag === 'INPUT' ||
+          tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') {
+        node.removeChild(child);
+        continue;
+      }
+
+      // Remove all attributes (strips event handlers, src, href, etc.)
       const attrs = Array.from(child.attributes);
       for (const attr of attrs) {
         child.removeAttribute(attr.name);
       }
 
-      if (!ALLOWED_TAGS.has(child.tagName)) {
-        // Replace with its children
+      if (!ALLOWED_TAGS.has(tag)) {
+        // Replace with its children (inline the content)
+        sanitizeNode(child);
         while (child.firstChild) {
           node.insertBefore(child.firstChild, child);
         }
