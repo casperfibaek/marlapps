@@ -3,11 +3,13 @@ class SoundscapeApp {
     this.audioCtx = null;
     this.masterGain = null;
     this.sounds = new Map();
+    this.bufferCache = new Map();
     this.data = this.loadData();
     this.pendingAutoRestore = false;
     this.lastReportedBackgroundActivity = null;
+    this.saveTimeout = null;
+    this.gestureAbort = null;
 
-    // Sound definitions — add new generated sounds here
     this.soundDefs = [
       {
         id: 'white-noise',
@@ -20,7 +22,7 @@ class SoundscapeApp {
         id: 'brown-noise',
         name: 'Brown Noise',
         description: 'Deep, rumbling low-frequency noise',
-        icon: '\u{1F30A}',
+        icon: '\u{1F3B5}',
         generator: (ctx) => this.createBrownNoise(ctx)
       },
       {
@@ -77,7 +79,7 @@ class SoundscapeApp {
         return defaults;
       }
 
-      const masterVolumeRaw = Number.parseInt(parsed.masterVolume, 10);
+      const masterVolumeRaw = parseInt(parsed.masterVolume, 10);
       const masterVolume = Number.isFinite(masterVolumeRaw)
         ? Math.min(100, Math.max(0, masterVolumeRaw))
         : defaults.masterVolume;
@@ -93,7 +95,7 @@ class SoundscapeApp {
           }
 
           if (state.volume !== undefined) {
-            const volume = Number.parseInt(state.volume, 10);
+            const volume = parseInt(state.volume, 10);
             if (Number.isFinite(volume)) {
               nextState.volume = Math.min(100, Math.max(0, volume));
             }
@@ -115,14 +117,25 @@ class SoundscapeApp {
     localStorage.setItem('marlapps-soundscape', JSON.stringify(this.data));
   }
 
+  scheduleSave() {
+    if (this.saveTimeout) return;
+    this.saveTimeout = setTimeout(() => {
+      this.saveTimeout = null;
+      this.saveData();
+    }, 300);
+  }
+
+  flushSave() {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+    this.saveData();
+  }
+
   // ===== Theme =====
 
   syncThemeWithParent() {
-    try {
-      const savedTheme = localStorage.getItem('marlapps-theme');
-      if (savedTheme) this.applyTheme(savedTheme);
-    } catch (e) {}
-
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'theme-change') {
         this.applyTheme(event.data.theme);
@@ -145,6 +158,7 @@ class SoundscapeApp {
       this.masterGain = this.audioCtx.createGain();
       this.masterGain.gain.value = this.data.masterVolume / 100;
       this.masterGain.connect(this.audioCtx.destination);
+      this.removeGestureListeners();
     }
     if (this.audioCtx.state === 'suspended') {
       this.audioCtx.resume();
@@ -152,40 +166,103 @@ class SoundscapeApp {
     return this.audioCtx;
   }
 
-  // ===== Noise Generators =====
+  // ===== Buffer Cache =====
 
-  createWhiteNoise(ctx) {
-    const bufferSize = 2 * ctx.sampleRate;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
-    }
+  getCachedBuffer(key, ctx, generator) {
+    if (this.bufferCache.has(key)) return this.bufferCache.get(key);
+    const buffer = generator(ctx);
+    this.bufferCache.set(key, buffer);
+    return buffer;
+  }
+
+  // ===== Noise Generators =====
+  // Each generator returns a SoundNode wrapper: { start(), stop(), connect(dest), disconnect() }
+
+  createBufferSource(ctx, buffer) {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
     return source;
+  }
+
+  generateWhiteNoiseBuffer(ctx) {
+    return this.getCachedBuffer('white', ctx, () => {
+      const bufferSize = 2 * ctx.sampleRate;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      return buffer;
+    });
+  }
+
+  generateBrownNoiseBuffer(ctx) {
+    return this.getCachedBuffer('brown', ctx, () => {
+      const bufferSize = 2 * ctx.sampleRate;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        data[i] = (last + 0.02 * white) / 1.02;
+        last = data[i];
+        data[i] *= 3.5;
+      }
+      return buffer;
+    });
+  }
+
+  generateImpulseBuffer(ctx, key, {
+    duration = 6,
+    eventsPerSecond = 12,
+    ampMin = 0.08,
+    ampMax = 0.6,
+    decayMin = 0.002,
+    decayMax = 0.02
+  } = {}) {
+    return this.getCachedBuffer(key, ctx, () => {
+      const bufferSize = Math.max(1, Math.floor(duration * ctx.sampleRate));
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      const eventCount = Math.max(1, Math.floor(duration * eventsPerSecond));
+
+      for (let i = 0; i < eventCount; i++) {
+        const start = Math.floor(Math.random() * (bufferSize - 1));
+        const amplitude = ampMin + (Math.random() * (ampMax - ampMin));
+        const decaySeconds = decayMin + (Math.random() * (decayMax - decayMin));
+        const decaySamples = Math.max(1, Math.floor(decaySeconds * ctx.sampleRate));
+
+        for (let j = 0; j < decaySamples && (start + j) < bufferSize; j++) {
+          const envelope = Math.exp((-5 * j) / decaySamples);
+          data[start + j] += (Math.random() * 2 - 1) * amplitude * envelope;
+        }
+      }
+
+      for (let i = 0; i < bufferSize; i++) {
+        if (data[i] > 1) data[i] = 1;
+        else if (data[i] < -1) data[i] = -1;
+      }
+
+      return buffer;
+    });
+  }
+
+  createWhiteNoise(ctx) {
+    const buffer = this.generateWhiteNoiseBuffer(ctx);
+    const source = this.createBufferSource(ctx, buffer);
+    return { sources: [source], output: source, oscillators: [] };
   }
 
   createBrownNoise(ctx) {
-    const bufferSize = 2 * ctx.sampleRate;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    let last = 0;
-    for (let i = 0; i < bufferSize; i++) {
-      const white = Math.random() * 2 - 1;
-      data[i] = (last + 0.02 * white) / 1.02;
-      last = data[i];
-      data[i] *= 3.5; // boost volume
-    }
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-    return source;
+    const buffer = this.generateBrownNoiseBuffer(ctx);
+    const source = this.createBufferSource(ctx, buffer);
+    return { sources: [source], output: source, oscillators: [] };
   }
 
   createFanNoise(ctx) {
-    const source = this.createWhiteNoise(ctx);
+    const buffer = this.generateWhiteNoiseBuffer(ctx);
+    const source = this.createBufferSource(ctx, buffer);
 
     const lowpass = ctx.createBiquadFilter();
     lowpass.type = 'lowpass';
@@ -252,173 +329,136 @@ class SoundscapeApp {
     droneFilter.connect(droneGain);
     subDrone.connect(subDroneGain);
 
-    drone.start();
-    subDrone.start();
-    turbulence.start();
-    droneDrift.start();
-    dronePulse.start();
-
     const output = ctx.createGain();
     output.gain.value = 1.15;
     noiseGain.connect(output);
     droneGain.connect(output);
     subDroneGain.connect(output);
 
-    const originalStop = source.stop.bind(source);
-    source.stop = (...args) => {
-      try { drone.stop(...args); } catch (e) {}
-      try { subDrone.stop(...args); } catch (e) {}
-      try { turbulence.stop(...args); } catch (e) {}
-      try { droneDrift.stop(...args); } catch (e) {}
-      try { dronePulse.stop(...args); } catch (e) {}
-      originalStop(...args);
+    return {
+      sources: [source],
+      output,
+      oscillators: [drone, subDrone, turbulence, droneDrift, dronePulse]
     };
-    source.connect = output.connect.bind(output);
-    source.disconnect = output.disconnect.bind(output);
-
-    return source;
   }
 
   createWaveNoise(ctx) {
-    const source = this.createBrownNoise(ctx);
-    const splashSource = this.createWhiteNoise(ctx);
+    const brownBuffer = this.generateBrownNoiseBuffer(ctx);
+    const whiteBuffer = this.generateWhiteNoiseBuffer(ctx);
+    const source = this.createBufferSource(ctx, brownBuffer);
+    const splashSource = this.createBufferSource(ctx, whiteBuffer);
 
+    // Main wave body filtering
     const highpass = ctx.createBiquadFilter();
     highpass.type = 'highpass';
-    highpass.frequency.value = 90;
-    highpass.Q.value = 0.7;
+    highpass.frequency.value = 60;
+    highpass.Q.value = 0.5;
 
     const lowpass = ctx.createBiquadFilter();
     lowpass.type = 'lowpass';
-    lowpass.frequency.value = 2200;
-    lowpass.Q.value = 0.9;
+    lowpass.frequency.value = 1800;
+    lowpass.Q.value = 0.7;
 
+    // Swell gain — modulated by multiple LFOs for organic motion
     const swell = ctx.createGain();
-    swell.gain.value = 0.3;
+    swell.gain.value = 0.25;
 
+    // Primary roll — slow, deep wave cycle
     const roll = ctx.createOscillator();
-    roll.type = 'triangle';
-    roll.frequency.value = 0.25;
+    roll.type = 'sine';
+    roll.frequency.value = 0.08;
     const rollDepth = ctx.createGain();
-    rollDepth.gain.value = 0.22;
+    rollDepth.gain.value = 0.2;
 
+    // Secondary surge — slightly faster, overlapping rhythm
     const surge = ctx.createOscillator();
     surge.type = 'sine';
-    surge.frequency.value = 0.1;
+    surge.frequency.value = 0.14;
     const surgeDepth = ctx.createGain();
-    surgeDepth.gain.value = 0.16;
+    surgeDepth.gain.value = 0.12;
 
-    const bounce = ctx.createOscillator();
-    bounce.type = 'sawtooth';
-    bounce.frequency.value = 0.42;
-    const bounceDepth = ctx.createGain();
-    bounceDepth.gain.value = 0.1;
+    // Slow drift — very low frequency for long-term variation
+    const drift = ctx.createOscillator();
+    drift.type = 'sine';
+    drift.frequency.value = 0.03;
+    const driftDepth = ctx.createGain();
+    driftDepth.gain.value = 0.08;
 
     roll.connect(rollDepth);
     rollDepth.connect(swell.gain);
     surge.connect(surgeDepth);
     surgeDepth.connect(swell.gain);
-    bounce.connect(bounceDepth);
-    bounceDepth.connect(swell.gain);
+    drift.connect(driftDepth);
+    driftDepth.connect(swell.gain);
 
+    // Modulate the lowpass cutoff for tonal movement
+    const filterLfo = ctx.createOscillator();
+    filterLfo.type = 'sine';
+    filterLfo.frequency.value = 0.06;
+    const filterLfoDepth = ctx.createGain();
+    filterLfoDepth.gain.value = 400;
+    filterLfo.connect(filterLfoDepth);
+    filterLfoDepth.connect(lowpass.frequency);
+
+    // Shore wash — high-frequency hiss for breaking waves
     const splashBand = ctx.createBiquadFilter();
     splashBand.type = 'bandpass';
-    splashBand.frequency.value = 850;
-    splashBand.Q.value = 0.6;
+    splashBand.frequency.value = 1200;
+    splashBand.Q.value = 0.4;
 
     const splashLowpass = ctx.createBiquadFilter();
     splashLowpass.type = 'lowpass';
-    splashLowpass.frequency.value = 1800;
-    splashLowpass.Q.value = 0.7;
+    splashLowpass.frequency.value = 2400;
+    splashLowpass.Q.value = 0.5;
 
     const splashGain = ctx.createGain();
-    splashGain.gain.value = 0.12;
+    splashGain.gain.value = 0.06;
 
+    // Shore wash volume modulation — synced loosely with roll
     const splashMotion = ctx.createOscillator();
-    splashMotion.type = 'triangle';
-    splashMotion.frequency.value = 0.36;
+    splashMotion.type = 'sine';
+    splashMotion.frequency.value = 0.09;
     const splashMotionDepth = ctx.createGain();
-    splashMotionDepth.gain.value = 0.08;
+    splashMotionDepth.gain.value = 0.05;
     splashMotion.connect(splashMotionDepth);
     splashMotionDepth.connect(splashGain.gain);
 
+    // Splash frequency sweep for variety
+    const splashFreqLfo = ctx.createOscillator();
+    splashFreqLfo.type = 'triangle';
+    splashFreqLfo.frequency.value = 0.12;
+    const splashFreqDepth = ctx.createGain();
+    splashFreqDepth.gain.value = 300;
+    splashFreqLfo.connect(splashFreqDepth);
+    splashFreqDepth.connect(splashBand.frequency);
+
+    // Connect wave body
     source.connect(highpass);
     highpass.connect(lowpass);
     lowpass.connect(swell);
 
+    // Connect shore wash
     splashSource.connect(splashBand);
     splashBand.connect(splashLowpass);
     splashLowpass.connect(splashGain);
-
-    roll.start();
-    surge.start();
-    bounce.start();
-    splashMotion.start();
 
     const output = ctx.createGain();
     output.gain.value = 1;
     swell.connect(output);
     splashGain.connect(output);
 
-    const originalStart = source.start.bind(source);
-    const originalStop = source.stop.bind(source);
-    source.start = (...args) => {
-      try { splashSource.start(...args); } catch (e) {}
-      originalStart(...args);
+    return {
+      sources: [source, splashSource],
+      output,
+      oscillators: [roll, surge, drift, filterLfo, splashMotion, splashFreqLfo]
     };
-    source.stop = (...args) => {
-      try { splashSource.stop(...args); } catch (e) {}
-      try { roll.stop(...args); } catch (e) {}
-      try { surge.stop(...args); } catch (e) {}
-      try { bounce.stop(...args); } catch (e) {}
-      try { splashMotion.stop(...args); } catch (e) {}
-      originalStop(...args);
-    };
-    source.connect = output.connect.bind(output);
-    source.disconnect = output.disconnect.bind(output);
-
-    return source;
-  }
-
-  createImpulseNoise(ctx, {
-    duration = 6,
-    eventsPerSecond = 12,
-    ampMin = 0.08,
-    ampMax = 0.6,
-    decayMin = 0.002,
-    decayMax = 0.02
-  } = {}) {
-    const bufferSize = Math.max(1, Math.floor(duration * ctx.sampleRate));
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    const eventCount = Math.max(1, Math.floor(duration * eventsPerSecond));
-
-    for (let i = 0; i < eventCount; i++) {
-      const start = Math.floor(Math.random() * (bufferSize - 1));
-      const amplitude = ampMin + (Math.random() * (ampMax - ampMin));
-      const decaySeconds = decayMin + (Math.random() * (decayMax - decayMin));
-      const decaySamples = Math.max(1, Math.floor(decaySeconds * ctx.sampleRate));
-
-      for (let j = 0; j < decaySamples && (start + j) < bufferSize; j++) {
-        const envelope = Math.exp((-5 * j) / decaySamples);
-        data[start + j] += (Math.random() * 2 - 1) * amplitude * envelope;
-      }
-    }
-
-    for (let i = 0; i < bufferSize; i++) {
-      if (data[i] > 1) data[i] = 1;
-      else if (data[i] < -1) data[i] = -1;
-    }
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-    return source;
   }
 
   createRainNoise(ctx) {
-    const source = this.createWhiteNoise(ctx);
-    const dropletsSource = this.createImpulseNoise(ctx, {
+    const whiteBuffer = this.generateWhiteNoiseBuffer(ctx);
+    const source = this.createBufferSource(ctx, whiteBuffer);
+
+    const dropletsBuffer = this.generateImpulseBuffer(ctx, 'rain-droplets', {
       duration: 7,
       eventsPerSecond: 65,
       ampMin: 0.025,
@@ -426,6 +466,7 @@ class SoundscapeApp {
       decayMin: 0.002,
       decayMax: 0.014
     });
+    const dropletsSource = this.createBufferSource(ctx, dropletsBuffer);
 
     const rainHighpass = ctx.createBiquadFilter();
     rainHighpass.type = 'highpass';
@@ -477,35 +518,23 @@ class SoundscapeApp {
     dropletBandpass.connect(dropletHighpass);
     dropletHighpass.connect(dropletGain);
 
-    rainMotion.start();
-    dropletMotion.start();
-
     const output = ctx.createGain();
     output.gain.value = 1.03;
     rainGain.connect(output);
     dropletGain.connect(output);
 
-    const originalStart = source.start.bind(source);
-    const originalStop = source.stop.bind(source);
-    source.start = (...args) => {
-      try { dropletsSource.start(...args); } catch (e) {}
-      originalStart(...args);
+    return {
+      sources: [source, dropletsSource],
+      output,
+      oscillators: [rainMotion, dropletMotion]
     };
-    source.stop = (...args) => {
-      try { dropletsSource.stop(...args); } catch (e) {}
-      try { rainMotion.stop(...args); } catch (e) {}
-      try { dropletMotion.stop(...args); } catch (e) {}
-      originalStop(...args);
-    };
-    source.connect = output.connect.bind(output);
-    source.disconnect = output.disconnect.bind(output);
-
-    return source;
   }
 
   createCrackleNoise(ctx) {
-    const source = this.createBrownNoise(ctx);
-    const cracklesSource = this.createImpulseNoise(ctx, {
+    const brownBuffer = this.generateBrownNoiseBuffer(ctx);
+    const source = this.createBufferSource(ctx, brownBuffer);
+
+    const cracklesBuffer = this.generateImpulseBuffer(ctx, 'crackle-crackles', {
       duration: 6,
       eventsPerSecond: 18,
       ampMin: 0.15,
@@ -513,7 +542,9 @@ class SoundscapeApp {
       decayMin: 0.001,
       decayMax: 0.02
     });
-    const popsSource = this.createImpulseNoise(ctx, {
+    const cracklesSource = this.createBufferSource(ctx, cracklesBuffer);
+
+    const popsBuffer = this.generateImpulseBuffer(ctx, 'crackle-pops', {
       duration: 8,
       eventsPerSecond: 4,
       ampMin: 0.22,
@@ -521,6 +552,7 @@ class SoundscapeApp {
       decayMin: 0.006,
       decayMax: 0.045
     });
+    const popsSource = this.createBufferSource(ctx, popsBuffer);
 
     const emberHighpass = ctx.createBiquadFilter();
     emberHighpass.type = 'highpass';
@@ -577,33 +609,17 @@ class SoundscapeApp {
     popsSource.connect(popBandpass);
     popBandpass.connect(popGain);
 
-    crackMotion.start();
-    emberSwell.start();
-
     const output = ctx.createGain();
     output.gain.value = 1.06;
     emberGain.connect(output);
     crackGain.connect(output);
     popGain.connect(output);
 
-    const originalStart = source.start.bind(source);
-    const originalStop = source.stop.bind(source);
-    source.start = (...args) => {
-      try { cracklesSource.start(...args); } catch (e) {}
-      try { popsSource.start(...args); } catch (e) {}
-      originalStart(...args);
+    return {
+      sources: [source, cracklesSource, popsSource],
+      output,
+      oscillators: [crackMotion, emberSwell]
     };
-    source.stop = (...args) => {
-      try { cracklesSource.stop(...args); } catch (e) {}
-      try { popsSource.stop(...args); } catch (e) {}
-      try { crackMotion.stop(...args); } catch (e) {}
-      try { emberSwell.stop(...args); } catch (e) {}
-      originalStop(...args);
-    };
-    source.connect = output.connect.bind(output);
-    source.disconnect = output.disconnect.bind(output);
-
-    return source;
   }
 
   // ===== DOM Init =====
@@ -611,9 +627,12 @@ class SoundscapeApp {
   initElements() {
     this.masterToggleBtn = document.getElementById('masterToggle');
     this.masterVolumeSlider = document.getElementById('masterVolume');
+    this.masterVolumeLabel = document.getElementById('masterVolumeLabel');
     this.soundGrid = document.getElementById('soundGrid');
+    this.activityIndicator = document.getElementById('activityIndicator');
 
     this.masterVolumeSlider.value = this.data.masterVolume;
+    this.masterVolumeLabel.textContent = `${this.data.masterVolume}%`;
   }
 
   renderSoundCards() {
@@ -648,19 +667,17 @@ class SoundscapeApp {
   }
 
   attachEventListeners() {
-    // Master toggle
     this.masterToggleBtn.addEventListener('click', () => this.toggleAll());
 
-    // Master volume
     this.masterVolumeSlider.addEventListener('input', (e) => {
-      this.data.masterVolume = parseInt(e.target.value);
+      this.data.masterVolume = parseInt(e.target.value, 10);
+      this.masterVolumeLabel.textContent = `${this.data.masterVolume}%`;
       if (this.masterGain) {
         this.masterGain.gain.setTargetAtTime(this.data.masterVolume / 100, this.audioCtx.currentTime, 0.02);
       }
-      this.saveData();
+      this.scheduleSave();
     });
 
-    // Sound card toggles and volume sliders (event delegation)
     this.soundGrid.addEventListener('click', (e) => {
       const toggleBtn = e.target.closest('.sound-toggle');
       if (toggleBtn) {
@@ -671,7 +688,7 @@ class SoundscapeApp {
     this.soundGrid.addEventListener('input', (e) => {
       if (e.target.classList.contains('volume-slider')) {
         const id = e.target.dataset.soundId;
-        const vol = parseInt(e.target.value);
+        const vol = parseInt(e.target.value, 10);
         this.setSoundVolume(id, vol);
 
         const label = e.target.closest('.sound-volume').querySelector('.volume-label');
@@ -679,15 +696,42 @@ class SoundscapeApp {
       }
     });
 
+    this.setupGestureListeners();
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.resumeAudioContext();
+        if (this.pendingAutoRestore) {
+          this.restoreActiveSounds();
+        }
+      }
+    });
+
+    window.addEventListener('pagehide', () => this.flushSave());
+    window.addEventListener('beforeunload', () => this.flushSave());
+  }
+
+  setupGestureListeners() {
+    this.gestureAbort = new AbortController();
+    const opts = { signal: this.gestureAbort.signal };
+
     const resumeOnGesture = () => {
       this.resumeAudioContext();
       if (this.pendingAutoRestore) {
         this.restoreActiveSounds();
       }
     };
-    document.addEventListener('pointerdown', resumeOnGesture, { passive: true });
-    document.addEventListener('keydown', resumeOnGesture);
-    document.addEventListener('touchstart', resumeOnGesture, { passive: true });
+
+    document.addEventListener('pointerdown', resumeOnGesture, { ...opts, passive: true });
+    document.addEventListener('keydown', resumeOnGesture, opts);
+    document.addEventListener('touchstart', resumeOnGesture, { ...opts, passive: true });
+  }
+
+  removeGestureListeners() {
+    if (this.gestureAbort) {
+      this.gestureAbort.abort();
+      this.gestureAbort = null;
+    }
   }
 
   // ===== Sound Control =====
@@ -698,36 +742,46 @@ class SoundscapeApp {
     } else {
       this.startSound(id);
     }
-    this.updateMasterButton();
-    this.saveData();
   }
 
   startSound(id) {
+    if (this.sounds.has(id)) return;
     const def = this.soundDefs.find(d => d.id === id);
     if (!def) return;
 
-    const ctx = this.ensureAudioContext();
-    const source = def.generator(ctx);
-    const gain = ctx.createGain();
-    const savedVol = this.data.sounds[id]?.volume ?? 70;
-    gain.gain.value = savedVol / 100;
+    try {
+      const ctx = this.ensureAudioContext();
+      const node = def.generator(ctx);
+      const gain = ctx.createGain();
+      const savedVol = this.data.sounds[id]?.volume ?? 70;
+      gain.gain.value = savedVol / 100;
 
-    source.connect(gain);
-    gain.connect(this.masterGain);
-    source.start();
+      node.output.connect(gain);
+      gain.connect(this.masterGain);
 
-    this.sounds.set(id, { source, gain });
+      node.sources.forEach(s => s.start());
+      node.oscillators.forEach(o => o.start());
 
-    // Update data
-    if (!this.data.sounds[id]) this.data.sounds[id] = {};
-    this.data.sounds[id].active = true;
-    if (this.data.sounds[id].volume === undefined) this.data.sounds[id].volume = savedVol;
+      this.sounds.set(id, { node, gain });
 
-    // Update UI
-    const card = this.soundGrid.querySelector(`[data-sound-id="${id}"]`).closest('.sound-card');
-    card.classList.add('active');
-    card.querySelector('.toggle-icon').textContent = '\u23F8';
-    this.reportBackgroundActivity();
+      if (!this.data.sounds[id]) this.data.sounds[id] = {};
+      this.data.sounds[id].active = true;
+      if (this.data.sounds[id].volume === undefined) this.data.sounds[id].volume = savedVol;
+      this.saveData();
+
+      const card = this.soundGrid.querySelector(`.sound-card[data-sound-id="${id}"]`);
+      if (card) {
+        card.classList.add('active');
+        card.querySelector('.toggle-icon').textContent = '\u23F8';
+      }
+
+      this.updateMasterButton();
+      this.updateActivityIndicator();
+      this.reportBackgroundActivity();
+    } catch (e) {
+      // Clean up partial state on failure
+      this.sounds.delete(id);
+    }
   }
 
   stopSound(id) {
@@ -736,47 +790,69 @@ class SoundscapeApp {
 
     entry.gain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
     setTimeout(() => {
-      try { entry.source.stop(); } catch (e) {}
+      try {
+        entry.node.sources.forEach(s => { try { s.stop(); } catch (_) {} });
+        entry.node.oscillators.forEach(o => { try { o.stop(); } catch (_) {} });
+      } catch (_) {}
     }, 100);
     this.sounds.delete(id);
 
     if (this.data.sounds[id]) {
       this.data.sounds[id].active = false;
     }
+    this.saveData();
 
-    const card = this.soundGrid.querySelector(`[data-sound-id="${id}"]`).closest('.sound-card');
-    card.classList.remove('active');
-    card.querySelector('.toggle-icon').textContent = '\u25B6';
+    const card = this.soundGrid.querySelector(`.sound-card[data-sound-id="${id}"]`);
+    if (card) {
+      card.classList.remove('active');
+      card.querySelector('.toggle-icon').textContent = '\u25B6';
+    }
+
+    this.updateMasterButton();
+    this.updateActivityIndicator();
     this.reportBackgroundActivity();
   }
 
   setSoundVolume(id, vol) {
+    if (vol === 0 && this.sounds.has(id)) {
+      this.stopSound(id);
+      return;
+    }
+
     const entry = this.sounds.get(id);
     if (entry) {
       entry.gain.gain.setTargetAtTime(vol / 100, this.audioCtx.currentTime, 0.02);
     }
     if (!this.data.sounds[id]) this.data.sounds[id] = {};
     this.data.sounds[id].volume = vol;
-    this.saveData();
+    this.scheduleSave();
   }
 
   toggleAll() {
     const anyPlaying = this.sounds.size > 0;
 
     if (anyPlaying) {
-      // Stop all
       [...this.sounds.keys()].forEach(id => this.stopSound(id));
     } else {
-      // Start all
-      this.soundDefs.forEach(def => this.startSound(def.id));
+      // Resume previously active sounds, or all if none were saved
+      const previouslyActive = this.getSavedActiveSoundIds();
+      const toStart = previouslyActive.length > 0
+        ? previouslyActive
+        : this.soundDefs.map(d => d.id);
+      toStart.forEach(id => this.startSound(id));
     }
     this.updateMasterButton();
-    this.saveData();
   }
 
   updateMasterButton() {
     const anyPlaying = this.sounds.size > 0;
     this.masterToggleBtn.textContent = anyPlaying ? 'Stop All' : 'Play All';
+  }
+
+  updateActivityIndicator() {
+    if (this.activityIndicator) {
+      this.activityIndicator.classList.toggle('visible', this.sounds.size > 0);
+    }
   }
 
   resumeAudioContext() {
@@ -796,6 +872,7 @@ class SoundscapeApp {
     if (activeIds.length === 0) {
       this.pendingAutoRestore = false;
       this.updateMasterButton();
+      this.updateActivityIndicator();
       this.reportBackgroundActivity();
       return;
     }
@@ -805,12 +882,13 @@ class SoundscapeApp {
       try {
         this.startSound(id);
       } catch (e) {
-        // Ignore and retry after a user gesture if needed.
+        // Retry after a user gesture if needed.
       }
     });
 
     this.pendingAutoRestore = activeIds.some(id => !this.sounds.has(id));
     this.updateMasterButton();
+    this.updateActivityIndicator();
     this.reportBackgroundActivity();
   }
 
@@ -847,7 +925,6 @@ class SoundscapeApp {
   // ===== Restore State =====
 
   restoreState() {
-    // Restore volume per sound card from saved data
     this.soundDefs.forEach(def => {
       const saved = this.data.sounds[def.id];
       if (saved?.volume !== undefined) {

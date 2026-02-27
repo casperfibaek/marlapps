@@ -2,7 +2,6 @@
 
 :root {
   --app-accent: #8B5CF6;
-  --app-accent-hover: #7C3AED;
   --app-accent-light: rgba(139, 92, 246, 0.15);
 }
 
@@ -39,6 +38,29 @@ body {
   font-weight: 700;
   color: var(--app-text-primary);
   margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.activity-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--app-accent);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.activity-indicator.visible {
+  opacity: 1;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; box-shadow: 0 0 4px var(--app-accent-light); }
+  50% { opacity: 1; box-shadow: 0 0 10px var(--app-accent); }
 }
 
 .master-controls {
@@ -208,7 +230,8 @@ body {
   gap: var(--space-3);
 }
 
-.sound-volume .volume-label {
+.sound-volume .volume-label,
+.master-volume .volume-label {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--app-text-tertiary);

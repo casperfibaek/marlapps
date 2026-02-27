@@ -776,13 +776,12 @@ class PomodoroTimer {
     }
 
     const selectedDate = this.historyDateInput.value;
-    const today = this.getDateKey();
     const completed = this.getHistoryCount(selectedDate);
     this.historyCountEl.textContent = `${completed} pomodoro${completed === 1 ? '' : 's'} completed`;
 
-    // Show reset button when there's something to reset for the selected date
+    // Always show reset button
     if (this.resetTodayBtn) {
-      this.resetTodayBtn.style.display = completed > 0 ? 'inline-flex' : 'none';
+      this.resetTodayBtn.style.display = 'inline-flex';
     }
 
     this.renderHistoryList(selectedDate);
