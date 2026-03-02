@@ -50,6 +50,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .video-container {
@@ -60,6 +61,7 @@
   justify-content: center;
   background: #000;
   overflow: hidden;
+  min-height: 0;
 }
 
 #videoElement {
@@ -67,8 +69,15 @@
   max-height: 100%;
   width: auto;
   height: auto;
-  transform: scaleX(-1);
   display: block;
+}
+
+#videoElement.fill-mode {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  max-width: none;
+  max-height: none;
 }
 
 .mirror-overlay {
@@ -221,19 +230,62 @@
   margin-bottom: var(--space-8);
 }
 
+/* Flash overlay for capture feedback */
+.flash-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.flash-overlay.flash {
+  animation: flash-animation 0.3s ease-out;
+}
+
+@keyframes flash-animation {
+  0% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+/* Gallery section */
 .gallery-section {
   background: var(--app-bg-secondary);
-  padding: var(--space-6);
+  padding: var(--space-4) var(--space-6);
   border-top: 1px solid var(--app-border-color);
   max-height: 200px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.gallery-section h3 {
+.gallery-section.empty {
+  padding: 0;
+  max-height: 0;
+  border-top: none;
+  overflow: hidden;
+}
+
+.gallery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: var(--space-4);
+}
+
+.gallery-header h3 {
   font-size: 1.1rem;
   color: var(--app-text-primary);
+  margin: 0;
+}
+
+.photo-count {
+  font-size: 0.85rem;
+  color: var(--app-text-tertiary);
+  font-weight: 600;
 }
 
 .gallery-grid {
@@ -276,13 +328,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
+  opacity: 0.7;
   transition: opacity var(--transition-normal);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
-.gallery-item:hover .gallery-item-delete {
+.gallery-item-delete:hover {
   opacity: 1;
 }
 
@@ -301,22 +353,118 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
+  opacity: 0.7;
   transition: opacity var(--transition-normal);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
-.gallery-item:hover .gallery-item-download {
+.gallery-item-download:hover {
   opacity: 1;
 }
 
-/* Always show gallery buttons on touch devices */
-@media (hover: none) and (pointer: coarse) {
-  .gallery-item-delete,
-  .gallery-item-download {
-    opacity: 1;
-  }
+/* Lightbox */
+.lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+}
+
+.lightbox.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.lightbox img {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  color: var(--app-text-primary);
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Confirm dialog */
+.confirm-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+}
+
+.confirm-dialog.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.confirm-content {
+  background: var(--app-bg-secondary);
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  text-align: center;
+  max-width: 300px;
+  box-shadow: var(--app-shadow-lg);
+}
+
+.confirm-content p {
+  color: var(--app-text-primary);
+  margin-bottom: var(--space-6);
+  font-size: 1rem;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+.confirm-actions .btn {
+  min-width: 80px;
+}
+
+.btn-danger {
+  background: var(--app-danger);
+  color: white;
+  border: none;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 600;
 }
 
 /* Responsive design */

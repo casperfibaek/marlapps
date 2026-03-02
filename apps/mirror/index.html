@@ -14,6 +14,9 @@
     <header class="app-header">
       <h1 class="app-title">Mirror</h1>
       <div class="header-controls">
+        <button id="fillToggleBtn" class="btn btn-secondary" title="Fill screen" aria-label="Fill screen">
+          <span>⊞</span>
+        </button>
         <button id="flipBtn" class="btn btn-secondary" title="Switch camera" aria-label="Switch camera">
           <span>🔄</span>
         </button>
@@ -27,6 +30,7 @@
       <div class="video-container">
         <video id="videoElement" autoplay playsinline></video>
         <canvas id="canvas" style="display: none;"></canvas>
+        <div class="flash-overlay" id="flashOverlay"></div>
 
         <div class="mirror-overlay">
           <button class="controls-toggle" id="controlsToggle" title="Toggle controls">
@@ -84,13 +88,31 @@
         </div>
       </div>
 
-      <div class="gallery-section" id="gallerySection">
-        <h3>Captured Photos</h3>
-        <div class="gallery-grid" id="galleryGrid">
-          <!-- Captured photos will appear here -->
+      <div class="gallery-section empty" id="gallerySection">
+        <div class="gallery-header">
+          <h3>Photos</h3>
+          <span class="photo-count" id="photoCount">0/20</span>
         </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
       </div>
     </main>
+  </div>
+
+  <!-- Lightbox for full-size photo viewing -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
+    <img id="lightboxImg" alt="Full size photo">
+  </div>
+
+  <!-- Delete confirmation dialog -->
+  <div class="confirm-dialog" id="confirmDialog">
+    <div class="confirm-content">
+      <p>Delete this photo?</p>
+      <div class="confirm-actions">
+        <button id="confirmNo" class="btn btn-secondary">Cancel</button>
+        <button id="confirmYes" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

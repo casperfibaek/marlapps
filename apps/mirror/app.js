@@ -11,6 +11,7 @@ class MirrorApp {
     this.brightness = 1;
     this.contrast = 1;
     this.isMirrored = true;
+    this.fillMode = false;
 
     this.initElements();
     this.initEventListeners();
@@ -29,7 +30,10 @@ class MirrorApp {
     this.retryBtn = document.getElementById('retryBtn');
     this.captureBtn = document.getElementById('captureBtn');
     this.flipBtn = document.getElementById('flipBtn');
+    this.fillToggleBtn = document.getElementById('fillToggleBtn');
+    this.gallerySection = document.getElementById('gallerySection');
     this.galleryGrid = document.getElementById('galleryGrid');
+    this.photoCount = document.getElementById('photoCount');
     this.zoomSlider = document.getElementById('zoomSlider');
     this.zoomValue = document.getElementById('zoomValue');
     this.brightnessSlider = document.getElementById('brightnessSlider');
@@ -39,6 +43,13 @@ class MirrorApp {
     this.resetFiltersBtn = document.getElementById('resetFiltersBtn');
     this.controlsToggle = document.getElementById('controlsToggle');
     this.controlPanel = document.getElementById('controlPanel');
+    this.flashOverlay = document.getElementById('flashOverlay');
+    this.lightbox = document.getElementById('lightbox');
+    this.lightboxImg = document.getElementById('lightboxImg');
+    this.lightboxClose = document.getElementById('lightboxClose');
+    this.confirmDialog = document.getElementById('confirmDialog');
+    this.confirmYes = document.getElementById('confirmYes');
+    this.confirmNo = document.getElementById('confirmNo');
   }
 
   syncThemeWithParent() {
@@ -68,6 +79,12 @@ class MirrorApp {
     this.retryBtn.addEventListener('click', () => this.startCamera());
     this.captureBtn.addEventListener('click', () => this.capturePhoto());
     this.flipBtn.addEventListener('click', () => this.flipCamera());
+
+    // Fill/contain toggle
+    this.fillToggleBtn.addEventListener('click', () => {
+      this.fillMode = !this.fillMode;
+      this.updateFillMode();
+    });
 
     // Toggle controls panel
     this.controlsToggle.addEventListener('click', () => {
@@ -104,6 +121,37 @@ class MirrorApp {
     });
 
     this.resetFiltersBtn.addEventListener('click', () => this.resetFilters());
+
+    // Gallery event delegation
+    this.galleryGrid.addEventListener('click', (e) => {
+      const item = e.target.closest('.gallery-item');
+      if (!item) return;
+      const photoId = item.dataset.photoId;
+
+      if (e.target.closest('.gallery-item-delete')) {
+        this.confirmDelete(photoId);
+      } else if (e.target.closest('.gallery-item-download')) {
+        this.downloadPhoto(photoId);
+      } else if (e.target.closest('img')) {
+        this.openLightbox(photoId);
+      }
+    });
+
+    // Lightbox close
+    this.lightboxClose.addEventListener('click', () => this.closeLightbox());
+    this.lightbox.addEventListener('click', (e) => {
+      if (e.target === this.lightbox) this.closeLightbox();
+    });
+
+    // Confirm dialog
+    this.confirmNo.addEventListener('click', () => this.closeConfirmDialog());
+  }
+
+  updateFillMode() {
+    this.videoElement.classList.toggle('fill-mode', this.fillMode);
+    this.fillToggleBtn.title = this.fillMode ? 'Fit to screen' : 'Fill screen';
+    this.fillToggleBtn.setAttribute('aria-label', this.fillToggleBtn.title);
+    this.fillToggleBtn.querySelector('span').textContent = this.fillMode ? '⊡' : '⊞';
   }
 
   async startCamera() {
@@ -190,7 +238,7 @@ class MirrorApp {
     this.flipBtn.setAttribute('aria-label', label);
   }
 
-  applyFilters() {
+  buildFilterString() {
     let filterStr = `brightness(${this.brightness}) contrast(${this.contrast})`;
 
     switch (this.currentFilter) {
@@ -205,7 +253,11 @@ class MirrorApp {
         break;
     }
 
-    this.videoElement.style.filter = filterStr;
+    return filterStr;
+  }
+
+  applyFilters() {
+    this.videoElement.style.filter = this.buildFilterString();
     const scaleX = this.isMirrored ? -1 : 1;
     this.videoElement.style.transform = `scaleX(${scaleX}) scale(${this.zoom})`;
   }
@@ -234,58 +286,51 @@ class MirrorApp {
   capturePhoto() {
     if (!this.stream) return;
 
+    const maxPhotos = 20;
+    if (this.photos.length >= maxPhotos) {
+      this.photos.pop();
+    }
+
     // Set canvas size to video size
     this.canvas.width = this.videoElement.videoWidth;
     this.canvas.height = this.videoElement.videoHeight;
 
     const ctx = this.canvas.getContext('2d');
 
+    // Apply filters to the draw operation
+    ctx.filter = this.buildFilterString();
+
     // Apply horizontal mirroring if enabled, plus zoom
     ctx.save();
+
+    const scaleX = this.isMirrored ? -1 : 1;
     if (this.isMirrored) {
       ctx.translate(this.canvas.width, 0);
-      ctx.scale(-1, 1);
     }
 
-    // Apply zoom
+    // Calculate zoom crop
     const zoomWidth = this.canvas.width * this.zoom;
     const zoomHeight = this.canvas.height * this.zoom;
     const offsetX = (zoomWidth - this.canvas.width) / 2;
     const offsetY = (zoomHeight - this.canvas.height) / 2;
 
+    // When mirrored, the coordinate system is flipped so offset direction reverses
+    const drawX = this.isMirrored ? offsetX : -offsetX;
+
+    ctx.scale(scaleX, 1);
     ctx.drawImage(
       this.videoElement,
-      -offsetX,
+      drawX,
       -offsetY,
       zoomWidth,
       zoomHeight
     );
 
     ctx.restore();
+    ctx.filter = 'none';
 
-    // Apply filters to captured image
-    if (this.brightness !== 1 || this.contrast !== 1 || this.currentFilter !== 'none') {
-      let filterStr = `brightness(${this.brightness}) contrast(${this.contrast})`;
-
-      switch (this.currentFilter) {
-        case 'grayscale':
-          filterStr += ' grayscale(100%)';
-          break;
-        case 'sepia':
-          filterStr += ' sepia(100%)';
-          break;
-        case 'invert':
-          filterStr += ' invert(100%)';
-          break;
-      }
-
-      ctx.filter = filterStr;
-      ctx.drawImage(this.canvas, 0, 0);
-      ctx.filter = 'none';
-    }
-
-    // Convert to data URL
-    const dataUrl = this.canvas.toDataURL('image/png');
+    // Convert to data URL (JPEG for smaller size)
+    const dataUrl = this.canvas.toDataURL('image/jpeg', 0.85);
 
     // Save photo
     const photo = {
@@ -298,11 +343,11 @@ class MirrorApp {
     this.savePhotos();
     this.renderGallery();
 
-    // Visual feedback
-    this.videoElement.style.opacity = '0.5';
-    setTimeout(() => {
-      this.videoElement.style.opacity = '1';
-    }, 100);
+    // Visual feedback - white flash
+    this.flashOverlay.classList.add('flash');
+    this.flashOverlay.addEventListener('animationend', () => {
+      this.flashOverlay.classList.remove('flash');
+    }, { once: true });
   }
 
   migrateStorage() {
@@ -339,11 +384,25 @@ class MirrorApp {
   }
 
   savePhotos() {
-    // Limit to 20 photos to avoid storage issues
+    // Limit to 20 photos
     if (this.photos.length > 20) {
       this.photos = this.photos.slice(0, 20);
     }
     localStorage.setItem('marlapps-mirror', JSON.stringify(this.photos));
+  }
+
+  confirmDelete(photoId) {
+    this.pendingDeleteId = photoId;
+    this.confirmDialog.classList.add('visible');
+    this.confirmYes.onclick = () => {
+      this.deletePhoto(this.pendingDeleteId);
+      this.closeConfirmDialog();
+    };
+  }
+
+  closeConfirmDialog() {
+    this.confirmDialog.classList.remove('visible');
+    this.pendingDeleteId = null;
   }
 
   deletePhoto(photoId) {
@@ -358,16 +417,33 @@ class MirrorApp {
 
     const link = document.createElement('a');
     link.href = photo.dataUrl;
-    link.download = `mirror-${photoId}.png`;
+    link.download = `mirror-${photoId}.jpg`;
     link.click();
   }
 
+  openLightbox(photoId) {
+    const photo = this.photos.find(p => p.id === photoId);
+    if (!photo) return;
+    this.lightboxImg.src = photo.dataUrl;
+    this.lightbox.classList.add('visible');
+  }
+
+  closeLightbox() {
+    this.lightbox.classList.remove('visible');
+    this.lightboxImg.src = '';
+  }
+
   renderGallery() {
+    const maxPhotos = 20;
+    this.photoCount.textContent = `${this.photos.length}/${maxPhotos}`;
+
     if (this.photos.length === 0) {
-      this.galleryGrid.innerHTML = `<div style="padding: 1rem; color: var(--app-text-tertiary);">No photos captured yet</div>`;
+      this.gallerySection.classList.add('empty');
+      this.galleryGrid.innerHTML = '';
       return;
     }
 
+    this.gallerySection.classList.remove('empty');
     this.galleryGrid.innerHTML = this.photos.map(photo => {
       return `
         <div class="gallery-item" data-photo-id="${photo.id}">
@@ -377,30 +453,6 @@ class MirrorApp {
         </div>
       `;
     }).join('');
-
-    // Add event listeners
-    document.querySelectorAll('.gallery-item-delete').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const photoId = e.target.closest('.gallery-item').dataset.photoId;
-        this.deletePhoto(photoId);
-      });
-    });
-
-    document.querySelectorAll('.gallery-item-download').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const photoId = e.target.closest('.gallery-item').dataset.photoId;
-        this.downloadPhoto(photoId);
-      });
-    });
-
-    // Click to view full size
-    document.querySelectorAll('.gallery-item img').forEach(img => {
-      img.addEventListener('click', (e) => {
-        window.open(e.target.src, '_blank');
-      });
-    });
   }
 
   showError(error) {
@@ -437,9 +489,19 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
-// Also cleanup when page visibility changes (mobile optimization)
+// Pause/resume camera when page visibility changes (mobile optimization)
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && mirrorAppInstance && mirrorAppInstance.stream) {
-    mirrorAppInstance.stopCamera();
+  if (!mirrorAppInstance) return;
+
+  if (document.hidden) {
+    if (mirrorAppInstance.stream) {
+      mirrorAppInstance.wasRunning = true;
+      mirrorAppInstance.stopCamera();
+    }
+  } else {
+    if (mirrorAppInstance.wasRunning) {
+      mirrorAppInstance.wasRunning = false;
+      mirrorAppInstance.startCamera();
+    }
   }
 });
