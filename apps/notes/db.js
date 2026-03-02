@@ -64,8 +64,12 @@ async function migrateFromLocalStorage(db) {
   let oldNotes;
   try {
     oldNotes = JSON.parse(raw);
-    if (!Array.isArray(oldNotes)) return;
-  } catch {
+    if (!Array.isArray(oldNotes)) {
+      console.warn('Notes migration: localStorage data is not an array, skipping');
+      return;
+    }
+  } catch (err) {
+    console.warn('Notes migration: corrupted localStorage data, skipping:', err);
     return;
   }
 

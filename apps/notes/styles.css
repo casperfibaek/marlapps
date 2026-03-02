@@ -163,6 +163,10 @@ body {
   display: block;
 }
 
+.notebook-icon--colored {
+  color: var(--nb-color, var(--app-text-tertiary));
+}
+
 .notebook-item.active .notebook-icon {
   color: var(--app-accent);
 }
@@ -347,6 +351,10 @@ body {
   user-select: none;
   width: 12px;
   text-align: center;
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
 }
 
 .notebook-item:hover .notebook-drag-handle {
@@ -355,6 +363,13 @@ body {
 
 .notebook-drag-handle:active {
   cursor: grabbing;
+}
+
+.notebook-drag-handle:focus-visible {
+  visibility: visible;
+  outline: 2px solid var(--app-accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
 }
 
 /* Notebook drop line indicator */
@@ -383,6 +398,11 @@ body {
   outline-offset: -2px;
 }
 
+.note-item.long-press-active {
+  background: var(--app-accent-light);
+  transform: scale(0.98);
+}
+
 .note-item.dragging {
   opacity: 0.4;
 }
@@ -409,8 +429,8 @@ body {
 
 .note-item-notebook {
   font-size: 0.7rem;
-  color: var(--app-accent);
-  background: var(--app-accent-light);
+  color: var(--nb-color, var(--app-accent));
+  background: color-mix(in srgb, var(--nb-color, var(--app-accent)) 13%, transparent);
   padding: 1px 6px;
   border-radius: var(--radius-full);
   white-space: nowrap;
@@ -421,6 +441,7 @@ body {
 .modal-overlay {
   position: fixed;
   inset: 0;
+  padding-top: env(safe-area-inset-top, 0);
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: flex-end;
@@ -524,6 +545,12 @@ body {
   margin-top: var(--space-1);
 }
 
+.notes-empty-message {
+  padding: 2rem;
+  text-align: center;
+  color: var(--app-text-tertiary);
+}
+
 /* Editor container */
 .note-editor-container {
   display: flex;
@@ -592,6 +619,11 @@ body {
 .editor-toolbar button:hover {
   background: var(--app-bg-hover);
   color: var(--app-text-primary);
+}
+
+.editor-toolbar button:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: -2px;
 }
 
 .editor-toolbar button.active {
@@ -702,7 +734,8 @@ body {
   color: var(--app-text-tertiary);
 }
 
-.save-status--failed {
+.save-status--failed,
+.save-status--quota {
   color: var(--app-danger, #e74c3c);
 }
 
@@ -750,7 +783,7 @@ body {
 }
 
 .btn-danger:hover {
-  background: #c0392b;
+  background: var(--app-danger-hover, #c0392b);
 }
 
 /* Empty state */

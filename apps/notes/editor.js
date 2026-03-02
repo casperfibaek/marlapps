@@ -2,6 +2,7 @@
 // Uses Range/Selection APIs instead of deprecated document.execCommand
 
 let editorEl = null;
+let toolbarEl = null;
 let onInputCallback = null;
 let lastFormatCommand = null;
 
@@ -13,7 +14,7 @@ const ALLOWED_TAGS = new Set([
 ]);
 
 const BLOCK_TAGS = new Set([
-  'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'DIV', 'LI', 'UL', 'OL', 'HR', 'BLOCKQUOTE'
+  'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'DIV', 'LI', 'UL', 'OL', 'HR'
 ]);
 
 const INLINE_FORMAT_TAGS = {
@@ -27,7 +28,10 @@ const INLINE_FORMAT_TAGS = {
 const undoStack = [];
 const redoStack = [];
 let lastSnapshotTime = 0;
+let undoStackBytes = 0;
 const SNAPSHOT_INTERVAL = 500;
+const MAX_UNDO_ENTRIES = 100;
+const MAX_UNDO_BYTES = 512 * 1024; // 512KB total
 
 function pushUndoSnapshot() {
   const now = Date.now();
@@ -38,7 +42,15 @@ function pushUndoSnapshot() {
   if (undoStack.length > 0 && undoStack[undoStack.length - 1] === html) return;
 
   undoStack.push(html);
-  if (undoStack.length > 100) undoStack.shift();
+  undoStackBytes += html.length * 2; // rough char-to-byte estimate
+
+  // Evict oldest entries if over limits
+  while (undoStack.length > MAX_UNDO_ENTRIES || undoStackBytes > MAX_UNDO_BYTES) {
+    if (undoStack.length === 0) break;
+    const removed = undoStack.shift();
+    undoStackBytes -= removed.length * 2;
+  }
+
   redoStack.length = 0;
 }
 
@@ -480,10 +492,9 @@ function updateToolbarState() {
   }
 
   // Toggle .active on toolbar buttons
-  const toolbar = editorEl.parentElement?.querySelector('.editor-toolbar');
-  if (!toolbar) return;
+  if (!toolbarEl) return;
 
-  const buttons = toolbar.querySelectorAll('button[data-cmd]');
+  const buttons = toolbarEl.querySelectorAll('button[data-cmd]');
   for (const btn of buttons) {
     const cmd = btn.dataset.cmd;
     const val = (btn.dataset.value || '').toUpperCase();
@@ -583,6 +594,7 @@ function handleMarkdownShortcut(e) {
 
 export function initEditor(containerEl, options = {}) {
   editorEl = containerEl;
+  toolbarEl = editorEl.parentElement?.querySelector('.editor-toolbar') || null;
   onInputCallback = options.onInput || null;
 
   editorEl.setAttribute('contenteditable', 'true');
@@ -888,6 +900,7 @@ export function setContent(html) {
   normalizeBlocks();
   undoStack.length = 0;
   redoStack.length = 0;
+  undoStackBytes = 0;
   pushUndoSnapshot();
 }
 

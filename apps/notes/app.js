@@ -74,6 +74,8 @@ class NotesApp {
 
     // Long-press state for mobile
     this.longPressTimer = null;
+    this._longPressFeedbackTimer = null;
+    this._longPressItem = null;
 
     this.initElements();
     this.attachEventListeners();
@@ -132,24 +134,13 @@ class NotesApp {
   }
 
   syncThemeWithParent() {
-    try {
-      const savedTheme = localStorage.getItem('marlapps-theme');
-      if (savedTheme) {
-        this.applyTheme(savedTheme);
-      }
-    } catch (e) {
-      // Fail silently
-    }
-
+    // theme-bootstrap.js handles initial theme from localStorage.
+    // Listen for parent iframe theme changes via postMessage.
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'theme-change') {
-        this.applyTheme(event.data.theme);
+        document.documentElement.setAttribute('data-theme', event.data.theme);
       }
     });
-  }
-
-  applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
   }
 
   attachEventListeners() {
@@ -302,8 +293,8 @@ class NotesApp {
       <span class="notebook-count">${allCount}</span>
     </div>`;
 
-    // "Uncategorized" entry (only show if there are notebooks)
-    if (this.notebooks.length > 0) {
+    // "Uncategorized" entry (only show if there are notebooks and uncategorized notes exist)
+    if (this.notebooks.length > 0 && (uncategorizedCount > 0 || this.currentNotebookId === NB_UNCATEGORIZED)) {
       html += `<div class="notebook-item${this.currentNotebookId === NB_UNCATEGORIZED ? ' active' : ''}" data-notebook-id="__uncategorized__">
         <span class="notebook-icon">${ICON_UNCATEGORIZED}</span>
         <span class="notebook-name">Uncategorized</span>
@@ -315,10 +306,10 @@ class NotesApp {
     for (const nb of this.notebooks) {
       const count = countMap[nb.id] || 0;
       const validColor = safeColor(nb.color);
-      const colorStyle = validColor ? ` style="color:${validColor}"` : '';
-      html += `<div class="notebook-item${this.currentNotebookId === nb.id ? ' active' : ''}" data-notebook-id="${nb.id}" draggable="true">
-        <span class="notebook-drag-handle" title="Drag to reorder" aria-label="Drag to reorder notebook" role="img">⠿</span>
-        <span class="notebook-icon"${colorStyle}>${ICON_NOTEBOOK}</span>
+      const colorStyle = validColor ? ` style="--nb-color:${validColor}"` : '';
+      html += `<div class="notebook-item${this.currentNotebookId === nb.id ? ' active' : ''}" data-notebook-id="${nb.id}" draggable="true"${colorStyle}>
+        <button class="notebook-drag-handle" type="button" title="Drag to reorder" aria-label="Reorder notebook" tabindex="0">⠿</button>
+        <span class="notebook-icon notebook-icon--colored">${ICON_NOTEBOOK}</span>
         <span class="notebook-name">${this.escapeHtml(nb.name)}</span>
         <button class="notebook-settings-btn" data-notebook-id="${nb.id}" title="Notebook settings">&#9881;</button>
         <span class="notebook-count">${count}</span>
@@ -326,7 +317,7 @@ class NotesApp {
     }
 
     // "+ New Notebook" button (same row structure as notebook-item for alignment)
-    html += `<div class="notebook-item notebook-create" id="notebookCreateBtn">
+    html += `<div class="notebook-item notebook-create" id="notebookCreateBtn" title="New notebook (Ctrl+Shift+N)">
       <span class="notebook-icon notebook-create-icon">+</span>
       <span class="notebook-name">New Notebook</span>
     </div>`;
@@ -361,6 +352,35 @@ class NotesApp {
           this.selectNotebook(nbId);
         }
       }
+    });
+
+    // Keyboard reorder for drag handles (Alt+Arrow)
+    this.notebooksList.addEventListener('keydown', (e) => {
+      if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+      const handle = e.target.closest('.notebook-drag-handle');
+      if (!handle) return;
+      const item = handle.closest('.notebook-item[draggable="true"]');
+      if (!item) return;
+      e.preventDefault();
+
+      const nbId = item.dataset.notebookId;
+      const idx = this.notebooks.findIndex(nb => nb.id === nbId);
+      if (idx === -1) return;
+
+      const swapIdx = e.key === 'ArrowUp' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= this.notebooks.length) return;
+
+      // Swap
+      [this.notebooks[idx], this.notebooks[swapIdx]] = [this.notebooks[swapIdx], this.notebooks[idx]];
+      for (let i = 0; i < this.notebooks.length; i++) {
+        this.notebooks[i].order = i;
+      }
+      saveAllNotebooks(this.notebooks).then(() => {
+        this.renderNotebooks();
+        // Refocus the handle after re-render
+        const newItem = this.notebooksList.querySelector(`[data-notebook-id="${nbId}"] .notebook-drag-handle`);
+        if (newItem) newItem.focus();
+      });
     });
 
     this.notebooksList.addEventListener('dragstart', (e) => {
@@ -677,7 +697,7 @@ class NotesApp {
 
   async createNotebook(name) {
     const now = Date.now();
-    const maxOrder = this.notebooks.reduce((max, nb) => Math.max(max, nb.order), 0);
+    const maxOrder = this.notebooks.reduce((max, nb) => Math.max(max, nb.order ?? 0), 0);
     const notebook = {
       id: crypto.randomUUID(),
       name,
@@ -764,15 +784,21 @@ class NotesApp {
 
     if (!confirm(msg)) return;
 
-    await dbDeleteNotebook(notebookId);
+    try {
+      await dbDeleteNotebook(notebookId);
 
-    // Refresh from DB to stay in sync
-    this.notes = await getAllNotes();
-    this.notebooks = await getAllNotebooks();
+      // Refresh from DB to stay in sync (normalize like init)
+      this.notes = (await getAllNotes()).map(normalizeNote);
+      this.notebooks = (await getAllNotebooks()).map(normalizeNotebook);
+    } catch (err) {
+      console.error('Failed to delete notebook:', err);
+      return;
+    }
 
     if (this.currentNotebookId === notebookId) {
       // Navigate to Uncategorized if notes were moved there, otherwise All Notes
       this.currentNotebookId = count > 0 ? NB_UNCATEGORIZED : null;
+      this.searchInput.value = '';
     }
 
     this.renderNotebooks();
@@ -811,8 +837,8 @@ class NotesApp {
       // Skip the notebook the note is already in
       if (nb.id === note.notebookId) continue;
       const modalColor = safeColor(nb.color);
-      const modalColorStyle = modalColor ? ` style="color:${modalColor}"` : '';
-      html += `<div class="modal-option" data-notebook-id="${nb.id}"><span class="notebook-icon"${modalColorStyle}>${ICON_NOTEBOOK}</span>${this.escapeHtml(nb.name)}</div>`;
+      const modalColorStyle = modalColor ? ` style="--nb-color:${modalColor}"` : '';
+      html += `<div class="modal-option" data-notebook-id="${nb.id}"${modalColorStyle}><span class="notebook-icon notebook-icon--colored">${ICON_NOTEBOOK}</span>${this.escapeHtml(nb.name)}</div>`;
     }
 
     this.moveToList.innerHTML = html;
@@ -941,20 +967,37 @@ class NotesApp {
       await saveNote(note);
     } catch (err) {
       console.error('Failed to save note:', err);
-      this.updateSaveStatus('failed');
+      if (err?.name === 'QuotaExceededError') {
+        this.updateSaveStatus('quota');
+      } else {
+        this.updateSaveStatus('failed');
+      }
       throw err;
     }
 
     this.updateNoteDate(note.updatedAt);
 
-    // Only re-sort by updatedAt in All Notes / Uncategorized views
-    if (!this.isInSpecificNotebook()) {
-      this.notes.sort((a, b) => b.updatedAt - a.updatedAt);
-    }
-    this.renderNotesList(this.getFilteredNotes());
-
+    // Incremental update: only refresh the active note's sidebar entry
     const activeItem = document.querySelector(`[data-note-id="${this.currentNoteId}"]`);
-    if (activeItem) activeItem.classList.add('active');
+    if (activeItem) {
+      const titleEl = activeItem.querySelector('.note-item-title');
+      const previewEl = activeItem.querySelector('.note-item-preview');
+      const dateEl = activeItem.querySelector('.note-item-date');
+      if (titleEl) titleEl.textContent = note.title;
+      if (previewEl) previewEl.textContent = (note.contentPlainText || '').substring(0, 60) || 'No content';
+      if (dateEl) dateEl.textContent = this.formatDate(note.updatedAt);
+    }
+
+    // Only do a full re-sort/re-render when the note order actually changes
+    // (i.e. in All Notes / Uncategorized view where updatedAt determines order)
+    if (!this.isInSpecificNotebook()) {
+      const idx = this.notes.indexOf(note);
+      const isFirst = idx === 0;
+      if (!isFirst) {
+        this.notes.sort((a, b) => b.updatedAt - a.updatedAt);
+        this.renderNotesList(this.getFilteredNotes());
+      }
+    }
   }
 
   async deleteCurrentNote() {
@@ -988,7 +1031,7 @@ class NotesApp {
 
   renderNotesList(notes) {
     if (!notes || notes.length === 0) {
-      this.notesList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--app-text-tertiary);">No notes yet</div>';
+      this.notesList.innerHTML = '<div class="notes-empty-message">No notes yet</div>';
       return;
     }
 
@@ -1001,7 +1044,7 @@ class NotesApp {
         const nb = this.notebooks.find(n => n.id === note.notebookId);
         if (nb) {
           const badgeColor = safeColor(nb.color);
-          const badgeStyle = badgeColor ? ` style="color: ${badgeColor}; background: ${badgeColor}22"` : '';
+          const badgeStyle = badgeColor ? ` style="--nb-color: ${badgeColor}"` : '';
           notebookBadge = `<span class="note-item-notebook"${badgeStyle}>${this.escapeHtml(nb.name)}</span>`;
         }
       }
@@ -1084,11 +1127,16 @@ class NotesApp {
       this.reorderNotes(draggedNoteId, noteId, insertBefore);
     });
 
-    // Long-press for mobile "Move to"
+    // Long-press for mobile "Move to" with visual feedback
     this.notesList.addEventListener('touchstart', (e) => {
       const item = e.target.closest('.note-item');
       if (!item) return;
+      this._longPressItem = item;
+      this._longPressFeedbackTimer = setTimeout(() => {
+        item.classList.add('long-press-active');
+      }, 300);
       this.longPressTimer = setTimeout(() => {
+        item.classList.remove('long-press-active');
         if (this.notebooks.length > 0) {
           this.showMoveToModal(item.dataset.noteId);
         }
@@ -1097,10 +1145,20 @@ class NotesApp {
 
     this.notesList.addEventListener('touchend', () => {
       clearTimeout(this.longPressTimer);
+      clearTimeout(this._longPressFeedbackTimer);
+      if (this._longPressItem) {
+        this._longPressItem.classList.remove('long-press-active');
+        this._longPressItem = null;
+      }
     });
 
     this.notesList.addEventListener('touchmove', () => {
       clearTimeout(this.longPressTimer);
+      clearTimeout(this._longPressFeedbackTimer);
+      if (this._longPressItem) {
+        this._longPressItem.classList.remove('long-press-active');
+        this._longPressItem = null;
+      }
     });
 
     // Clean up drop lines when drag leaves the notes list entirely
@@ -1119,7 +1177,8 @@ class NotesApp {
       saved: 'Saved',
       unsaved: 'Unsaved changes',
       saving: 'Saving…',
-      failed: 'Save failed'
+      failed: 'Save failed',
+      quota: 'Storage full'
     };
     this.saveStatus.textContent = labels[status] || '';
     this.saveStatus.className = `save-status save-status--${status}`;

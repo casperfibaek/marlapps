@@ -114,5 +114,10 @@ export function downloadMarkdown(title, html) {
 }
 
 function sanitizeFilename(name) {
-  return name.replace(/[<>:"/\\|?*]/g, '_').trim() || 'note';
+  return name
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\.$/, '_')    // trailing dot (reserved on Windows)
+    .trim()
+    .substring(0, 200)      // filesystem limit safety (leave room for extension)
+    || 'note';
 }
