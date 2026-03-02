@@ -3,14 +3,17 @@
 class PomodoroTimer {
   constructor() {
     this.migrateStorage();
-    this.settings = this.loadSettings();
-    this.state = this.loadState();
-    this.history = this.loadHistory();
+    const data = this.loadData();
+    this.settings = this.loadSettings(data);
+    this.state = this.loadState(data);
+    this.history = this.loadHistory(data);
     this.timerInterval = null;
     this.notificationPermissionRequested = false;
     this.lastReportedBackgroundActivity = null;
     this.completionTimeout = null;
     this.lastSaveTime = 0;
+    this.lastRenderedDotState = null;
+    this.audioContext = null;
 
     this.checkDailyReset();
     this.initElements();
@@ -136,8 +139,13 @@ class PomodoroTimer {
         e.preventDefault();
         if (this.state.isActive) {
           this.pauseTimer();
-        } else {
+        } else if (this.state.sessionStarted) {
+          // Resume a paused session
           this.startTimer();
+        } else if (this.state.sessionType !== 'work') {
+          this.startBreakSession();
+        } else {
+          this.startWorkSession();
         }
         break;
       case 'r':
@@ -242,7 +250,7 @@ class PomodoroTimer {
     }
   }
 
-  loadSettings() {
+  loadSettings(data) {
     const defaultSettings = {
       longBreakInterval: 4,
       workDuration: 25,
@@ -253,7 +261,7 @@ class PomodoroTimer {
       soundEnabled: true
     };
 
-    const data = this.loadData();
+    data = data || this.loadData();
     if (!data.settings || typeof data.settings !== 'object' || Array.isArray(data.settings)) {
       return defaultSettings;
     }
@@ -269,7 +277,7 @@ class PomodoroTimer {
     return settings;
   }
 
-  loadState() {
+  loadState(data) {
     const defaultState = {
       timeRemaining: 25 * 60,
       sessionType: 'work',
@@ -281,7 +289,7 @@ class PomodoroTimer {
       sessionStarted: false
     };
 
-    const data = this.loadData();
+    data = data || this.loadData();
     if (!data.state || typeof data.state !== 'object' || Array.isArray(data.state)) {
       return defaultState;
     }
@@ -300,14 +308,16 @@ class PomodoroTimer {
       merged.pomodoroCount = 1;
     }
     if (!Number.isFinite(merged.totalWorkSessions) || merged.totalWorkSessions < 0) {
-      merged.totalWorkSessions = Math.max(0, merged.pomodoroCount - 1);
+      // Don't derive from pomodoroCount since they use different scales
+      // (pomodoroCount wraps modulo interval, totalWorkSessions is cumulative)
+      merged.totalWorkSessions = 0;
     }
 
     return merged;
   }
 
-  loadHistory() {
-    const data = this.loadData();
+  loadHistory(data) {
+    data = data || this.loadData();
     if (!data.history || typeof data.history !== 'object' || Array.isArray(data.history)) return {};
     return data.history;
   }
@@ -352,12 +362,15 @@ class PomodoroTimer {
     this.state.pomodoroCount = ((Math.max(1, this.state.pomodoroCount) - 1) % interval) + 1;
 
     this.saveData();
-    this.updateDisplay();
     this.closeModal('settings');
 
-    if (!this.state.isActive && this.state.timeRemaining === this.getDurationForSession() * 60) {
-      this.resetTimer();
+    // Update idle timer to reflect new duration if not mid-session
+    if (!this.state.isActive && !this.state.sessionStarted) {
+      this.state.timeRemaining = this.getDurationForSession() * 60;
+      this.state.targetEndAt = null;
     }
+
+    this.updateDisplay();
   }
 
   saveState() {
@@ -452,8 +465,9 @@ class PomodoroTimer {
 
   startBreakSession() {
     if (this.state.sessionType === 'work') {
-      // Determine break type based on completed pomodoros
-      if (this.state.totalWorkSessions > 0 && this.state.totalWorkSessions % this.getLongBreakInterval() === 0) {
+      // Determine break type: long break only if the last completed cycle warrants it
+      const interval = this.getLongBreakInterval();
+      if (this.state.totalWorkSessions > 0 && this.state.totalWorkSessions % interval === 0) {
         this.state.sessionType = 'longBreak';
       } else {
         this.state.sessionType = 'shortBreak';
@@ -468,12 +482,8 @@ class PomodoroTimer {
   skipToNext() {
     this.pauseTimer();
     if (this.state.sessionType === 'work') {
-      // Skip work -> go to break
-      if (this.state.totalWorkSessions > 0 && this.state.totalWorkSessions % this.getLongBreakInterval() === 0) {
-        this.state.sessionType = 'longBreak';
-      } else {
-        this.state.sessionType = 'shortBreak';
-      }
+      // Skip work -> go to short break (skipped work doesn't count toward long break)
+      this.state.sessionType = 'shortBreak';
     } else {
       // Skip break -> go to work
       this.state.sessionType = 'work';
@@ -601,7 +611,7 @@ class PomodoroTimer {
     if (this.completionTimeout) {
       clearTimeout(this.completionTimeout);
     }
-    this.completionFlash.classList.remove('active');
+    this.completionFlash.classList.remove('active', 'fade-out');
     this.completionText.textContent = message;
 
     // Force reflow to restart animation
@@ -609,9 +619,13 @@ class PomodoroTimer {
     this.completionFlash.classList.add('active');
 
     this.completionTimeout = setTimeout(() => {
-      this.completionFlash.classList.remove('active');
-      this.completionTimeout = null;
-    }, 2200);
+      this.completionFlash.classList.add('fade-out');
+      // Remove after fade-out animation completes
+      this.completionTimeout = setTimeout(() => {
+        this.completionFlash.classList.remove('active', 'fade-out');
+        this.completionTimeout = null;
+      }, 400);
+    }, 1800);
   }
 
   updateDisplay() {
@@ -647,6 +661,11 @@ class PomodoroTimer {
   updatePomodoroDots() {
     const target = this.getLongBreakInterval();
     const currentPomodoro = this.clampValue(this.state.pomodoroCount, 1, target, 1);
+    const dotKey = `${target}-${currentPomodoro}-${this.state.sessionType}`;
+
+    // Skip rebuild if nothing changed
+    if (this.lastRenderedDotState === dotKey) return;
+    this.lastRenderedDotState = dotKey;
 
     let html = '';
     for (let i = 1; i <= target; i++) {
@@ -700,12 +719,8 @@ class PomodoroTimer {
     }
   }
 
-  hasActiveBackgroundWork() {
-    return this.state.isActive === true;
-  }
-
   reportBackgroundActivity() {
-    const active = this.hasActiveBackgroundWork();
+    const active = this.state.isActive;
     if (this.lastReportedBackgroundActivity === active) return;
     this.lastReportedBackgroundActivity = active;
 
@@ -715,7 +730,7 @@ class PomodoroTimer {
           type: 'app-background-activity',
           appId: 'pomodoro-timer',
           active
-        }, '*');
+        }, location.origin);
       }
     } catch (e) {
       // Ignore postMessage failures.
@@ -771,17 +786,20 @@ class PomodoroTimer {
   updateHistoryDisplay() {
     if (!this.historyDateInput || !this.historyCountEl) return;
 
+    const today = this.getDateKey();
+    this.historyDateInput.max = today;
+
     if (!this.historyDateInput.value) {
-      this.historyDateInput.value = this.getDateKey();
+      this.historyDateInput.value = today;
     }
 
     const selectedDate = this.historyDateInput.value;
     const completed = this.getHistoryCount(selectedDate);
     this.historyCountEl.textContent = `${completed} pomodoro${completed === 1 ? '' : 's'} completed`;
 
-    // Always show reset button
+    // Only show reset button when there are completions to reset
     if (this.resetTodayBtn) {
-      this.resetTodayBtn.style.display = 'inline-flex';
+      this.resetTodayBtn.style.display = completed > 0 ? 'inline-flex' : 'none';
     }
 
     this.renderHistoryList(selectedDate);
@@ -813,9 +831,14 @@ class PomodoroTimer {
   renderHistoryList(selectedDate) {
     if (!this.historyListEl) return;
 
-    const entries = Object.entries(this.history)
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .slice(0, 30);
+    const allEntries = Object.entries(this.history)
+      .sort((a, b) => b[0].localeCompare(a[0]));
+
+    // Ensure selected date is included even if outside the top 30
+    const entries = allEntries.slice(0, 30);
+    if (selectedDate && this.history[selectedDate] && !entries.some(([d]) => d === selectedDate)) {
+      entries.push([selectedDate, this.history[selectedDate]]);
+    }
 
     if (entries.length === 0) {
       this.historyListEl.innerHTML = '<div class="history-empty">No completed pomodoros yet.</div>';
@@ -832,25 +855,35 @@ class PomodoroTimer {
     }).join('');
   }
 
+  getAudioContext() {
+    if (!this.audioContext || this.audioContext.state === 'closed') {
+      this.audioContext = new AudioContext();
+    }
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume().catch(() => {});
+    }
+    return this.audioContext;
+  }
+
   playNotification() {
     if (!this.settings.soundEnabled) return;
 
     // Multi-tone ascending chime using Web Audio API
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = this.getAudioContext();
       const tones = [523, 659, 784]; // C5, E5, G5 - major chord
 
       tones.forEach((freq, i) => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
 
         oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        gainNode.connect(ctx.destination);
 
         oscillator.frequency.value = freq;
         oscillator.type = 'sine';
 
-        const startTime = audioContext.currentTime + (i * 0.18);
+        const startTime = ctx.currentTime + (i * 0.18);
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(0.25, startTime + 0.04);
         gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.45);
@@ -858,11 +891,6 @@ class PomodoroTimer {
         oscillator.start(startTime);
         oscillator.stop(startTime + 0.45);
       });
-
-      // Clean up AudioContext after all tones play
-      setTimeout(() => {
-        audioContext.close().catch(() => {});
-      }, 1200);
     } catch (e) {
       // Audio notification not available - fail silently
     }
