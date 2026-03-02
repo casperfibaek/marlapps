@@ -17,7 +17,31 @@ class KanbanBoard {
     this.hasUnsavedChanges = false;
     this.deletedTaskState = null;
     this.undoTimeoutId = null;
-    this._pendingConfirm = null;
+
+    // Bound handlers for cleanup
+    this._onDocClick = () => {
+      document.querySelectorAll('.column-filter-dropdown.open, .column-edit-dropdown.open').forEach(d => {
+        d.classList.remove('open');
+        const btn = d.previousElementSibling;
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      });
+    };
+    this._onDocKeydown = (e) => {
+      if (e.key !== 'Escape') return;
+      if (this.confirmModal.classList.contains('active')) return;
+      if (this.promptModal.classList.contains('active')) return;
+      if (this.taskModal.classList.contains('active')) {
+        this.closeModal();
+      }
+    };
+    this._onBeforeUnload = () => this.saveBoard();
+    this._onPageHide = () => this.saveBoard();
+    this._onVisibilityChange = () => { if (document.hidden) this.saveBoard(); };
+    this._onThemeMessage = (event) => {
+      if (event.data && event.data.type === 'theme-change') {
+        this.applyTheme(event.data.theme);
+      }
+    };
 
     // Touch drag state
     this.touchDragState = {
@@ -86,11 +110,7 @@ class KanbanBoard {
     }
 
     // Listen for theme changes from parent
-    window.addEventListener('message', (event) => {
-      if (event.data && event.data.type === 'theme-change') {
-        this.applyTheme(event.data.theme);
-      }
-    });
+    window.addEventListener('message', this._onThemeMessage);
   }
 
   applyTheme(theme) {
@@ -185,9 +205,9 @@ class KanbanBoard {
   }
 
   attachEventListeners() {
-    this.taskForm.addEventListener('submit', (e) => {
+    this.taskForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      this.saveTask();
+      await this.saveTask();
     });
 
     this.cancelBtn.addEventListener('click', () => {
@@ -201,14 +221,7 @@ class KanbanBoard {
     });
 
     // Keyboard support (skip if a confirm/prompt dialog is open — they handle their own Escape)
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      if (this.confirmModal.classList.contains('active')) return;
-      if (this.promptModal.classList.contains('active')) return;
-      if (this.taskModal.classList.contains('active')) {
-        this.closeModal();
-      }
-    });
+    document.addEventListener('keydown', this._onDocKeydown);
 
     // Color selector
     this.colorSwatches.forEach(swatch => {
@@ -218,12 +231,19 @@ class KanbanBoard {
       });
     });
 
-    // Delete button in modal
+    // Delete button in modal — skip unsaved-changes check since we're deleting
     this.deleteTaskBtn.addEventListener('click', async () => {
       if (this.editingTaskId) {
         const taskId = this.editingTaskId;
+        // Close modal directly (bypass unsaved check — we're deleting the task)
         this.hasUnsavedChanges = false;
-        await this.closeModal();
+        this.taskModal.classList.remove('active');
+        this.releaseFocusTrap(this.taskModal, this._taskModalFocusTrap);
+        this._taskModalFocusTrap = null;
+        this.currentColumnId = null;
+        this.editingTaskId = null;
+        this.selectedColor = null;
+        this.taskForm.reset();
         await this.deleteTask(taskId);
       }
     });
@@ -237,11 +257,7 @@ class KanbanBoard {
     });
 
     // Close filter and edit dropdowns when clicking outside
-    document.addEventListener('click', () => {
-      document.querySelectorAll('.column-filter-dropdown.open, .column-edit-dropdown.open').forEach(d => {
-        d.classList.remove('open');
-      });
-    });
+    document.addEventListener('click', this._onDocClick);
 
     // Undo button
     this.toastUndo.addEventListener('click', () => {
@@ -265,12 +281,9 @@ class KanbanBoard {
     });
 
     // Persist data when app is closed / hidden
-    const flush = () => this.saveBoard();
-    window.addEventListener('beforeunload', flush);
-    window.addEventListener('pagehide', flush);
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) this.saveBoard();
-    });
+    window.addEventListener('beforeunload', this._onBeforeUnload);
+    window.addEventListener('pagehide', this._onPageHide);
+    document.addEventListener('visibilitychange', this._onVisibilityChange);
   }
 
   renderBoard() {
@@ -448,6 +461,7 @@ class KanbanBoard {
         e.stopPropagation();
         this.setColorFilter(column.id, option.dataset.color);
         filterDropdown.classList.remove('open');
+        filterBtn.setAttribute('aria-expanded', 'false');
       });
     });
 
@@ -457,7 +471,10 @@ class KanbanBoard {
     editBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       document.querySelectorAll('.column-edit-dropdown.open, .column-filter-dropdown.open').forEach(d => {
-        if (d !== editDropdown) d.classList.remove('open');
+        if (d !== editDropdown) {
+          d.classList.remove('open');
+          d.previousElementSibling?.setAttribute('aria-expanded', 'false');
+        }
       });
       const isOpen = editDropdown.classList.toggle('open');
       editBtn.setAttribute('aria-expanded', isOpen.toString());
@@ -666,7 +683,10 @@ class KanbanBoard {
   autoScrollDuringDrag(touchY) {
     const edgeZone = KanbanBoard.AUTO_SCROLL_EDGE_PX;
     const maxSpeed = KanbanBoard.AUTO_SCROLL_MAX_SPEED;
-    const scrollContainer = document.querySelector('.kanban-main');
+    if (!this._scrollContainer) {
+      this._scrollContainer = document.querySelector('.kanban-main');
+    }
+    const scrollContainer = this._scrollContainer;
     if (!scrollContainer) return;
 
     let scrollDelta = 0;
@@ -681,8 +701,8 @@ class KanbanBoard {
 
     if (scrollDelta !== 0) {
       scrollContainer.scrollTop += scrollDelta;
-      // Invalidate cached rects since scroll changed positions
-      this.dragAnimState.columnCache = null;
+      // Refresh cached rects since scroll changed positions
+      this.cacheColumnRects();
 
       // Keep scrolling while touch stays in edge zone
       if (this.touchDragState.isDragging) {
@@ -716,8 +736,9 @@ class KanbanBoard {
       this.removeDropIndicator();
 
       // Prevent click-after-drag from opening the edit modal
+      // Use a longer timeout to reliably catch the click event that fires after touchend
       this.justDragged = true;
-      setTimeout(() => { this.justDragged = false; }, 0);
+      setTimeout(() => { this.justDragged = false; }, 300);
     }
 
     // Remove clone
@@ -965,6 +986,7 @@ class KanbanBoard {
     }
 
     this.taskModal.classList.add('active');
+    this._taskModalFocusTrap = this.trapFocus(this.taskModal);
     this.taskTitleInput.focus();
   }
 
@@ -972,6 +994,8 @@ class KanbanBoard {
     if (!await this.checkUnsavedChanges()) return;
 
     this.taskModal.classList.remove('active');
+    this.releaseFocusTrap(this.taskModal, this._taskModalFocusTrap);
+    this._taskModalFocusTrap = null;
     this.currentColumnId = null;
     this.editingTaskId = null;
     this.selectedColor = null;
@@ -979,7 +1003,7 @@ class KanbanBoard {
     this.taskForm.reset();
   }
 
-  saveTask() {
+  async saveTask() {
     const title = this.taskTitleInput.value.trim();
     const description = this.taskDescriptionInput.value.trim();
 
@@ -1013,7 +1037,7 @@ class KanbanBoard {
     this.hasUnsavedChanges = false;
     this.saveBoard();
     this.renderBoard();
-    this.closeModal();
+    await this.closeModal();
   }
 
   async deleteTask(taskId) {
@@ -1173,10 +1197,13 @@ class KanbanBoard {
   }
 
   addColumn(name) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+
     const id = 'col-' + this.generateId();
     this.board.columns.push({
       id,
-      name,
+      name: trimmed,
       tasks: [],
       collapsed: false,
       colorFilter: null
@@ -1217,12 +1244,14 @@ class KanbanBoard {
 
     const { task, columnId, index } = this.deletedTaskState;
 
-    // Find target column
-    const column = this.board.columns.find(c => c.id === columnId);
+    // Find target column — if deleted, restore to the first available column
+    let column = this.board.columns.find(c => c.id === columnId);
     if (!column) {
-      console.error('Column not found for undo');
-      this.hideUndoToast();
-      return;
+      if (this.board.columns.length === 0) {
+        this.hideUndoToast();
+        return;
+      }
+      column = this.board.columns[0];
     }
 
     // Restore task at original position
@@ -1255,9 +1284,9 @@ class KanbanBoard {
     }
 
     // Determine target position
-    let targetRef = null; // insert before this element, or null = prepend/append
+    let targetRef = null; // insert before this element, or null = append
     if (taskEls.length === 0) {
-      targetRef = tasksContainer.firstChild;
+      targetRef = tasksContainer.firstChild || null;
     } else {
       for (const taskEl of taskEls) {
         const rect = taskEl.getBoundingClientRect();
@@ -1358,8 +1387,11 @@ class KanbanBoard {
     const sourceIndex = this.board.columns.findIndex(c => c.id === columnId);
     if (sourceIndex === -1) return;
 
+    // Clamp targetIndex to valid bounds
+    const clampedTarget = Math.max(0, Math.min(targetIndex, this.board.columns.length));
+
     // Adjust target if source is before target
-    let insertIndex = targetIndex;
+    let insertIndex = clampedTarget;
     if (sourceIndex < insertIndex) {
       insertIndex -= 1;
     }
@@ -1379,10 +1411,12 @@ class KanbanBoard {
       this.confirmMessage.textContent = message;
       this.confirmOkBtn.textContent = okLabel;
       this.confirmModal.classList.add('active');
+      const focusTrapHandler = this.trapFocus(this.confirmModal);
       this.confirmOkBtn.focus();
 
       const cleanup = () => {
         this.confirmModal.classList.remove('active');
+        this.releaseFocusTrap(this.confirmModal, focusTrapHandler);
         this.confirmOkBtn.removeEventListener('click', onOk);
         this.confirmCancelBtn.removeEventListener('click', onCancel);
         this.confirmModal.removeEventListener('click', onBackdrop);
@@ -1405,12 +1439,15 @@ class KanbanBoard {
       document.getElementById('promptTitle').textContent = title;
       this.promptInput.value = '';
       this.promptInput.placeholder = placeholder;
-      this.promptInput.previousElementSibling.textContent = label;
+      const promptLabel = this.promptInput.previousElementSibling;
+      if (promptLabel) promptLabel.textContent = label;
       this.promptModal.classList.add('active');
+      const focusTrapHandler = this.trapFocus(this.promptModal);
       this.promptInput.focus();
 
       const cleanup = () => {
         this.promptModal.classList.remove('active');
+        this.releaseFocusTrap(this.promptModal, focusTrapHandler);
         this.promptForm.removeEventListener('submit', onSubmit);
         this.promptCancelBtn.removeEventListener('click', onCancel);
         this.promptModal.removeEventListener('click', onBackdrop);
@@ -1431,6 +1468,38 @@ class KanbanBoard {
       this.promptModal.addEventListener('click', onBackdrop);
       document.addEventListener('keydown', onKey);
     });
+  }
+
+  trapFocus(modalEl) {
+    const focusable = modalEl.querySelectorAll('button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length === 0) return null;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    const handler = (e) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    modalEl.addEventListener('keydown', handler);
+    return handler;
+  }
+
+  releaseFocusTrap(modalEl, handler) {
+    if (handler) {
+      modalEl.removeEventListener('keydown', handler);
+    }
   }
 
   generateId() {

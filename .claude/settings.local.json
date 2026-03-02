@@ -6,7 +6,11 @@
       "Bash(test:*)",
       "Bash(node build.js:*)",
       "Bash(find /home/casper/Desktop/marlapps/apps -name \"*.html\" -exec grep -l \"sidebar\\\\|panel\\\\|toggle\\\\|modal\" {} ;)",
-      "WebFetch(domain:casperfibaek.github.io)"
+      "WebFetch(domain:casperfibaek.github.io)",
+      "Bash(node -c apps/kanban-board/app.js)",
+      "Bash(node --version)",
+      "Bash(npx -y acorn --ecma2022 apps/kanban-board/app.js)",
+      "Bash(npx -y esprima apps/kanban-board/app.js)"
     ]
   }
 }
