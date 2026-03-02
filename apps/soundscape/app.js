@@ -69,7 +69,8 @@ class SoundscapeApp {
     const saved = localStorage.getItem('marlapps-soundscape');
     const defaults = {
       masterVolume: 80,
-      sounds: {}
+      sounds: {},
+      paused: false
     };
     if (!saved) return defaults;
 
@@ -107,7 +108,9 @@ class SoundscapeApp {
         });
       }
 
-      return { masterVolume, sounds };
+      const paused = parsed.paused === true;
+
+      return { masterVolume, sounds, paused };
     } catch {
       return defaults;
     }
@@ -136,6 +139,13 @@ class SoundscapeApp {
   // ===== Theme =====
 
   syncThemeWithParent() {
+    try {
+      const savedTheme = localStorage.getItem('marlapps-theme');
+      if (savedTheme) {
+        this.applyTheme(savedTheme);
+      }
+    } catch (_) {}
+
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'theme-change') {
         this.applyTheme(event.data.theme);
@@ -153,7 +163,8 @@ class SoundscapeApp {
   // ===== Audio Context =====
 
   ensureAudioContext() {
-    if (!this.audioCtx) {
+    if (!this.audioCtx || this.audioCtx.state === 'closed') {
+      this.bufferCache.clear();
       this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       this.masterGain = this.audioCtx.createGain();
       this.masterGain.gain.value = this.data.masterVolume / 100;
@@ -234,14 +245,11 @@ class SoundscapeApp {
         const decaySamples = Math.max(1, Math.floor(decaySeconds * ctx.sampleRate));
 
         for (let j = 0; j < decaySamples && (start + j) < bufferSize; j++) {
+          const idx = start + j;
           const envelope = Math.exp((-5 * j) / decaySamples);
-          data[start + j] += (Math.random() * 2 - 1) * amplitude * envelope;
+          const sample = data[idx] + (Math.random() * 2 - 1) * amplitude * envelope;
+          data[idx] = sample > 1 ? 1 : sample < -1 ? -1 : sample;
         }
-      }
-
-      for (let i = 0; i < bufferSize; i++) {
-        if (data[i] > 1) data[i] = 1;
-        else if (data[i] < -1) data[i] = -1;
       }
 
       return buffer;
@@ -631,8 +639,16 @@ class SoundscapeApp {
     this.soundGrid = document.getElementById('soundGrid');
     this.activityIndicator = document.getElementById('activityIndicator');
 
+    this.gestureHint = document.getElementById('gestureHint');
+
     this.masterVolumeSlider.value = this.data.masterVolume;
     this.masterVolumeLabel.textContent = `${this.data.masterVolume}%`;
+    this.updateSliderFill(this.masterVolumeSlider);
+  }
+
+  updateSliderFill(slider) {
+    const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+    slider.style.setProperty('--slider-fill', `${pct}%`);
   }
 
   renderSoundCards() {
@@ -645,22 +661,57 @@ class SoundscapeApp {
       card.className = 'sound-card';
       card.dataset.soundId = def.id;
 
-      card.innerHTML = `
-        <div class="sound-card-header">
-          <div class="sound-icon">${def.icon}</div>
-          <div class="sound-info">
-            <div class="sound-name">${def.name}</div>
-            <div class="sound-desc">${def.description}</div>
-          </div>
-          <button class="sound-toggle" data-sound-id="${def.id}" title="Toggle ${def.name}">
-            <span class="toggle-icon">\u25B6</span>
-          </button>
-        </div>
-        <div class="sound-volume">
-          <input type="range" class="volume-slider" data-sound-id="${def.id}" min="0" max="100" value="${savedVol}">
-          <span class="volume-label">${savedVol}%</span>
-        </div>
-      `;
+      const header = document.createElement('div');
+      header.className = 'sound-card-header';
+
+      const iconEl = document.createElement('div');
+      iconEl.className = 'sound-icon';
+      iconEl.textContent = def.icon;
+
+      const info = document.createElement('div');
+      info.className = 'sound-info';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'sound-name';
+      nameEl.textContent = def.name;
+      const descEl = document.createElement('div');
+      descEl.className = 'sound-desc';
+      descEl.textContent = def.description;
+      info.appendChild(nameEl);
+      info.appendChild(descEl);
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'sound-toggle';
+      toggleBtn.dataset.soundId = def.id;
+      toggleBtn.setAttribute('aria-label', `Toggle ${def.name}`);
+      toggleBtn.setAttribute('aria-pressed', 'false');
+      const toggleIcon = document.createElement('span');
+      toggleIcon.className = 'toggle-icon';
+      toggleIcon.textContent = '\u25B6';
+      toggleBtn.appendChild(toggleIcon);
+
+      header.appendChild(iconEl);
+      header.appendChild(info);
+      header.appendChild(toggleBtn);
+
+      const volumeRow = document.createElement('div');
+      volumeRow.className = 'sound-volume';
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.className = 'volume-slider';
+      slider.dataset.soundId = def.id;
+      slider.min = '0';
+      slider.max = '100';
+      slider.value = savedVol;
+      slider.setAttribute('aria-label', `${def.name} volume`);
+      this.updateSliderFill(slider);
+      const volLabel = document.createElement('span');
+      volLabel.className = 'volume-label';
+      volLabel.textContent = `${savedVol}%`;
+      volumeRow.appendChild(slider);
+      volumeRow.appendChild(volLabel);
+
+      card.appendChild(header);
+      card.appendChild(volumeRow);
 
       this.soundGrid.appendChild(card);
     });
@@ -670,10 +721,15 @@ class SoundscapeApp {
     this.masterToggleBtn.addEventListener('click', () => this.toggleAll());
 
     this.masterVolumeSlider.addEventListener('input', (e) => {
-      this.data.masterVolume = parseInt(e.target.value, 10);
-      this.masterVolumeLabel.textContent = `${this.data.masterVolume}%`;
+      const vol = parseInt(e.target.value, 10);
+      this.data.masterVolume = vol;
+      this.masterVolumeLabel.textContent = `${vol}%`;
+      this.updateSliderFill(e.target);
       if (this.masterGain) {
-        this.masterGain.gain.setTargetAtTime(this.data.masterVolume / 100, this.audioCtx.currentTime, 0.02);
+        this.masterGain.gain.setTargetAtTime(vol / 100, this.audioCtx.currentTime, 0.02);
+      }
+      if (vol === 0 && this.sounds.size > 0) {
+        this.pauseAll();
       }
       this.scheduleSave();
     });
@@ -690,6 +746,7 @@ class SoundscapeApp {
         const id = e.target.dataset.soundId;
         const vol = parseInt(e.target.value, 10);
         this.setSoundVolume(id, vol);
+        this.updateSliderFill(e.target);
 
         const label = e.target.closest('.sound-volume').querySelector('.volume-label');
         label.textContent = `${vol}%`;
@@ -700,10 +757,7 @@ class SoundscapeApp {
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        this.resumeAudioContext();
-        if (this.pendingAutoRestore) {
-          this.restoreActiveSounds();
-        }
+        this.handleBecameVisible();
       }
     });
 
@@ -715,12 +769,7 @@ class SoundscapeApp {
     this.gestureAbort = new AbortController();
     const opts = { signal: this.gestureAbort.signal };
 
-    const resumeOnGesture = () => {
-      this.resumeAudioContext();
-      if (this.pendingAutoRestore) {
-        this.restoreActiveSounds();
-      }
-    };
+    const resumeOnGesture = () => this.handleBecameVisible();
 
     document.addEventListener('pointerdown', resumeOnGesture, { ...opts, passive: true });
     document.addEventListener('keydown', resumeOnGesture, opts);
@@ -731,6 +780,9 @@ class SoundscapeApp {
     if (this.gestureAbort) {
       this.gestureAbort.abort();
       this.gestureAbort = null;
+    }
+    if (this.gestureHint) {
+      this.gestureHint.classList.remove('visible');
     }
   }
 
@@ -767,13 +819,16 @@ class SoundscapeApp {
 
       if (!this.data.sounds[id]) this.data.sounds[id] = {};
       this.data.sounds[id].active = true;
+      this.data.paused = false;
       if (this.data.sounds[id].volume === undefined) this.data.sounds[id].volume = savedVol;
-      this.saveData();
+      this.scheduleSave();
 
       const card = this.soundGrid.querySelector(`.sound-card[data-sound-id="${id}"]`);
       if (card) {
         card.classList.add('active');
         card.querySelector('.toggle-icon').textContent = '\u23F8';
+        const btn = card.querySelector('.sound-toggle');
+        if (btn) btn.setAttribute('aria-pressed', 'true');
       }
 
       this.updateMasterButton();
@@ -790,6 +845,7 @@ class SoundscapeApp {
     const entry = this.sounds.get(id);
     if (!entry) return;
 
+    this.sounds.delete(id);
     entry.gain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
     setTimeout(() => {
       try {
@@ -799,12 +855,13 @@ class SoundscapeApp {
         entry.gain.disconnect();
       } catch (_) {}
     }, 100);
-    this.sounds.delete(id);
 
     const card = this.soundGrid.querySelector(`.sound-card[data-sound-id="${id}"]`);
     if (card) {
       card.classList.remove('active');
       card.querySelector('.toggle-icon').textContent = '\u25B6';
+      const btn = card.querySelector('.sound-toggle');
+      if (btn) btn.setAttribute('aria-pressed', 'false');
     }
   }
 
@@ -814,7 +871,7 @@ class SoundscapeApp {
     if (this.data.sounds[id]) {
       this.data.sounds[id].active = false;
     }
-    this.saveData();
+    this.scheduleSave();
 
     this.updateMasterButton();
     this.updateActivityIndicator();
@@ -822,11 +879,6 @@ class SoundscapeApp {
   }
 
   setSoundVolume(id, vol) {
-    if (vol === 0 && this.sounds.has(id)) {
-      this.stopSound(id);
-      return;
-    }
-
     const entry = this.sounds.get(id);
     if (entry) {
       entry.gain.gain.setTargetAtTime(vol / 100, this.audioCtx.currentTime, 0.02);
@@ -838,6 +890,8 @@ class SoundscapeApp {
 
   pauseAll() {
     [...this.sounds.keys()].forEach(id => this.destroySound(id));
+    this.data.paused = true;
+    this.scheduleSave();
     this.updateMasterButton();
     this.updateActivityIndicator();
     this.reportBackgroundActivity();
@@ -846,6 +900,8 @@ class SoundscapeApp {
   resumeAll() {
     const activeIds = this.getSavedActiveSoundIds();
     if (activeIds.length === 0) return;
+    this.data.paused = false;
+    this.scheduleSave();
     activeIds.forEach(id => this.startSound(id));
   }
 
@@ -860,7 +916,13 @@ class SoundscapeApp {
   updateMasterButton() {
     const anyPlaying = this.sounds.size > 0;
     const hasActiveSaved = this.getSavedActiveSoundIds().length > 0;
-    this.masterToggleBtn.textContent = anyPlaying ? 'Pause' : 'Resume';
+    if (anyPlaying) {
+      this.masterToggleBtn.textContent = 'Pause';
+    } else if (hasActiveSaved) {
+      this.masterToggleBtn.textContent = 'Resume';
+    } else {
+      this.masterToggleBtn.textContent = 'Play';
+    }
     this.masterToggleBtn.disabled = !anyPlaying && !hasActiveSaved;
   }
 
@@ -886,37 +948,36 @@ class SoundscapeApp {
     const activeIds = this.getSavedActiveSoundIds();
     this.pendingAutoRestore = false;
 
-    if (activeIds.length === 0) {
+    if (activeIds.length === 0 || this.data.paused) {
       this.updateMasterButton();
       return;
     }
 
     activeIds.forEach((id) => {
       if (this.sounds.has(id)) return;
-      try {
-        this.startSound(id);
-      } catch (_) {
-        // Will retry after a user gesture via pendingAutoRestore.
-      }
+      this.startSound(id);
     });
 
     this.pendingAutoRestore = activeIds.some(id => !this.sounds.has(id));
+    if (this.pendingAutoRestore && this.gestureHint) {
+      this.gestureHint.classList.add('visible');
+    }
   }
 
   handleAppVisibility(visible) {
     if (!visible) return;
+    this.handleBecameVisible();
+  }
+
+  handleBecameVisible() {
     this.resumeAudioContext();
     if (this.pendingAutoRestore) {
       this.restoreActiveSounds();
     }
   }
 
-  hasActiveBackgroundWork() {
-    return this.sounds.size > 0;
-  }
-
   reportBackgroundActivity() {
-    const active = this.hasActiveBackgroundWork();
+    const active = this.sounds.size > 0;
     if (this.lastReportedBackgroundActivity === active) return;
     this.lastReportedBackgroundActivity = active;
 
@@ -942,6 +1003,7 @@ class SoundscapeApp {
         const slider = this.soundGrid.querySelector(`.volume-slider[data-sound-id="${def.id}"]`);
         if (slider) {
           slider.value = saved.volume;
+          this.updateSliderFill(slider);
           slider.closest('.sound-volume').querySelector('.volume-label').textContent = `${saved.volume}%`;
         }
       }

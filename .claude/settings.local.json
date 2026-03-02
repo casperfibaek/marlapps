@@ -10,7 +10,8 @@
       "Bash(node -c apps/kanban-board/app.js)",
       "Bash(node --version)",
       "Bash(npx -y acorn --ecma2022 apps/kanban-board/app.js)",
-      "Bash(npx -y esprima apps/kanban-board/app.js)"
+      "Bash(npx -y esprima apps/kanban-board/app.js)",
+      "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && head -30 {}')"
     ]
   }
 }
