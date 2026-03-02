@@ -754,7 +754,8 @@ class SoundscapeApp {
       const node = def.generator(ctx);
       const gain = ctx.createGain();
       const savedVol = this.data.sounds[id]?.volume ?? 70;
-      gain.gain.value = savedVol / 100;
+      gain.gain.value = 0;
+      gain.gain.setTargetAtTime(savedVol / 100, ctx.currentTime, 0.02);
 
       node.output.connect(gain);
       gain.connect(this.masterGain);
@@ -784,7 +785,8 @@ class SoundscapeApp {
     }
   }
 
-  stopSound(id) {
+  // Tear down audio nodes for a sound without changing the active flag in data
+  destroySound(id) {
     const entry = this.sounds.get(id);
     if (!entry) return;
 
@@ -793,20 +795,26 @@ class SoundscapeApp {
       try {
         entry.node.sources.forEach(s => { try { s.stop(); } catch (_) {} });
         entry.node.oscillators.forEach(o => { try { o.stop(); } catch (_) {} });
+        entry.node.output.disconnect();
+        entry.gain.disconnect();
       } catch (_) {}
     }, 100);
     this.sounds.delete(id);
-
-    if (this.data.sounds[id]) {
-      this.data.sounds[id].active = false;
-    }
-    this.saveData();
 
     const card = this.soundGrid.querySelector(`.sound-card[data-sound-id="${id}"]`);
     if (card) {
       card.classList.remove('active');
       card.querySelector('.toggle-icon').textContent = '\u25B6';
     }
+  }
+
+  stopSound(id) {
+    this.destroySound(id);
+
+    if (this.data.sounds[id]) {
+      this.data.sounds[id].active = false;
+    }
+    this.saveData();
 
     this.updateMasterButton();
     this.updateActivityIndicator();
@@ -828,25 +836,32 @@ class SoundscapeApp {
     this.scheduleSave();
   }
 
-  toggleAll() {
-    const anyPlaying = this.sounds.size > 0;
-
-    if (anyPlaying) {
-      [...this.sounds.keys()].forEach(id => this.stopSound(id));
-    } else {
-      // Resume previously active sounds, or all if none were saved
-      const previouslyActive = this.getSavedActiveSoundIds();
-      const toStart = previouslyActive.length > 0
-        ? previouslyActive
-        : this.soundDefs.map(d => d.id);
-      toStart.forEach(id => this.startSound(id));
-    }
+  pauseAll() {
+    [...this.sounds.keys()].forEach(id => this.destroySound(id));
     this.updateMasterButton();
+    this.updateActivityIndicator();
+    this.reportBackgroundActivity();
+  }
+
+  resumeAll() {
+    const activeIds = this.getSavedActiveSoundIds();
+    if (activeIds.length === 0) return;
+    activeIds.forEach(id => this.startSound(id));
+  }
+
+  toggleAll() {
+    if (this.sounds.size > 0) {
+      this.pauseAll();
+    } else {
+      this.resumeAll();
+    }
   }
 
   updateMasterButton() {
     const anyPlaying = this.sounds.size > 0;
-    this.masterToggleBtn.textContent = anyPlaying ? 'Stop All' : 'Play All';
+    const hasActiveSaved = this.getSavedActiveSoundIds().length > 0;
+    this.masterToggleBtn.textContent = anyPlaying ? 'Pause' : 'Resume';
+    this.masterToggleBtn.disabled = !anyPlaying && !hasActiveSaved;
   }
 
   updateActivityIndicator() {
@@ -869,11 +884,10 @@ class SoundscapeApp {
 
   restoreActiveSounds() {
     const activeIds = this.getSavedActiveSoundIds();
+    this.pendingAutoRestore = false;
+
     if (activeIds.length === 0) {
-      this.pendingAutoRestore = false;
       this.updateMasterButton();
-      this.updateActivityIndicator();
-      this.reportBackgroundActivity();
       return;
     }
 
@@ -881,15 +895,12 @@ class SoundscapeApp {
       if (this.sounds.has(id)) return;
       try {
         this.startSound(id);
-      } catch (e) {
-        // Retry after a user gesture if needed.
+      } catch (_) {
+        // Will retry after a user gesture via pendingAutoRestore.
       }
     });
 
     this.pendingAutoRestore = activeIds.some(id => !this.sounds.has(id));
-    this.updateMasterButton();
-    this.updateActivityIndicator();
-    this.reportBackgroundActivity();
   }
 
   handleAppVisibility(visible) {

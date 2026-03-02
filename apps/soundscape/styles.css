@@ -78,6 +78,11 @@ body {
   padding: var(--space-3) var(--space-5);
 }
 
+.master-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .master-volume {
   display: flex;
   align-items: center;
