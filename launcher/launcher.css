@@ -921,6 +921,27 @@ body {
   vertical-align: middle;
 }
 
+/* App Status Badge */
+.app-status-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  margin-left: var(--space-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-status-badge[data-variant="alert"] {
+  color: var(--color-danger, #ef4444);
+}
+
+.app-status-badge[data-variant="calm"] {
+  color: var(--color-success, #22c55e);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-card.is-background-running {
     animation: none;

@@ -84,6 +84,8 @@ class Launcher {
     this.currentApp = null;
     this.backgroundHost = new BackgroundAppHost();
     this.backgroundActivity = new Map();
+    this.appStatus = new Map();
+    this.statusTickInterval = null;
     this.activeAppStorageKey = 'marlapps-active-app';
   }
 
@@ -336,6 +338,7 @@ class Launcher {
 
     window.addEventListener('message', (event) => {
       this.handleAppBackgroundActivityMessage(event);
+      this.handleAppStatusMessage(event);
     });
 
     const notifyUnload = () => {
@@ -621,6 +624,7 @@ class Launcher {
     const removedBackgroundFrame = this.backgroundHost.discardFrame(appId);
     if (removedBackgroundFrame) {
       this.backgroundActivity.delete(appId);
+      this.clearAppStatus(appId);
     }
 
     if (!this.currentApp || this.currentApp.id !== appId) {
@@ -780,7 +784,10 @@ class Launcher {
     } else {
       if (iframe) this.notifyAppVisibility(iframe, false, closeReason);
       content.innerHTML = '';
-      if (app) this.backgroundActivity.delete(app.id);
+      if (app) {
+        this.backgroundActivity.delete(app.id);
+        this.clearAppStatus(app.id);
+      }
     }
 
     workspace.classList.add('hidden');
@@ -833,6 +840,98 @@ class Launcher {
     if (days < 7) return `${days}d ago`;
 
     return new Date(timestamp).toLocaleDateString();
+  }
+
+  // ===== App Status Badges =====
+
+  handleAppStatusMessage(event) {
+    const data = event && event.data;
+    if (!data || data.type !== 'app-status') return;
+
+    const sourceAppId = this.getAppIdForContentWindow(event.source);
+    const messageAppId = typeof data.appId === 'string' ? data.appId : null;
+    const appId = sourceAppId || messageAppId;
+    if (!appId) return;
+    if (sourceAppId && messageAppId && sourceAppId !== messageAppId) return;
+
+    const status = data.status;
+    if (!status || typeof status !== 'object') return;
+
+    if (status.active === false) {
+      this.appStatus.delete(appId);
+    } else {
+      this.appStatus.set(appId, {
+        label: String(status.label || ''),
+        timeRemaining: typeof status.timeRemaining === 'number' ? status.timeRemaining : null,
+        variant: status.variant === 'calm' ? 'calm' : 'alert',
+        lastUpdate: Date.now()
+      });
+    }
+
+    this.updateStatusBadges();
+    this.ensureStatusTicker();
+  }
+
+  ensureStatusTicker() {
+    if (this.appStatus.size > 0 && !this.statusTickInterval) {
+      this.statusTickInterval = setInterval(() => this.tickStatus(), 1000);
+    } else if (this.appStatus.size === 0 && this.statusTickInterval) {
+      clearInterval(this.statusTickInterval);
+      this.statusTickInterval = null;
+    }
+  }
+
+  tickStatus() {
+    let changed = false;
+    this.appStatus.forEach((status) => {
+      if (typeof status.timeRemaining === 'number' && status.timeRemaining > 0) {
+        status.timeRemaining = Math.max(0, status.timeRemaining - 1);
+        changed = true;
+      }
+    });
+    if (changed) this.updateStatusBadges();
+  }
+
+  formatStatusTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  updateStatusBadges() {
+    document.querySelectorAll('.app-card[data-app-id]').forEach((card) => {
+      const appId = card.dataset.appId;
+      const status = this.appStatus.get(appId);
+      let badge = card.querySelector('.app-status-badge');
+
+      if (!status) {
+        if (badge) badge.remove();
+        return;
+      }
+
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'app-status-badge';
+        const nameEl = card.querySelector('.app-name');
+        if (nameEl) {
+          nameEl.parentNode.insertBefore(badge, nameEl.nextSibling);
+        }
+      }
+
+      badge.setAttribute('data-variant', status.variant);
+      if (typeof status.timeRemaining === 'number') {
+        badge.textContent = `[${status.label}: ${this.formatStatusTime(status.timeRemaining)}]`;
+      } else {
+        badge.textContent = `[${status.label}]`;
+      }
+    });
+  }
+
+  clearAppStatus(appId) {
+    if (this.appStatus.delete(appId)) {
+      this.updateStatusBadges();
+      this.ensureStatusTicker();
+    }
   }
 
   escapeHtml(str) {

@@ -992,6 +992,39 @@ class SoundscapeApp {
     } catch (e) {
       // Ignore postMessage failures.
     }
+
+    this.reportStatus();
+  }
+
+  reportStatus() {
+    try {
+      if (!window.parent || window.parent === window) return;
+
+      const playing = this.sounds.size > 0;
+      const hasSavedActive = this.getSavedActiveSoundIds().length > 0;
+
+      if (!playing && !hasSavedActive) {
+        window.parent.postMessage({
+          type: 'app-status',
+          appId: 'soundscape',
+          status: { active: false }
+        }, '*');
+        return;
+      }
+
+      window.parent.postMessage({
+        type: 'app-status',
+        appId: 'soundscape',
+        status: {
+          active: true,
+          label: playing ? 'playing' : 'paused',
+          timeRemaining: null,
+          variant: 'calm'
+        }
+      }, '*');
+    } catch (e) {
+      // Ignore postMessage failures.
+    }
   }
 
   // ===== Restore State =====

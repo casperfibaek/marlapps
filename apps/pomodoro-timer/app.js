@@ -30,6 +30,7 @@ class PomodoroTimer {
     }
 
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   initElements() {
@@ -518,6 +519,7 @@ class PomodoroTimer {
 
     this.saveState();
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   tickTimer() {
@@ -525,6 +527,7 @@ class PomodoroTimer {
 
     this.state.timeRemaining = Math.max(0, Math.ceil((this.state.targetEndAt - Date.now()) / 1000));
     this.updateDisplay();
+    this.reportStatus();
 
     // Throttle localStorage writes to every 5 seconds (saves are also forced on pause/visibility change)
     const now = Date.now();
@@ -550,6 +553,7 @@ class PomodoroTimer {
     clearInterval(this.timerInterval);
     this.saveState();
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   resetTimer() {
@@ -732,6 +736,37 @@ class PomodoroTimer {
           active
         }, location.origin);
       }
+    } catch (e) {
+      // Ignore postMessage failures.
+    }
+  }
+
+  reportStatus() {
+    try {
+      if (!window.parent || window.parent === window) return;
+
+      if (!this.state.isActive) {
+        window.parent.postMessage({
+          type: 'app-status',
+          appId: 'pomodoro-timer',
+          status: { active: false }
+        }, '*');
+        return;
+      }
+
+      const labelMap = { work: 'work', shortBreak: 'short break', longBreak: 'long break' };
+      const variant = this.state.sessionType === 'work' ? 'alert' : 'calm';
+
+      window.parent.postMessage({
+        type: 'app-status',
+        appId: 'pomodoro-timer',
+        status: {
+          active: true,
+          label: labelMap[this.state.sessionType] || 'work',
+          timeRemaining: this.state.timeRemaining,
+          variant
+        }
+      }, '*');
     } catch (e) {
       // Ignore postMessage failures.
     }

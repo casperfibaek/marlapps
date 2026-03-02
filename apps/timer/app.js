@@ -43,6 +43,7 @@ class TimerApp {
     this.updateIntervalDisplay();
     this.updateCountdownDisplay();
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   // ===== Data Persistence =====
@@ -314,6 +315,7 @@ class TimerApp {
 
     this.persistRuntimeData(true);
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   // ===== Theme =====
@@ -777,6 +779,7 @@ class TimerApp {
     this.tickInterval();
     this.persistRuntimeData(true);
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   tickInterval(options = {}) {
@@ -824,6 +827,7 @@ class TimerApp {
     );
 
     this.updateIntervalDisplay();
+    this.reportStatus();
     if (persist) this.persistRuntimeData();
   }
 
@@ -842,6 +846,7 @@ class TimerApp {
     clearInterval(this.intervalTimerInterval);
     this.persistRuntimeData(true);
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   resetInterval(options = {}) {
@@ -861,6 +866,7 @@ class TimerApp {
     this.updateIntervalDisplay();
     if (persist) this.persistRuntimeData(true);
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   updateIntervalDisplay() {
@@ -909,6 +915,7 @@ class TimerApp {
     this.updateCountdownDisplay();
     this.persistRuntimeData(true);
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   addRecentCountdown(seconds) {
@@ -987,6 +994,7 @@ class TimerApp {
     this.tickCountdown();
     this.persistRuntimeData(true);
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   tickCountdown(options = {}) {
@@ -997,6 +1005,7 @@ class TimerApp {
       Math.ceil((this.countdownState.endAt - Date.now()) / 1000)
     );
     this.updateCountdownDisplay();
+    this.reportStatus();
 
     // Update title when timer tab is active
     if (this.data.activeTab === 'timer') {
@@ -1026,6 +1035,7 @@ class TimerApp {
       document.title = 'Timer - MarlApps';
       if (persist) this.persistRuntimeData(true);
       this.reportBackgroundActivity();
+      this.reportStatus();
     }
   }
 
@@ -1048,6 +1058,7 @@ class TimerApp {
     this.updateCountdownDisplay();
     this.persistRuntimeData(true);
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   resetCountdown() {
@@ -1065,6 +1076,7 @@ class TimerApp {
     document.title = 'Timer - MarlApps';
     this.persistRuntimeData(true);
     this.reportBackgroundActivity();
+    this.reportStatus();
   }
 
   updateCountdownDisplay() {
@@ -1106,6 +1118,50 @@ class TimerApp {
           active
         }, '*');
       }
+    } catch (e) {
+      // Ignore postMessage failures.
+    }
+  }
+
+  reportStatus() {
+    try {
+      if (!window.parent || window.parent === window) return;
+
+      // Prefer interval timer status over countdown
+      if (this.intervalState.running) {
+        const variant = this.intervalState.phase === 'work' ? 'alert' : 'calm';
+        window.parent.postMessage({
+          type: 'app-status',
+          appId: 'timer',
+          status: {
+            active: true,
+            label: this.intervalState.phase,
+            timeRemaining: this.intervalState.timeRemaining,
+            variant
+          }
+        }, '*');
+        return;
+      }
+
+      if (this.countdownState.running) {
+        window.parent.postMessage({
+          type: 'app-status',
+          appId: 'timer',
+          status: {
+            active: true,
+            label: 'countdown',
+            timeRemaining: this.countdownState.timeRemaining,
+            variant: 'alert'
+          }
+        }, '*');
+        return;
+      }
+
+      window.parent.postMessage({
+        type: 'app-status',
+        appId: 'timer',
+        status: { active: false }
+      }, '*');
     } catch (e) {
       // Ignore postMessage failures.
     }
