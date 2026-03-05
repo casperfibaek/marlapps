@@ -165,7 +165,13 @@ class SoundscapeApp {
   ensureAudioContext() {
     if (!this.audioCtx || this.audioCtx.state === 'closed') {
       this.bufferCache.clear();
-      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      try {
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) {
+        this.audioCtx = null;
+        if (this.gestureHint) this.gestureHint.classList.add('visible');
+        throw e;
+      }
       this.masterGain = this.audioCtx.createGain();
       this.masterGain.gain.value = this.data.masterVolume / 100;
       this.masterGain.connect(this.audioCtx.destination);
@@ -219,6 +225,9 @@ class SoundscapeApp {
         data[i] = (last + 0.02 * white) / 1.02;
         last = data[i];
         data[i] *= 3.5;
+        // Clamp to prevent hard clipping distortion
+        if (data[i] > 1) data[i] = 1;
+        else if (data[i] < -1) data[i] = -1;
       }
       return buffer;
     });
@@ -666,6 +675,7 @@ class SoundscapeApp {
 
       const iconEl = document.createElement('div');
       iconEl.className = 'sound-icon';
+      iconEl.setAttribute('aria-hidden', 'true');
       iconEl.textContent = def.icon;
 
       const info = document.createElement('div');
@@ -680,6 +690,7 @@ class SoundscapeApp {
       info.appendChild(descEl);
 
       const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
       toggleBtn.className = 'sound-toggle';
       toggleBtn.dataset.soundId = def.id;
       toggleBtn.setAttribute('aria-label', `Toggle ${def.name}`);
@@ -725,11 +736,13 @@ class SoundscapeApp {
       this.data.masterVolume = vol;
       this.masterVolumeLabel.textContent = `${vol}%`;
       this.updateSliderFill(e.target);
-      if (this.masterGain) {
-        this.masterGain.gain.setTargetAtTime(vol / 100, this.audioCtx.currentTime, 0.02);
+      if (this.masterGain && this.audioCtx) {
+        this.masterGain.gain.setTargetAtTime(vol / 100, this.audioCtx.currentTime, 0.05);
       }
       if (vol === 0 && this.sounds.size > 0) {
         this.pauseAll();
+      } else if (vol > 0 && this.sounds.size === 0 && this.data.paused) {
+        this.resumeAll();
       }
       this.scheduleSave();
     });
@@ -807,7 +820,7 @@ class SoundscapeApp {
       const gain = ctx.createGain();
       const savedVol = this.data.sounds[id]?.volume ?? 70;
       gain.gain.value = 0;
-      gain.gain.setTargetAtTime(savedVol / 100, ctx.currentTime, 0.02);
+      gain.gain.setTargetAtTime(savedVol / 100, ctx.currentTime, 0.05);
 
       node.output.connect(gain);
       gain.connect(this.masterGain);
@@ -819,6 +832,15 @@ class SoundscapeApp {
 
       if (!this.data.sounds[id]) this.data.sounds[id] = {};
       this.data.sounds[id].active = true;
+      // If globally paused, deactivate other saved-but-not-playing sounds
+      // so only explicitly toggled sounds restore on reload
+      if (this.data.paused) {
+        this.soundDefs.forEach(def => {
+          if (def.id !== id && this.data.sounds[def.id]?.active && !this.sounds.has(def.id)) {
+            this.data.sounds[def.id].active = false;
+          }
+        });
+      }
       this.data.paused = false;
       if (this.data.sounds[id].volume === undefined) this.data.sounds[id].volume = savedVol;
       this.scheduleSave();
@@ -837,6 +859,9 @@ class SoundscapeApp {
     } catch (e) {
       // Clean up partial state on failure
       this.sounds.delete(id);
+      // Show gesture hint so user knows to tap to enable audio
+      if (this.gestureHint) this.gestureHint.classList.add('visible');
+      this.setupGestureListeners();
     }
   }
 
@@ -846,7 +871,9 @@ class SoundscapeApp {
     if (!entry) return;
 
     this.sounds.delete(id);
-    entry.gain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
+    if (this.audioCtx && this.audioCtx.state !== 'closed') {
+      entry.gain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
+    }
     setTimeout(() => {
       try {
         entry.node.sources.forEach(s => { try { s.stop(); } catch (_) {} });
@@ -880,8 +907,8 @@ class SoundscapeApp {
 
   setSoundVolume(id, vol) {
     const entry = this.sounds.get(id);
-    if (entry) {
-      entry.gain.gain.setTargetAtTime(vol / 100, this.audioCtx.currentTime, 0.02);
+    if (entry && this.audioCtx) {
+      entry.gain.gain.setTargetAtTime(vol / 100, this.audioCtx.currentTime, 0.05);
     }
     if (!this.data.sounds[id]) this.data.sounds[id] = {};
     this.data.sounds[id].volume = vol;

@@ -2,7 +2,7 @@
   "id": "soundscape",
   "name": "Soundscape",
   "shortName": "Soundscape",
-  "description": "Mix white and brown noise for focus and relaxation",
+  "description": "Mix ambient sounds for focus and relaxation",
   "icon": "icon.svg",
   "entry": "index.html",
   "categories": ["Focus"],

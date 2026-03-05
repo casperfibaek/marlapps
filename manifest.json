@@ -166,7 +166,7 @@
     {
       "name": "Soundscape",
       "short_name": "Soundscape",
-      "description": "Mix white and brown noise for focus and relaxation",
+      "description": "Mix ambient sounds for focus and relaxation",
       "url": "./index.html?app=soundscape",
       "icons": [
         {

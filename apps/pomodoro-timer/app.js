@@ -14,6 +14,7 @@ class PomodoroTimer {
     this.lastSaveTime = 0;
     this.lastRenderedDotState = null;
     this.audioContext = null;
+    this.autoStartTimeout = null;
 
     this.checkDailyReset();
     this.initElements();
@@ -49,8 +50,6 @@ class PomodoroTimer {
     this.settingsBackdrop = document.getElementById('settingsBackdrop');
     this.historyBackdrop = document.getElementById('historyBackdrop');
     this.resetBackdrop = document.getElementById('resetBackdrop');
-    this.settingsPanel = document.getElementById('settingsPanel');
-    this.historyPanel = document.getElementById('historyPanel');
     this.saveSettingsBtn = document.getElementById('saveSettings');
     this.historyDateInput = document.getElementById('historyDate');
     this.historyCountEl = document.getElementById('historyCount');
@@ -499,6 +498,10 @@ class PomodoroTimer {
   }
 
   startTimer() {
+    if (this.autoStartTimeout) {
+      clearTimeout(this.autoStartTimeout);
+      this.autoStartTimeout = null;
+    }
     this.maybeRequestNotificationPermission();
     this.state.isActive = true;
     this.state.sessionStarted = true;
@@ -557,6 +560,10 @@ class PomodoroTimer {
   }
 
   resetTimer() {
+    if (this.autoStartTimeout) {
+      clearTimeout(this.autoStartTimeout);
+      this.autoStartTimeout = null;
+    }
     this.pauseTimer();
     this.state.sessionType = 'work';
     this.state.timeRemaining = this.getDurationForSession() * 60;
@@ -569,6 +576,8 @@ class PomodoroTimer {
   }
 
   completeSession() {
+    // Guard against double-completion from syncStateWithClock + tickTimer race
+    if (!this.state.isActive && !this.state.sessionStarted) return;
     this.pauseTimer();
     this.playNotification();
     this.showBrowserNotification();
@@ -605,9 +614,9 @@ class PomodoroTimer {
 
     // Auto-start next session if enabled
     if (this.settings.autoStartBreaks && this.state.sessionType !== 'work') {
-      setTimeout(() => this.startTimer(), 1500);
+      this.autoStartTimeout = setTimeout(() => { this.autoStartTimeout = null; this.startTimer(); }, 1500);
     } else if (this.settings.autoStartWork && this.state.sessionType === 'work') {
-      setTimeout(() => this.startTimer(), 1500);
+      this.autoStartTimeout = setTimeout(() => { this.autoStartTimeout = null; this.startTimer(); }, 1500);
     }
   }
 
@@ -734,7 +743,7 @@ class PomodoroTimer {
           type: 'app-background-activity',
           appId: 'pomodoro-timer',
           active
-        }, location.origin);
+        }, '*');
       }
     } catch (e) {
       // Ignore postMessage failures.
@@ -801,8 +810,18 @@ class PomodoroTimer {
     }
     this.history[today].count += 1;
     this.history[today].timestamps.push(Date.now());
+    this.pruneOldHistory();
     this.saveData();
     this.updateHistoryDisplay();
+  }
+
+  pruneOldHistory() {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 365);
+    const cutoffKey = this.getDateKey(cutoff);
+    for (const key of Object.keys(this.history)) {
+      if (key < cutoffKey) delete this.history[key];
+    }
   }
 
   getHistoryCount(dateKey) {
@@ -892,7 +911,7 @@ class PomodoroTimer {
 
   getAudioContext() {
     if (!this.audioContext || this.audioContext.state === 'closed') {
-      this.audioContext = new AudioContext();
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
     if (this.audioContext.state === 'suspended') {
       this.audioContext.resume().catch(() => {});

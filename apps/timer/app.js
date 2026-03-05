@@ -5,7 +5,8 @@ class TimerApp {
     this.intervalTimerInterval = null;
     this.countdownInterval = null;
     this.ringingAudioContext = null;
-    this.ringingOscillator = null;
+    this.ringingTimeout = null;
+    this.beepAudioCtx = null;
     this.lastAlarmCheckAt = Date.now();
     this.notificationPermissionRequested = false;
     this.lastCompletedCountdown = 0;
@@ -97,7 +98,7 @@ class TimerApp {
               label: typeof alarm.label === 'string' ? alarm.label : '',
               days,
               enabled: alarm.enabled !== false,
-              lastTriggered: Number.isFinite(alarm.lastTriggered) ? alarm.lastTriggered : null
+              lastTriggered: typeof alarm.lastTriggered === 'string' ? alarm.lastTriggered : null
             };
           })
           .filter(Boolean)
@@ -413,6 +414,14 @@ class TimerApp {
       btn.addEventListener('click', () => btn.classList.toggle('active'));
     });
     this.dismissAlarmBtn.addEventListener('click', () => this.dismissAlarm());
+    this.alarmModal.addEventListener('click', (e) => {
+      if (e.target === this.alarmModal) this.dismissAlarm();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.alarmModal.classList.contains('active')) {
+        this.dismissAlarm();
+      }
+    });
     this.alarmTimeInput.addEventListener('input', () => {
       this.alarmTimeInput.setCustomValidity('');
     });
@@ -447,7 +456,7 @@ class TimerApp {
 
     document.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const seconds = parseInt(btn.dataset.seconds);
+        const seconds = parseInt(btn.dataset.seconds, 10);
         this.setCountdownDuration(seconds);
       });
     });
@@ -457,7 +466,11 @@ class TimerApp {
 
   switchTab(tabId, options = {}) {
     const { persist = true } = options;
-    this.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+    this.tabs.forEach(t => {
+      const isActive = t.dataset.tab === tabId;
+      t.classList.toggle('active', isActive);
+      t.setAttribute('aria-selected', String(isActive));
+    });
     this.tabContents.forEach(tc => tc.classList.toggle('active', tc.id === `${tabId}-tab`));
     this.data.activeTab = tabId;
     if (persist) this.saveData();
@@ -480,7 +493,7 @@ class TimerApp {
     const selectedDays = [];
     this.dayBtns.forEach(btn => {
       if (btn.classList.contains('active')) {
-        selectedDays.push(parseInt(btn.dataset.day));
+        selectedDays.push(parseInt(btn.dataset.day, 10));
       }
     });
 
@@ -532,7 +545,7 @@ class TimerApp {
           <input type="checkbox" ${alarm.enabled ? 'checked' : ''} data-id="${alarm.id}">
           <span class="slider"></span>
         </label>
-        <button class="alarm-delete" data-id="${alarm.id}" title="Delete">&times;</button>
+        <button type="button" class="alarm-delete" data-id="${alarm.id}" title="Delete" aria-label="Delete alarm">&times;</button>
       `;
 
       el.querySelector('.alarm-toggle input').addEventListener('change', (e) => {
@@ -670,6 +683,7 @@ class TimerApp {
     this.alarmModalLabel.textContent = alarm.label || 'Alarm';
     this.alarmModalTime.textContent = this.formatAlarmTime(alarm.time);
     this.alarmModal.classList.add('active');
+    setTimeout(() => this.dismissAlarmBtn.focus(), 50);
     this.startRinging();
     this.showNotification(alarm.label ? `Alarm: ${alarm.label}` : 'Alarm', {
       body: `Time: ${this.formatAlarmTime(alarm.time)}`
@@ -777,6 +791,7 @@ class TimerApp {
 
     this.intervalTimerInterval = setInterval(() => this.tickInterval(), 250);
     this.tickInterval();
+    this.acquireWakeLock();
     this.persistRuntimeData(true);
     this.reportBackgroundActivity();
     this.reportStatus();
@@ -844,6 +859,7 @@ class TimerApp {
     this.intervalPauseBtn.disabled = true;
     this.intervalDisplay.classList.remove('active');
     clearInterval(this.intervalTimerInterval);
+    if (!this.countdownState.running) this.releaseWakeLock();
     this.persistRuntimeData(true);
     this.reportBackgroundActivity();
     this.reportStatus();
@@ -863,6 +879,7 @@ class TimerApp {
     this.intervalStartBtn.disabled = false;
     this.intervalPauseBtn.disabled = true;
     this.intervalDisplay.classList.remove('active', 'work', 'rest');
+    if (!this.countdownState.running) this.releaseWakeLock();
     this.updateIntervalDisplay();
     if (persist) this.persistRuntimeData(true);
     this.reportBackgroundActivity();
@@ -891,8 +908,8 @@ class TimerApp {
   // ===== Countdown Timer Functions =====
 
   setCustomCountdown() {
-    const mins = parseInt(this.customMinutes.value) || 0;
-    const secs = parseInt(this.customSeconds.value) || 0;
+    const mins = parseInt(this.customMinutes.value, 10) || 0;
+    const secs = parseInt(this.customSeconds.value, 10) || 0;
     const total = mins * 60 + secs;
     if (total <= 0) return;
 
@@ -962,6 +979,8 @@ class TimerApp {
       this.countdownState.endAt += seconds * 1000;
     }
 
+    // Clear the "done" state so the timer can be restarted
+    this.countdownDisplay.classList.remove('done');
     this.updateCountdownDisplay();
     if (!this.countdownState.running) {
       this.countdownStartBtn.disabled = false;
@@ -1086,6 +1105,7 @@ class TimerApp {
     const progress = Math.max(0, Math.min(100, Math.round((elapsed / total) * 100)));
     if (this.countdownRing) {
       this.countdownRing.style.setProperty('--countdown-progress', `${progress}%`);
+      this.countdownRing.setAttribute('aria-valuenow', String(progress));
     }
 
     if (this.countdownSubtitle) {
@@ -1176,9 +1196,19 @@ class TimerApp {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   }
 
+  getBeepContext() {
+    if (!this.beepAudioCtx || this.beepAudioCtx.state === 'closed') {
+      this.beepAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (this.beepAudioCtx.state === 'suspended') {
+      this.beepAudioCtx.resume().catch(() => {});
+    }
+    return this.beepAudioCtx;
+  }
+
   playBeep(freq = 800, duration = 0.2) {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = this.getBeepContext();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -1189,7 +1219,6 @@ class TimerApp {
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + duration);
-      setTimeout(() => ctx.close().catch(() => {}), (duration + 0.1) * 1000);
     } catch (e) {}
   }
 
@@ -1202,7 +1231,7 @@ class TimerApp {
 
   async acquireWakeLock() {
     if (!('wakeLock' in navigator)) return;
-    if (!this.countdownState.running) return;
+    if (!this.countdownState.running && !this.intervalState.running) return;
     if (!this.appVisible) return;
     if (document.visibilityState !== 'visible') return;
     if (this.wakeLock) return;
@@ -1238,6 +1267,7 @@ class TimerApp {
 
     if (document.visibilityState === 'visible' && this.intervalState.running) {
       this.tickInterval({ silent: true });
+      this.acquireWakeLock();
     }
   }
 

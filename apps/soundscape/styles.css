@@ -2,6 +2,7 @@
 
 :root {
   --app-accent: #8B5CF6;
+  --app-accent-hover: #7C3AED;
   --app-accent-light: rgba(139, 92, 246, 0.15);
 }
 
@@ -265,7 +266,7 @@ body {
 .sound-card.active .sound-toggle {
   background: var(--app-accent);
   border-color: var(--app-accent);
-  color: white;
+  color: var(--app-bg-primary);
 }
 
 .sound-volume {
