@@ -81,11 +81,6 @@
   --scrollbar-thumb: rgba(0, 229, 255, 0.2);
   --scrollbar-thumb-hover: rgba(0, 229, 255, 0.35);
 
-  /* Recents section */
-  --recent-tile-bg: var(--card-fill);
-  --recent-tile-border: var(--card-border);
-  --recent-tile-hover-bg: var(--card-fill-hover);
-
   /* Settings drawer */
   --drawer-bg: rgba(6, 4, 20, 1);
   --drawer-border: rgba(0, 229, 255, 0.12);
@@ -101,29 +96,12 @@
 }
 
 /* Futuristic-specific visual enhancements */
-[data-theme="futuristic"] .topbar {
-  border-bottom-color: rgba(0, 229, 255, 0.15);
-  box-shadow: 0 1px 0 rgba(0, 229, 255, 0.08);
-}
-
-[data-theme="futuristic"] .wordmark {
-  text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
-}
-
 [data-theme="futuristic"] .app-card:hover {
   box-shadow: 0 0 12px rgba(0, 229, 255, 0.08);
 }
 
-[data-theme="futuristic"] .nav-item.active {
-  box-shadow: inset 0 0 12px rgba(0, 229, 255, 0.1);
-}
-
 [data-theme="futuristic"] .search-input:focus {
   box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.2), 0 0 15px rgba(0, 229, 255, 0.08);
-}
-
-[data-theme="futuristic"] .recent-tile:hover {
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.1);
 }
 
 [data-theme="futuristic"] .theme-preview.futuristic {

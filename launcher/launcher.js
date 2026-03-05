@@ -103,8 +103,6 @@ class Launcher {
     this.bindEvents();
     this.renderApps();
 
-    document.body.classList.add('loaded');
-
     // Check for updates on startup (respects user preference)
     this.settingsManager.autoCheckForUpdates();
 
@@ -307,6 +305,16 @@ class Launcher {
       });
     }
 
+    const categoryDropdown = document.getElementById('categoryDropdown');
+    if (categoryDropdown) {
+      categoryDropdown.addEventListener('click', (e) => {
+        const item = e.target.closest('.category-dropdown-item');
+        if (!item || !item.dataset.category) return;
+        this.setCategory(item.dataset.category);
+        this.closeCategoryDropdown();
+      });
+    }
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         const mobileCategoriesSheet = document.getElementById('mobileCategoriesSheet');
@@ -337,6 +345,7 @@ class Launcher {
     });
 
     window.addEventListener('message', (event) => {
+      if (event.origin !== window.location.origin) return;
       this.handleAppBackgroundActivityMessage(event);
       this.handleAppStatusMessage(event);
     });
@@ -363,13 +372,16 @@ class Launcher {
       mobileCategoriesClose.addEventListener('click', () => this.closeMobileCategoriesSheet());
     }
 
-    document.querySelectorAll('.mobile-category-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+    const mobileList = document.getElementById('mobileCategoryList');
+    if (mobileList) {
+      mobileList.addEventListener('click', (e) => {
+        const btn = e.target.closest('.mobile-category-btn');
+        if (!btn || !btn.dataset.category) return;
         this.setCategory(btn.dataset.category);
         this.updateMobileCategoryActive(btn.dataset.category);
         this.closeMobileCategoriesSheet();
       });
-    });
+    }
   }
 
   openMobileCategoriesSheet() {
@@ -419,11 +431,13 @@ class Launcher {
 
   toggleCategoryDropdown() {
     const dropdown = document.getElementById('categoryDropdown');
+    const trigger = document.getElementById('toolbarCategoriesBtn');
     if (!dropdown) return;
 
     const isHidden = dropdown.classList.contains('hidden');
     if (isHidden) {
       dropdown.classList.remove('hidden');
+      if (trigger) trigger.setAttribute('aria-expanded', 'true');
       dropdown.querySelectorAll('.category-dropdown-item').forEach(item => {
         item.classList.toggle('active', item.dataset.category === this.currentCategory);
       });
@@ -434,12 +448,6 @@ class Launcher {
         }
       };
       setTimeout(() => document.addEventListener('click', closeHandler), 0);
-      dropdown.querySelectorAll('.category-dropdown-item').forEach(item => {
-        item.onclick = () => {
-          this.setCategory(item.dataset.category);
-          this.closeCategoryDropdown();
-        };
-      });
     } else {
       this.closeCategoryDropdown();
     }
@@ -447,7 +455,9 @@ class Launcher {
 
   closeCategoryDropdown() {
     const dropdown = document.getElementById('categoryDropdown');
+    const trigger = document.getElementById('toolbarCategoriesBtn');
     if (dropdown) dropdown.classList.add('hidden');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
   }
 
   setCategory(category) {
@@ -607,7 +617,7 @@ class Launcher {
         type: 'app-visibility',
         visible: Boolean(visible),
         reason
-      }, '*');
+      }, window.location.origin);
     } catch (e) {
       // Ignore
     }
@@ -822,26 +832,11 @@ class Launcher {
     // postMessage fallback
     try {
       if (iframe.contentWindow) {
-        iframe.contentWindow.postMessage({ type: 'theme-change', theme }, '*');
+        iframe.contentWindow.postMessage({ type: 'theme-change', theme }, window.location.origin);
       }
     } catch (e) {
       // Ignore
     }
-  }
-
-  formatRelativeTime(timestamp) {
-    const diff = Date.now() - timestamp;
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (seconds < 60) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-
-    return new Date(timestamp).toLocaleDateString();
   }
 
   // ===== App Status Badges =====
@@ -864,7 +859,9 @@ class Launcher {
     } else {
       this.appStatus.set(appId, {
         label: String(status.label || ''),
-        timeRemaining: typeof status.timeRemaining === 'number' ? status.timeRemaining : null,
+        endTime: typeof status.timeRemaining === 'number'
+          ? Date.now() + status.timeRemaining * 1000
+          : null,
         variant: status.variant === 'calm' ? 'calm' : 'alert',
         lastUpdate: Date.now()
       });
@@ -884,14 +881,13 @@ class Launcher {
   }
 
   tickStatus() {
-    let changed = false;
+    let hasTimers = false;
     this.appStatus.forEach((status) => {
-      if (typeof status.timeRemaining === 'number' && status.timeRemaining > 0) {
-        status.timeRemaining = Math.max(0, status.timeRemaining - 1);
-        changed = true;
+      if (typeof status.endTime === 'number') {
+        hasTimers = true;
       }
     });
-    if (changed) this.updateStatusBadges();
+    if (hasTimers) this.updateStatusBadges();
   }
 
   formatStatusTime(seconds) {
@@ -921,8 +917,9 @@ class Launcher {
       }
 
       badge.setAttribute('data-variant', status.variant);
-      if (typeof status.timeRemaining === 'number') {
-        badge.textContent = `[${status.label}: ${this.formatStatusTime(status.timeRemaining)}]`;
+      if (typeof status.endTime === 'number') {
+        const remaining = Math.max(0, Math.round((status.endTime - Date.now()) / 1000));
+        badge.textContent = `[${status.label}: ${this.formatStatusTime(remaining)}]`;
       } else {
         badge.textContent = `[${status.label}]`;
       }
@@ -937,9 +934,12 @@ class Launcher {
   }
 
   escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 }
 

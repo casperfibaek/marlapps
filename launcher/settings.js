@@ -83,6 +83,7 @@ class SettingsManager {
       if (e.key === 'Escape' && this.isOpen) {
         this.close();
         e.preventDefault();
+        e.stopPropagation();
       }
     });
 
@@ -148,6 +149,28 @@ class SettingsManager {
     const trigger = document.getElementById('topbarSettingsBtn');
     if (trigger) trigger.setAttribute('aria-expanded', 'true');
 
+    this._focusTrapHandler = (e) => {
+      if (e.key !== 'Tab') return;
+      const focusable = this.drawer.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    this.drawer.addEventListener('keydown', this._focusTrapHandler);
+
     const firstFocusable = this.drawer.querySelector('button, input');
     if (firstFocusable) {
       setTimeout(() => firstFocusable.focus(), 100);
@@ -155,6 +178,11 @@ class SettingsManager {
   }
 
   close() {
+    if (this._focusTrapHandler) {
+      this.drawer.removeEventListener('keydown', this._focusTrapHandler);
+      this._focusTrapHandler = null;
+    }
+
     this.drawer.classList.remove('open');
     this.overlay.classList.remove('visible');
     this.drawer.setAttribute('aria-hidden', 'true');
@@ -163,7 +191,8 @@ class SettingsManager {
     const trigger = document.getElementById('topbarSettingsBtn');
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
 
-    window.dispatchEvent(new CustomEvent('settingsClosed'));
+    const trigger = document.getElementById('topbarSettingsBtn');
+    if (trigger) trigger.focus();
   }
 
   renderThemeOptions() {
@@ -464,6 +493,7 @@ class SettingsManager {
     });
     localStorage.removeItem('pwa-installed');
     localStorage.removeItem('pwa-install-dismissed');
+    localStorage.removeItem('kanbanBoard');
 
     this.showNotification('All data has been reset. Reloading...');
     setTimeout(() => location.reload(), 1500);
@@ -668,13 +698,11 @@ class SettingsManager {
         throw new Error('No waiting service worker');
       }
 
-      // Tell the new SW to activate immediately
+      // Tell the new SW to activate immediately.
+      // The controllerchange handler in pwa-install.js will reload the page.
+      // Fallback reload in case controllerchange was not registered (first visit).
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-
-      // Reload once the new SW takes over
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-      }, { once: true });
+      setTimeout(() => window.location.reload(), 3000);
 
     } catch (e) {
       // Fallback: just clear caches and reload
@@ -722,7 +750,8 @@ class SettingsManager {
 
     setTimeout(() => {
       toast.classList.remove('visible');
-      toast.addEventListener('transitionend', () => toast.remove());
+      toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+      setTimeout(() => { if (toast.parentNode) toast.remove(); }, 500);
     }, 2500);
   }
 }

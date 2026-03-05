@@ -9,7 +9,7 @@
     "client_mode": "focus-existing"
   },
   "background_color": "#0a0a0f",
-  "theme_color": "#6366f1",
+  "theme_color": "#0a0a0f",
   "orientation": "any",
   "categories": [
     "productivity",
@@ -45,7 +45,13 @@
       "src": "./icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "./icons/icon-384x384.png",

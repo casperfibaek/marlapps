@@ -12,7 +12,7 @@
   position: absolute;
   top: -100%;
   left: var(--space-4);
-  z-index: 9999;
+  z-index: var(--z-toast);
   padding: var(--space-3) var(--space-5);
   background: var(--accent-primary);
   color: white;
@@ -63,7 +63,7 @@ body {
   display: flex;
   flex-direction: row;
   overflow: hidden;
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 /* Utility Rail */
@@ -287,9 +287,6 @@ body {
 
 .app-card.is-background-running {
   animation: running-item-pulse 2.2s ease-in-out infinite;
-}
-
-.app-card.is-background-running {
   --running-bg-base: var(--card-fill);
   --running-bg-peak: var(--accent-lighter);
 }
@@ -325,6 +322,7 @@ body {
   align-items: center;
   gap: var(--space-3);
   margin-left: auto;
+  position: relative;
 }
 
 .sort-select {
@@ -378,10 +376,6 @@ body {
 }
 
 /* Category Dropdown */
-.toolbar-controls {
-  position: relative;
-}
-
 .category-dropdown {
   position: absolute;
   top: 100%;
@@ -547,7 +541,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--surface-tertiary);
-  z-index: 10;
+  z-index: var(--z-overlay);
 }
 
 .app-workspace.hidden {
@@ -1131,7 +1125,7 @@ body {
     top: 0;
     left: 0;
     bottom: 0;
-    z-index: 20;
+    z-index: var(--z-overlay);
     transform: translateX(-100%);
     transition: transform var(--transition-normal);
     padding-top: calc(var(--space-3) + env(safe-area-inset-top, 0));
@@ -1145,7 +1139,7 @@ body {
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 19;
+    z-index: calc(var(--z-overlay) - 1);
     background: rgba(0, 0, 0, 0.3);
   }
 
@@ -1157,7 +1151,7 @@ body {
     padding-top: calc(var(--space-2) + env(safe-area-inset-top, 0));
     flex-shrink: 0;
     position: relative;
-    z-index: 16;
+    z-index: var(--z-sticky);
     background: var(--window-fill);
   }
 
@@ -1251,13 +1245,9 @@ a, button, [role="button"], [role="listitem"], [role="option"] {
   touch-action: manipulation;
 }
 
-/* GPU-accelerated animations */
-.settings-drawer {
+/* GPU layer promotion only during animation */
+.settings-drawer.open {
   will-change: transform;
-}
-
-.app-iframe {
-  will-change: opacity;
 }
 
 /* ========================================
@@ -1409,7 +1399,7 @@ a, button, [role="button"], [role="listitem"], [role="option"] {
   box-shadow: var(--shadow-lg);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  z-index: 9999;
+  z-index: var(--z-toast);
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.2s ease;
   pointer-events: none;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v141';
+const CACHE_NAME = 'marlapps-v142';
 const urlsToCache = [
   './',
   './index.html',
@@ -105,30 +105,32 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(urlsToCache))
-      .catch(() => {})
+      .catch((err) => console.warn('Service worker cache failed:', err))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
+        cacheNames
+          .filter((cacheName) => cacheName !== CACHE_NAME)
+          .map((cacheName) => caches.delete(cacheName))
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   // Always fetch version.json from network — never serve from cache
   if (event.request.url.endsWith('/version.json')) {
-    event.respondWith(fetch(event.request));
+    event.respondWith(
+      fetch(event.request).catch(() => new Response('{"error":"offline"}', {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      }))
+    );
     return;
   }
 
@@ -142,10 +144,14 @@ self.addEventListener('fetch', (event) => {
             return response;
           }
 
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          // Only cache resources under our own origin path
+          const url = new URL(event.request.url);
+          if (url.origin === self.location.origin) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
 
           return response;
         }).catch(() => {

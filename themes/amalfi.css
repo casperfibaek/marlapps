@@ -80,11 +80,6 @@
   --scrollbar-thumb: rgba(160, 120, 70, 0.18);
   --scrollbar-thumb-hover: rgba(160, 120, 70, 0.3);
 
-  /* Recents section */
-  --recent-tile-bg: var(--card-fill);
-  --recent-tile-border: var(--card-border);
-  --recent-tile-hover-bg: var(--card-fill-hover);
-
   /* Settings drawer */
   --drawer-bg: rgba(250, 244, 235, 1);
   --drawer-border: rgba(180, 140, 90, 0.12);

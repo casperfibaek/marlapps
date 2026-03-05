@@ -35,6 +35,7 @@ class SearchManager {
             this.blur();
           }
           e.preventDefault();
+          e.stopPropagation();
         }
         return;
       }
@@ -68,12 +69,10 @@ class SearchManager {
 
     this.input.addEventListener('focus', () => {
       this.isActive = true;
-      this.input.parentElement.classList.add('focused');
     });
 
     this.input.addEventListener('blur', () => {
       this.isActive = false;
-      this.input.parentElement.classList.remove('focused');
     });
   }
 

@@ -3,6 +3,7 @@ class AppLoader {
     this.registryPath = './registry/apps.json';
     this.appsBasePath = './apps';
     this.apps = [];
+    this.appMap = new Map();
     this.registry = null;
     this.recentsKey = 'marlapps-recents';
     this.recents = this.loadRecents();
@@ -12,6 +13,7 @@ class AppLoader {
     try {
       this.registry = await this.loadRegistry();
       this.apps = await this.loadAppManifests(this.registry.apps);
+      this.appMap = new Map(this.apps.map(app => [app.id, app]));
       return this.apps;
     } catch (error) {
       console.error('Failed to initialize app loader:', error);
@@ -28,29 +30,31 @@ class AppLoader {
   }
 
   async loadAppManifests(registryApps) {
+    const results = await Promise.allSettled(
+      registryApps
+        .filter(entry => !entry.hidden)
+        .map(async (entry) => {
+          const manifestPath = `${this.appsBasePath}/${entry.folder}/manifest.json`;
+          const response = await fetch(manifestPath);
+          if (!response.ok) {
+            throw new Error(`Failed to load manifest for ${entry.folder}: ${response.status}`);
+          }
+          const manifest = await response.json();
+          return {
+            ...manifest,
+            folder: entry.folder,
+            pinned: entry.pinned || false,
+            order: entry.order || 999
+          };
+        })
+    );
+
     const apps = [];
-
-    for (const entry of registryApps) {
-      if (entry.hidden) continue;
-
-      const manifestPath = `${this.appsBasePath}/${entry.folder}/manifest.json`;
-
-      try {
-        const response = await fetch(manifestPath);
-        if (!response.ok) {
-          console.warn(`Failed to load manifest for ${entry.folder}: ${response.status}`);
-          continue;
-        }
-
-        const manifest = await response.json();
-        apps.push({
-          ...manifest,
-          folder: entry.folder,
-          pinned: entry.pinned || false,
-          order: entry.order || 999
-        });
-      } catch (error) {
-        console.warn(`Failed to load manifest for ${entry.folder}:`, error);
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        apps.push(result.value);
+      } else {
+        console.warn(result.reason?.message || 'Failed to load app manifest');
       }
     }
 
@@ -58,7 +62,7 @@ class AppLoader {
   }
 
   getAppById(id) {
-    return this.apps.find(app => app.id === id);
+    return this.appMap.get(id);
   }
 
   getAppsByCategory(category) {
@@ -148,18 +152,6 @@ class AppLoader {
       .filter(item => item.score <= threshold)
       .sort((a, b) => a.score - b.score)
       .map(item => item.app);
-  }
-
-  getRecentApps(limit = 5) {
-    return this.recents
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, limit)
-      .map(r => {
-        const app = this.getAppById(r.id);
-        if (!app) return null;
-        return { ...app, lastOpened: r.timestamp };
-      })
-      .filter(app => app !== null);
   }
 
   recordAppOpen(appId) {
