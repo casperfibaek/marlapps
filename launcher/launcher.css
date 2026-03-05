@@ -494,6 +494,13 @@ body {
   gap: 2px;
 }
 
+.app-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .app-name {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
@@ -927,7 +934,6 @@ body {
   font-weight: var(--font-weight-semibold);
   padding: 1px 6px;
   border-radius: var(--radius-sm);
-  margin-left: var(--space-2);
   white-space: nowrap;
   flex-shrink: 0;
   letter-spacing: 0.01em;

@@ -521,7 +521,9 @@ class Launcher {
           <img class="app-icon" src="${this.appLoader.getAppIconUrl(app)}" alt="" loading="lazy">
         </span>
         <div class="app-info">
-          <span class="app-name">${this.escapeHtml(app.name)}</span>
+          <div class="app-name-row">
+            <span class="app-name">${this.escapeHtml(app.name)}</span>
+          </div>
           <span class="app-description">${this.escapeHtml(app.description)}</span>
         </div>
         <span class="app-category-badge">${this.escapeHtml(categoryLabel)}</span>
@@ -912,9 +914,9 @@ class Launcher {
       if (!badge) {
         badge = document.createElement('span');
         badge.className = 'app-status-badge';
-        const nameEl = card.querySelector('.app-name');
-        if (nameEl) {
-          nameEl.parentNode.insertBefore(badge, nameEl.nextSibling);
+        const nameRow = card.querySelector('.app-name-row');
+        if (nameRow) {
+          nameRow.appendChild(badge);
         }
       }
 

@@ -199,6 +199,11 @@ body {
   box-shadow: 0 0 12px var(--app-accent-light);
 }
 
+.sound-card.resumable {
+  border-style: dashed;
+  border-color: var(--app-accent);
+}
+
 .sound-card-header {
   display: flex;
   align-items: center;

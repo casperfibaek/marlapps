@@ -951,6 +951,16 @@ class SoundscapeApp {
       this.masterToggleBtn.textContent = 'Play';
     }
     this.masterToggleBtn.disabled = !anyPlaying && !hasActiveSaved;
+    this.updateResumableCards();
+  }
+
+  updateResumableCards() {
+    const resumable = !this.sounds.size && this.getSavedActiveSoundIds();
+    const resumableSet = new Set(resumable.length ? resumable : []);
+    this.soundDefs.forEach(def => {
+      const card = this.soundGrid.querySelector(`.sound-card[data-sound-id="${def.id}"]`);
+      if (card) card.classList.toggle('resumable', resumableSet.has(def.id));
+    });
   }
 
   updateActivityIndicator() {
@@ -1028,9 +1038,8 @@ class SoundscapeApp {
       if (!window.parent || window.parent === window) return;
 
       const playing = this.sounds.size > 0;
-      const hasSavedActive = this.getSavedActiveSoundIds().length > 0;
 
-      if (!playing && !hasSavedActive) {
+      if (!playing) {
         window.parent.postMessage({
           type: 'app-status',
           appId: 'soundscape',
@@ -1044,7 +1053,7 @@ class SoundscapeApp {
         appId: 'soundscape',
         status: {
           active: true,
-          label: playing ? 'playing' : 'paused',
+          label: 'playing',
           timeRemaining: null,
           variant: 'calm'
         }
