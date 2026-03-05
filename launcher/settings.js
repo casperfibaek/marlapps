@@ -474,7 +474,7 @@ class SettingsManager {
       'Are you sure you want to reset all local data?',
       '',
       'This will permanently delete:',
-      '• All app data (todos, notes, habits, etc.)',
+      '• All app data from installed apps',
       '• Your preferences and settings',
       '• Recent apps history',
       '',
@@ -493,7 +493,6 @@ class SettingsManager {
     });
     localStorage.removeItem('pwa-installed');
     localStorage.removeItem('pwa-install-dismissed');
-    localStorage.removeItem('kanbanBoard');
 
     this.showNotification('All data has been reset. Reloading...');
     setTimeout(() => location.reload(), 1500);

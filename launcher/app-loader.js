@@ -43,7 +43,6 @@ class AppLoader {
           return {
             ...manifest,
             folder: entry.folder,
-            pinned: entry.pinned || false,
             order: entry.order || 999
           };
         })
@@ -174,11 +173,33 @@ class AppLoader {
   loadRecents() {
     try {
       const saved = localStorage.getItem(this.recentsKey);
-      return saved ? JSON.parse(saved) : [];
+      return this.sanitizeRecents(saved ? JSON.parse(saved) : []);
     } catch (error) {
       console.warn('Failed to load recents:', error);
       return [];
     }
+  }
+
+  sanitizeRecents(recents) {
+    if (!Array.isArray(recents)) return [];
+
+    const latestById = new Map();
+    recents.forEach((item) => {
+      if (!item || typeof item !== 'object') return;
+      const id = typeof item.id === 'string' ? item.id : null;
+      const timestamp = Number.parseInt(item.timestamp, 10);
+      if (!id || !Number.isFinite(timestamp)) return;
+
+      const previous = latestById.get(id);
+      if (typeof previous !== 'number' || timestamp > previous) {
+        latestById.set(id, timestamp);
+      }
+    });
+
+    return [...latestById.entries()]
+      .map(([id, timestamp]) => ({ id, timestamp }))
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 20);
   }
 
   saveRecents() {

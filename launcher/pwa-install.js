@@ -5,6 +5,7 @@ class PWAInstallManager {
     this.installBtn = null;
     this.dismissBtn = null;
     this.isInstalled = false;
+    this.bannerSuppressed = false;
     this.checkInstallStatus();
   }
 
@@ -22,6 +23,9 @@ class PWAInstallManager {
   }
 
   checkInstallStatus() {
+    this.isInstalled = false;
+    this.bannerSuppressed = false;
+
     if (window.matchMedia('(display-mode: standalone)').matches) {
       this.isInstalled = true;
       return;
@@ -41,8 +45,8 @@ class PWAInstallManager {
     if (dismissed) {
       const dismissedTime = parseInt(dismissed, 10);
       const sevenDays = 7 * 24 * 60 * 60 * 1000;
-      if (Date.now() - dismissedTime < sevenDays) {
-        return;
+      if (Number.isFinite(dismissedTime) && (Date.now() - dismissedTime < sevenDays)) {
+        this.bannerSuppressed = true;
       }
     }
   }
@@ -52,7 +56,7 @@ class PWAInstallManager {
       e.preventDefault();
       this.deferredPrompt = e;
 
-      if (!this.isInstalled) {
+      if (!this.isInstalled && !this.bannerSuppressed) {
         this.showBanner();
       }
     });
@@ -85,6 +89,7 @@ class PWAInstallManager {
 
   dismissBanner() {
     this.hideBanner();
+    this.bannerSuppressed = true;
     localStorage.setItem('pwa-install-dismissed', Date.now().toString());
   }
 
@@ -101,6 +106,7 @@ class PWAInstallManager {
     this.hideBanner();
 
     if (outcome === 'dismissed') {
+      this.bannerSuppressed = true;
       localStorage.setItem('pwa-install-dismissed', Date.now().toString());
     }
   }

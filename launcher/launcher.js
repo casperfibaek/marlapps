@@ -301,6 +301,11 @@ class Launcher {
     if (toolbarCategoriesBtn) {
       toolbarCategoriesBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (this.isMobileLayout()) {
+          this.closeCategoryDropdown();
+          this.openMobileCategoriesSheet();
+          return;
+        }
         this.toggleCategoryDropdown();
       });
     }
@@ -382,6 +387,10 @@ class Launcher {
         this.closeMobileCategoriesSheet();
       });
     }
+  }
+
+  isMobileLayout() {
+    return window.matchMedia('(max-width: 768px)').matches;
   }
 
   openMobileCategoriesSheet() {
@@ -495,9 +504,14 @@ class Launcher {
       case 'recent':
       default:
         const recents = this.appLoader.recents;
+        const recentTimestamps = new Map(
+          recents
+            .filter(item => item && typeof item.id === 'string' && Number.isFinite(item.timestamp))
+            .map(item => [item.id, item.timestamp])
+        );
         sorted.sort((a, b) => {
-          const aRecent = recents.find(r => r.id === a.id)?.timestamp || 0;
-          const bRecent = recents.find(r => r.id === b.id)?.timestamp || 0;
+          const aRecent = recentTimestamps.get(a.id) || 0;
+          const bRecent = recentTimestamps.get(b.id) || 0;
           if (bRecent !== aRecent) return bRecent - aRecent;
           return a.order - b.order;
         });

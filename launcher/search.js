@@ -3,7 +3,6 @@ class SearchManager {
     this.appLoader = appLoader;
     this.launcher = launcher;
     this.input = null;
-    this.isActive = false;
     this.lastQuery = '';
   }
 
@@ -65,14 +64,6 @@ class SearchManager {
     this.input.addEventListener('input', () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => this.search(), 150);
-    });
-
-    this.input.addEventListener('focus', () => {
-      this.isActive = true;
-    });
-
-    this.input.addEventListener('blur', () => {
-      this.isActive = false;
     });
   }
 
