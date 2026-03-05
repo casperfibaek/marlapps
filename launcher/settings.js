@@ -189,10 +189,10 @@ class SettingsManager {
     this.isOpen = false;
 
     const trigger = document.getElementById('topbarSettingsBtn');
-    if (trigger) trigger.setAttribute('aria-expanded', 'false');
-
-    const trigger = document.getElementById('topbarSettingsBtn');
-    if (trigger) trigger.focus();
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus();
+    }
   }
 
   renderThemeOptions() {
