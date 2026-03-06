@@ -6,7 +6,7 @@
   "icon": "icon.svg",
   "entry": "index.html",
   "categories": ["Focus"],
-  "order": 9,
+  "order": 11,
   "storageKeys": ["marlapps-soundscape"],
   "background": {
     "mode": "keep-alive"

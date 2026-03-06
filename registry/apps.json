@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "lastUpdated": "2026-03-06T12:29:14.892Z",
+  "lastUpdated": "2026-03-06T13:05:34.667Z",
   "apps": [
     {
       "id": "pomodoro-timer",
@@ -45,25 +45,39 @@
       "order": 6
     },
     {
-      "id": "timer",
-      "folder": "timer",
+      "id": "timer-countdown",
+      "folder": "timer-countdown",
       "pinned": false,
       "hidden": false,
       "order": 8
+    },
+    {
+      "id": "timer-alarm",
+      "folder": "timer-alarm",
+      "pinned": false,
+      "hidden": false,
+      "order": 9
+    },
+    {
+      "id": "timer-interval",
+      "folder": "timer-interval",
+      "pinned": false,
+      "hidden": false,
+      "order": 10
     },
     {
       "id": "soundscape",
       "folder": "soundscape",
       "pinned": false,
       "hidden": false,
-      "order": 9
+      "order": 11
     },
     {
       "id": "breathing",
       "folder": "breathing",
       "pinned": false,
       "hidden": false,
-      "order": 10
+      "order": 12
     }
   ]
 }

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3B82F6">
+  <title>Timer - Alarm - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <script src="../../themes/theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <main class="timer-main" role="main" aria-label="Alarm timer">
+      <section class="hero-stage">
+        <div class="hero-ring" id="heroRing">
+          <div class="hero-ring-inner">
+            <div class="hero-label" id="heroLabel">Alarm</div>
+            <div class="hero-value" id="heroValue">--:--</div>
+            <button type="button" class="hero-action-btn" id="openAlarmComposerBtn">Add alarm</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="alarm-list-section" aria-label="Saved alarms">
+        <div class="alarm-list" id="alarmList"></div>
+        <div class="empty-state" id="alarmEmpty">
+          <div class="empty-icon" aria-hidden="true">&#9200;</div>
+          <h2>No alarms</h2>
+          <p>Add an alarm to keep it ready in the background.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="alarmComposerBackdrop" role="dialog" aria-modal="true" aria-labelledby="alarmComposerTitle" aria-hidden="true">
+    <div class="modal-content" id="alarmComposerPanel" tabindex="-1">
+      <div class="modal-header">
+        <h3 id="alarmComposerTitle">Add alarm</h3>
+        <button type="button" class="modal-close" id="alarmComposerClose" aria-label="Close add alarm">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="alarm-input-grid">
+          <div class="setting-card">
+            <label for="alarmTime">Time</label>
+            <input
+              type="text"
+              id="alarmTime"
+              class="alarm-time-input"
+              inputmode="numeric"
+              maxlength="5"
+              placeholder="HH:MM"
+              aria-label="Alarm time in 24-hour format"
+              autocomplete="off"
+            >
+          </div>
+          <div class="setting-card">
+            <label for="alarmLabel">Label</label>
+            <input type="text" id="alarmLabel" placeholder="Optional label" class="alarm-label-input">
+          </div>
+        </div>
+
+        <div class="repeat-section">
+          <div class="repeat-title">Repeat days</div>
+          <div class="alarm-days" aria-label="Repeat days">
+            <button type="button" class="day-btn" data-day="1">Mo</button>
+            <button type="button" class="day-btn" data-day="2">Tu</button>
+            <button type="button" class="day-btn" data-day="3">We</button>
+            <button type="button" class="day-btn" data-day="4">Th</button>
+            <button type="button" class="day-btn" data-day="5">Fr</button>
+            <button type="button" class="day-btn" data-day="6">Sa</button>
+            <button type="button" class="day-btn" data-day="0">Su</button>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-primary btn-block" id="addAlarmBtn">Save alarm</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop modal-alert" id="alarmModal" role="alertdialog" aria-modal="true" aria-label="Alarm ringing" aria-hidden="true">
+    <div class="modal-content alarm-modal-content" id="alarmModalPanel" tabindex="-1">
+      <div class="alarm-ringing-icon" aria-hidden="true">&#128276;</div>
+      <h2 id="alarmModalLabel">Alarm</h2>
+      <p id="alarmModalTime"></p>
+      <button type="button" class="btn btn-primary btn-block" id="dismissAlarmBtn">Dismiss</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "id": "timer-countdown",
+  "name": "Timer - Countdown",
+  "shortName": "Countdown",
+  "description": "Standalone countdown timer with presets and quick edits",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Focus", "Tools"],
+  "order": 8,
+  "storageKeys": ["marlapps-timer-countdown"],
+  "background": {
+    "mode": "keep-alive"
+  },
+  "version": "1.0.0",
+  "author": "MarlApps",
+  "permissions": ["notifications"],
+  "capabilities": {
+    "notifications": true,
+    "audio": true
+  }
+}

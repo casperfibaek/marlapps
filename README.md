@@ -303,7 +303,9 @@ Launcher-managed localStorage keys:
 | Kanban Board | `marlapps-kanban-board` |
 | Pomodoro Timer | `marlapps-pomodoro-timer` |
 | Soundscape | `marlapps-soundscape` |
-| Timer | `marlapps-timer` |
+| Timer - Alarm | `marlapps-timer-alarm` |
+| Timer - Countdown | `marlapps-timer-countdown` |
+| Timer - Interval | `marlapps-timer-interval` |
 | Todo List | `marlapps-todo-list` |
 | Tracker | `marlapps-tracker` |
 

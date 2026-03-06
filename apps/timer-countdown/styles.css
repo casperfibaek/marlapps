@@ -167,16 +167,12 @@ body {
   transform: scale(0.98);
 }
 
-.controls-state,
-.secondary-actions {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
 .controls-state {
+  width: 100%;
   min-height: 58px;
+  display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .controls-state.is-empty,
@@ -264,29 +260,6 @@ body {
   color: white;
 }
 
-.btn-settings {
-  background: transparent;
-  color: var(--app-accent);
-  border: 2px solid color-mix(in srgb, var(--app-accent) 85%, var(--app-border-color));
-  padding: var(--space-3) var(--space-6);
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  min-height: var(--input-min-height);
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.btn-settings:hover {
-  background: var(--app-accent-light);
-}
-
-.btn-settings:active {
-  transform: scale(0.98);
-}
-
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -312,10 +285,6 @@ body {
   box-shadow: var(--app-shadow-lg);
   overflow: hidden;
   animation: slideUp 0.24s ease;
-}
-
-.modal-content-wide {
-  width: min(100%, 560px);
 }
 
 .modal-header {
@@ -357,27 +326,20 @@ body {
   gap: var(--space-5);
 }
 
-.time-input-grid,
-.alarm-input-grid,
-.interval-settings {
+.time-input-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
-.time-input-card,
-.mode-card {
+.time-input-card {
+  padding: var(--space-4);
   background: color-mix(in srgb, var(--app-bg-primary) 45%, var(--app-bg-secondary));
   border: 1px solid var(--app-border-color);
   border-radius: var(--radius-lg);
 }
 
-.time-input-card {
-  padding: var(--space-4);
-}
-
-.time-input-card label,
-.setting-item label {
+.time-input-card label {
   display: block;
   margin-bottom: var(--space-2);
   color: var(--app-text-secondary);
@@ -385,12 +347,8 @@ body {
   font-size: 0.92rem;
 }
 
-.time-input-card input,
-.setting-item input {
-  text-align: center;
-}
-
 .time-input-card input {
+  text-align: center;
   font-size: 2rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -439,322 +397,6 @@ body {
   color: var(--app-text-secondary);
 }
 
-.modes-body {
-  gap: var(--space-4);
-}
-
-.mode-switch {
-  display: inline-flex;
-  align-self: center;
-  padding: 4px;
-  background: color-mix(in srgb, var(--app-bg-primary) 55%, var(--app-bg-secondary));
-  border: 1px solid var(--app-border-color);
-  border-radius: var(--radius-full);
-}
-
-.mode-pill {
-  border: none;
-  background: transparent;
-  color: var(--app-text-secondary);
-  padding: 10px 18px;
-  border-radius: var(--radius-full);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.mode-pill.active {
-  background: var(--app-accent);
-  color: white;
-}
-
-.mode-view {
-  display: none;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.mode-view.active {
-  display: flex;
-}
-
-.mode-card {
-  padding: var(--space-4);
-}
-
-.alarm-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.alarm-time-input {
-  color-scheme: dark;
-}
-
-[data-theme="light"] .alarm-time-input,
-[data-theme="amalfi"] .alarm-time-input {
-  color-scheme: light;
-}
-
-.alarm-days {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.day-btn {
-  min-height: 40px;
-  border: 1px solid var(--app-border-color);
-  border-radius: var(--radius-full);
-  background: transparent;
-  color: var(--app-text-secondary);
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
-}
-
-.day-btn:hover {
-  background: var(--app-bg-hover);
-}
-
-.day-btn.active {
-  background: var(--app-accent);
-  border-color: var(--app-accent);
-  color: white;
-}
-
-.alarm-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.alarm-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: color-mix(in srgb, var(--app-bg-primary) 40%, var(--app-bg-secondary));
-  border: 1px solid var(--app-border-color);
-  border-radius: var(--radius-lg);
-  transition: opacity var(--transition-normal);
-}
-
-.alarm-item.disabled {
-  opacity: 0.56;
-}
-
-.alarm-info {
-  flex: 1;
-}
-
-.alarm-time {
-  font-size: 1.45rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.alarm-label {
-  margin-top: 2px;
-  color: var(--app-text-secondary);
-}
-
-.alarm-repeat {
-  margin-top: 4px;
-  color: var(--app-text-tertiary);
-  font-size: 0.84rem;
-}
-
-.alarm-toggle {
-  position: relative;
-  width: 48px;
-  height: 28px;
-  flex-shrink: 0;
-}
-
-.alarm-toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.alarm-toggle .slider {
-  position: absolute;
-  inset: 0;
-  background: var(--app-bg-tertiary);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--app-border-color);
-  transition: background var(--transition-normal), border-color var(--transition-normal);
-  cursor: pointer;
-}
-
-.alarm-toggle .slider::before {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--app-text-secondary);
-  transition: transform var(--transition-normal), background var(--transition-normal);
-}
-
-.alarm-toggle input:checked + .slider {
-  background: var(--app-accent);
-  border-color: var(--app-accent);
-}
-
-.alarm-toggle input:checked + .slider::before {
-  transform: translateX(20px);
-  background: white;
-}
-
-.alarm-delete {
-  width: 38px;
-  height: 38px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--app-text-tertiary);
-  font-size: 1.25rem;
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.alarm-delete:hover {
-  color: var(--app-danger);
-  background: var(--app-danger-light);
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--space-2);
-  padding: var(--space-8) var(--space-5);
-  border: 1px dashed var(--app-border-color);
-  border-radius: var(--radius-lg);
-  color: var(--app-text-secondary);
-}
-
-.empty-icon {
-  font-size: 2rem;
-}
-
-.empty-state h2 {
-  font-size: 1.15rem;
-  color: var(--app-text-primary);
-}
-
-.interval-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 220px;
-  padding: var(--space-6) var(--space-4);
-  border-radius: var(--radius-xl);
-  background: radial-gradient(circle at top, color-mix(in srgb, var(--app-accent) 14%, transparent), color-mix(in srgb, var(--app-bg-primary) 45%, var(--app-bg-secondary)));
-  border: 1px solid var(--app-border-color);
-  box-shadow: var(--app-shadow-sm);
-  transition: box-shadow var(--transition-normal), border-color var(--transition-normal);
-}
-
-.interval-display.work {
-  border-color: color-mix(in srgb, var(--app-accent) 65%, var(--app-border-color));
-}
-
-.interval-display.rest {
-  border-color: color-mix(in srgb, var(--app-success) 60%, var(--app-border-color));
-}
-
-.interval-display.active {
-  box-shadow: var(--app-shadow-md), 0 0 18px color-mix(in srgb, var(--app-accent) 18%, transparent);
-}
-
-.interval-phase {
-  font-size: 1rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--app-text-secondary);
-}
-
-.interval-display.work .interval-phase {
-  color: var(--app-accent);
-}
-
-.interval-display.rest .interval-phase {
-  color: var(--app-success);
-}
-
-.interval-timer {
-  margin-top: var(--space-2);
-  font-size: clamp(3rem, 12vw, 4.2rem);
-  line-height: 1;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.interval-progress {
-  margin-top: var(--space-3);
-  color: var(--app-text-secondary);
-}
-
-.interval-controls {
-  justify-content: center;
-}
-
-.interval-settings {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.modal-alert {
-  z-index: 120;
-}
-
-.alarm-modal-content {
-  width: min(100%, 360px);
-  padding: var(--space-6);
-  text-align: center;
-}
-
-.alarm-ringing-icon {
-  font-size: 4rem;
-  margin-bottom: var(--space-4);
-  animation: ring 0.5s ease-in-out infinite alternate;
-}
-
-.alarm-modal-content h2 {
-  font-size: 1.4rem;
-  margin-bottom: var(--space-2);
-}
-
-.alarm-modal-content p {
-  margin-bottom: var(--space-5);
-  color: var(--app-text-secondary);
-  font-size: 2rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-@keyframes ring {
-  0% {
-    transform: rotate(-15deg);
-  }
-
-  100% {
-    transform: rotate(15deg);
-  }
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -792,29 +434,12 @@ body {
     padding: var(--space-5);
   }
 
-  .secondary-actions {
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-
-  .time-input-grid,
-  .alarm-input-grid,
-  .interval-settings {
+  .time-input-grid {
     grid-template-columns: 1fr;
   }
 
   .controls-group {
     width: 100%;
-  }
-
-  .controls-group .btn:not(.btn-icon),
-  .secondary-actions .btn-settings {
-    flex: 1 1 0;
-    justify-content: center;
-  }
-
-  .alarm-item {
-    align-items: flex-start;
   }
 }
 
@@ -840,9 +465,5 @@ body {
   .btn-icon {
     width: 54px;
     height: 54px;
-  }
-
-  .alarm-days {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

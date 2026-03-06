@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3B82F6">
+  <title>Timer - Countdown - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <script src="../../themes/theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <main class="timer-main" role="main" aria-label="Countdown timer">
+      <section class="countdown-stage">
+        <div class="countdown-ring" id="countdownRing" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="countdown-ring-inner" id="countdownDisplay">
+            <div class="countdown-label" id="countdownLabel">Timer</div>
+            <div class="countdown-timer" id="countdownTimer">00:00</div>
+            <button type="button" class="countdown-edit-btn" id="countdownEditBtn" data-open-set-time>Set time</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="preset-row" role="group" aria-label="Countdown presets">
+        <button type="button" class="preset-btn" data-seconds="60">1 min</button>
+        <button type="button" class="preset-btn" data-seconds="300">5 min</button>
+        <button type="button" class="preset-btn" data-seconds="600">10 min</button>
+      </div>
+
+      <div class="controls-state" aria-live="polite">
+        <div class="controls-group controls-group-single" id="countdownControlsEmpty"></div>
+
+        <div class="controls-group controls-group-single" id="countdownControlsReady" hidden>
+          <button type="button" class="btn btn-primary btn-wide" id="countdownStartBtn">Start</button>
+        </div>
+
+        <div class="controls-group controls-group-icons" id="countdownControlsRunning" hidden>
+          <button type="button" class="btn btn-icon btn-pause-action" id="countdownPauseBtn" aria-label="Pause timer">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          </button>
+          <button type="button" class="btn btn-icon btn-add-action" id="countdownAdd60Btn" aria-label="Add one minute">
+            <span class="btn-icon-text">+1</span>
+          </button>
+          <button type="button" class="btn btn-icon btn-stop-action" data-countdown-reset aria-label="Reset timer">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>
+          </button>
+        </div>
+
+        <div class="controls-group" id="countdownControlsPaused" hidden>
+          <button type="button" class="btn btn-primary" id="countdownResumeBtn">Resume</button>
+          <button type="button" class="btn btn-outline" data-countdown-reset>Reset</button>
+        </div>
+
+        <div class="controls-group" id="countdownControlsFinished" hidden>
+          <button type="button" class="btn btn-primary" id="countdownRepeatBtn">Repeat last</button>
+          <button type="button" class="btn btn-outline" data-countdown-reset>Reset</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="setTimeBackdrop" role="dialog" aria-modal="true" aria-labelledby="setTimeTitle" aria-hidden="true">
+    <div class="modal-content" id="setTimePanel" tabindex="-1">
+      <div class="modal-header">
+        <h3 id="setTimeTitle">Set timer</h3>
+        <button type="button" class="modal-close" id="setTimeClose" aria-label="Close set timer">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="time-input-grid">
+          <div class="time-input-card">
+            <label for="customMinutes">Minutes</label>
+            <input type="number" id="customMinutes" min="0" max="1440" inputmode="numeric" placeholder="0">
+          </div>
+          <div class="time-input-card">
+            <label for="customSeconds">Seconds</label>
+            <input type="number" id="customSeconds" min="0" max="59" inputmode="numeric" placeholder="00">
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-block" id="customSetBtn">Apply timer</button>
+        <div class="recent-timers">
+          <div class="recent-title">Recent timers</div>
+          <div class="recent-list" id="recentTimerList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

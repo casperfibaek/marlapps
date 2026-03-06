@@ -6,7 +6,7 @@
   "icon": "icon.svg",
   "entry": "index.html",
   "categories": ["Focus"],
-  "order": 10,
+  "order": 12,
   "storageKeys": ["marlapps-breathing"],
   "version": "1.0.0",
   "author": "MarlApps"

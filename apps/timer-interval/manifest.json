@@ -1,13 +1,13 @@
 {
-  "id": "timer",
-  "name": "Timer",
-  "shortName": "Timer",
-  "description": "Alarms, interval timer, and countdown",
+  "id": "timer-interval",
+  "name": "Timer - Interval",
+  "shortName": "Interval",
+  "description": "Standalone interval timer with work, rest, and rounds",
   "icon": "icon.svg",
   "entry": "index.html",
   "categories": ["Focus", "Tools"],
-  "order": 8,
-  "storageKeys": ["marlapps-timer"],
+  "order": 10,
+  "storageKeys": ["marlapps-timer-interval"],
   "background": {
     "mode": "keep-alive"
   },

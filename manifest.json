@@ -144,13 +144,39 @@
       ]
     },
     {
-      "name": "Timer",
-      "short_name": "Timer",
-      "description": "Alarms, interval timer, and countdown",
-      "url": "./index.html?app=timer",
+      "name": "Timer - Countdown",
+      "short_name": "Countdown",
+      "description": "Standalone countdown timer with presets and quick edits",
+      "url": "./index.html?app=timer-countdown",
       "icons": [
         {
-          "src": "./apps/timer/icon.svg",
+          "src": "./apps/timer-countdown/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Timer - Alarm",
+      "short_name": "Alarm",
+      "description": "Standalone alarms with repeat days and background checking",
+      "url": "./index.html?app=timer-alarm",
+      "icons": [
+        {
+          "src": "./apps/timer-alarm/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Timer - Interval",
+      "short_name": "Interval",
+      "description": "Standalone interval timer with work, rest, and rounds",
+      "url": "./index.html?app=timer-interval",
+      "icons": [
+        {
+          "src": "./apps/timer-interval/icon.svg",
           "sizes": "any",
           "type": "image/svg+xml"
         }

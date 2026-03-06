@@ -78,6 +78,8 @@ class BackgroundAppHost {
 
 class Launcher {
   constructor() {
+    this.activeAppStorageKey = 'marlapps-active-app';
+    this.runTimerSplitCleanup();
     this.themeManager = new ThemeManager();
     this.appLoader = new AppLoader();
     this.searchManager = null;
@@ -90,7 +92,45 @@ class Launcher {
     this.backgroundActivity = new Map();
     this.appStatus = new Map();
     this.statusTickInterval = null;
-    this.activeAppStorageKey = 'marlapps-active-app';
+  }
+
+  runTimerSplitCleanup() {
+    const cleanupKey = 'marlapps-timer-split-cleanup-v1';
+    const recentsKey = 'marlapps-recents';
+    const legacyTimerKey = 'marlapps-timer';
+
+    try {
+      if (localStorage.getItem(cleanupKey) === 'true') return;
+
+      localStorage.removeItem(legacyTimerKey);
+
+      const activeAppId = localStorage.getItem(this.activeAppStorageKey);
+      if (activeAppId === 'timer') {
+        localStorage.removeItem(this.activeAppStorageKey);
+      }
+
+      const rawRecents = localStorage.getItem(recentsKey);
+      if (rawRecents) {
+        try {
+          const parsedRecents = JSON.parse(rawRecents);
+          if (Array.isArray(parsedRecents)) {
+            const filteredRecents = parsedRecents.filter((item) => {
+              return !item || typeof item !== 'object' || item.id !== 'timer';
+            });
+
+            if (filteredRecents.length !== parsedRecents.length) {
+              localStorage.setItem(recentsKey, JSON.stringify(filteredRecents));
+            }
+          }
+        } catch (error) {
+          // Ignore malformed recents payloads.
+        }
+      }
+
+      localStorage.setItem(cleanupKey, 'true');
+    } catch (error) {
+      // Ignore storage failures during one-time cleanup.
+    }
   }
 
   async init() {

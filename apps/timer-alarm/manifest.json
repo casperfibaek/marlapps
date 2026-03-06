@@ -1,0 +1,21 @@
+{
+  "id": "timer-alarm",
+  "name": "Timer - Alarm",
+  "shortName": "Alarm",
+  "description": "Standalone alarms with repeat days and background checking",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Tools"],
+  "order": 9,
+  "storageKeys": ["marlapps-timer-alarm"],
+  "background": {
+    "mode": "keep-alive"
+  },
+  "version": "1.0.0",
+  "author": "MarlApps",
+  "permissions": ["notifications"],
+  "capabilities": {
+    "notifications": true,
+    "audio": true
+  }
+}

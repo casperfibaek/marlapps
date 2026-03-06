@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v154';
+const CACHE_NAME = 'marlapps-v156';
 const urlsToCache = [
   './',
   './index.html',
@@ -78,11 +78,23 @@ const urlsToCache = [
   './apps/mirror/storage.js',
   './apps/mirror/styles.css',
 
-  './apps/timer/app.js',
-  './apps/timer/icon.svg',
-  './apps/timer/index.html',
-  './apps/timer/manifest.json',
-  './apps/timer/styles.css',
+  './apps/timer-countdown/app.js',
+  './apps/timer-countdown/icon.svg',
+  './apps/timer-countdown/index.html',
+  './apps/timer-countdown/manifest.json',
+  './apps/timer-countdown/styles.css',
+
+  './apps/timer-alarm/app.js',
+  './apps/timer-alarm/icon.svg',
+  './apps/timer-alarm/index.html',
+  './apps/timer-alarm/manifest.json',
+  './apps/timer-alarm/styles.css',
+
+  './apps/timer-interval/app.js',
+  './apps/timer-interval/icon.svg',
+  './apps/timer-interval/index.html',
+  './apps/timer-interval/manifest.json',
+  './apps/timer-interval/styles.css',
 
   './apps/soundscape/app.js',
   './apps/soundscape/icon.svg',
