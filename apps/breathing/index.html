@@ -56,10 +56,10 @@
   </div>
 
   <!-- Settings Modal -->
-  <div class="modal-backdrop" id="settingsBackdrop" role="dialog" aria-modal="true" aria-label="Breathing Settings">
-    <div class="modal-content" id="settingsPanel">
+  <div class="modal-backdrop" id="settingsBackdrop" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-hidden="true">
+    <div class="modal-content" id="settingsPanel" tabindex="-1">
       <div class="modal-header">
-        <h3>Breathing Settings</h3>
+        <h3 id="settingsTitle">Breathing Settings</h3>
         <button type="button" class="modal-close" id="settingsClose" aria-label="Close settings">&times;</button>
       </div>
       <div class="modal-body">

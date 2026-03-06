@@ -2,6 +2,8 @@ class BreathingApp {
   constructor() {
     this.storageKey = 'marlapps-breathing';
     this.tickInterval = null;
+    this.tickIntervalMs = 250;
+    this.lastFocusedElement = null;
 
     this.techniques = {
       box: {
@@ -52,7 +54,6 @@ class BreathingApp {
       totalCycles: 0,
       phaseIndex: -1,
       phaseEndsAt: 0,
-      phaseDurationMs: 0,
       sessionEndsAt: 0,
       phaseRemainingMs: 0,
       sessionRemainingMs: 0,
@@ -81,6 +82,7 @@ class BreathingApp {
     this.sessionRemaining = document.getElementById('sessionRemaining');
     this.settingsToggle = document.getElementById('settingsToggle');
     this.settingsBackdrop = document.getElementById('settingsBackdrop');
+    this.settingsPanel = document.getElementById('settingsPanel');
     this.settingsClose = document.getElementById('settingsClose');
   }
 
@@ -106,6 +108,10 @@ class BreathingApp {
     this.settingsBackdrop.addEventListener('click', (e) => {
       if (e.target === this.settingsBackdrop) this.closeSettings();
     });
+    document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.handleVisibility(true, 'document-visible');
+    });
 
     this.techniqueSelect.addEventListener('change', () => {
       this.data.technique = this.techniqueSelect.value;
@@ -117,6 +123,7 @@ class BreathingApp {
     const onDurationChange = () => {
       this.data.cycles = this.coerceInt(this.cyclesInput.value, 1, 60, this.data.cycles);
       this.data.durations = this.readDurationsFromInputs();
+      this.syncDurationInputs(this.data.cycles, this.data.durations);
       this.saveData();
       if (!this.session.active) this.refreshIdleDisplay();
     };
@@ -127,11 +134,33 @@ class BreathingApp {
   }
 
   openSettings() {
+    if (this.isSettingsOpen()) return;
+
+    this.lastFocusedElement = document.activeElement && typeof document.activeElement.focus === 'function'
+      ? document.activeElement
+      : null;
     this.settingsBackdrop.classList.add('active');
+    this.settingsBackdrop.setAttribute('aria-hidden', 'false');
+    window.setTimeout(() => {
+      if (this.settingsClose) this.settingsClose.focus();
+    }, 50);
   }
 
-  closeSettings() {
+  closeSettings({ restoreFocus = true } = {}) {
+    if (!this.isSettingsOpen()) return;
+
     this.settingsBackdrop.classList.remove('active');
+    this.settingsBackdrop.setAttribute('aria-hidden', 'true');
+
+    if (
+      restoreFocus &&
+      this.lastFocusedElement &&
+      typeof this.lastFocusedElement.focus === 'function' &&
+      document.contains(this.lastFocusedElement)
+    ) {
+      this.lastFocusedElement.focus();
+    }
+    this.lastFocusedElement = null;
   }
 
   syncThemeWithParent() {
@@ -145,6 +174,10 @@ class BreathingApp {
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'theme-change') {
         this.applyTheme(event.data.theme);
+      }
+
+      if (event.data && event.data.type === 'app-visibility') {
+        this.handleVisibility(Boolean(event.data.visible), event.data.reason || '');
       }
     });
   }
@@ -199,11 +232,15 @@ class BreathingApp {
 
   populateFormFromData() {
     this.techniqueSelect.value = this.data.technique;
-    this.cyclesInput.value = this.data.cycles;
-    this.inhaleInput.value = this.data.durations.inhale;
-    this.holdInInput.value = this.data.durations.holdIn;
-    this.exhaleInput.value = this.data.durations.exhale;
-    this.holdOutInput.value = this.data.durations.holdOut;
+    this.syncDurationInputs(this.data.cycles, this.data.durations);
+  }
+
+  syncDurationInputs(cycles, durations) {
+    this.cyclesInput.value = cycles;
+    this.inhaleInput.value = durations.inhale;
+    this.holdInInput.value = durations.holdIn;
+    this.exhaleInput.value = durations.exhale;
+    this.holdOutInput.value = durations.holdOut;
   }
 
   applyTechniqueToInputs(techniqueKey) {
@@ -222,10 +259,6 @@ class BreathingApp {
       exhale: this.coerceInt(this.exhaleInput.value, 1, 30, 4),
       holdOut: this.coerceInt(this.holdOutInput.value, 0, 30, 4)
     };
-  }
-
-  hasActiveDuration(durations) {
-    return Object.values(durations).some((value) => value > 0);
   }
 
   renderCycleDots(totalCycles, currentCycle) {
@@ -249,11 +282,7 @@ class BreathingApp {
   startSession() {
     const durations = this.readDurationsFromInputs();
     const totalCycles = this.coerceInt(this.cyclesInput.value, 1, 60, this.data.cycles);
-
-    if (!this.hasActiveDuration(durations)) {
-      this.phaseHint.textContent = 'Set at least one phase duration above 0 seconds.';
-      return;
-    }
+    this.syncDurationInputs(totalCycles, durations);
 
     this.data.cycles = totalCycles;
     this.data.durations = durations;
@@ -261,10 +290,6 @@ class BreathingApp {
 
     const cycleSeconds = durations.inhale + durations.holdIn + durations.exhale + durations.holdOut;
     const totalMs = cycleSeconds * totalCycles * 1000;
-    if (totalMs <= 0) {
-      this.phaseHint.textContent = 'Session length is 0. Increase one or more phase durations.';
-      return;
-    }
 
     this.clearTicker();
     this.session = this.createIdleSession();
@@ -344,24 +369,24 @@ class BreathingApp {
   }
 
   refreshIdleDisplay() {
-    this.phaseLabel.textContent = 'Ready';
-    this.phaseTime.textContent = '--';
+    this.setText(this.phaseLabel, 'Ready');
+    this.setText(this.phaseTime, '--');
     const technique = this.techniques[this.techniqueSelect.value] || this.techniques.box;
-    this.phaseHint.textContent = technique.hint;
+    this.setText(this.phaseHint, technique.hint);
     this.setOrbPhaseClass('phase-ready', 0.4);
 
     const cycles = this.coerceInt(this.cyclesInput.value, 1, 60, this.data.cycles);
-    this.cycleProgress.textContent = `0 / ${cycles}`;
+    this.setText(this.cycleProgress, `0 / ${cycles}`);
     this.renderCycleDots(cycles, 0);
 
     const durations = this.readDurationsFromInputs();
     const totalSeconds = (durations.inhale + durations.holdIn + durations.exhale + durations.holdOut) * cycles;
-    this.sessionRemaining.textContent = this.formatDuration(totalSeconds);
+    this.setText(this.sessionRemaining, this.formatDuration(totalSeconds));
   }
 
   startTicker() {
     this.clearTicker();
-    this.tickInterval = window.setInterval(() => this.tick(), 100);
+    this.tickInterval = window.setInterval(() => this.tick(), this.tickIntervalMs);
   }
 
   clearTicker() {
@@ -375,35 +400,41 @@ class BreathingApp {
     if (!this.session.active || this.session.paused) return;
 
     const now = Date.now();
+    if (!this.advanceSessionToNow(now)) return;
+    this.updateDisplay(now);
+  }
 
-    if (now >= this.session.phaseEndsAt) {
+  advanceSessionToNow(now = Date.now()) {
+    while (this.session.active && !this.session.paused && now >= this.session.phaseEndsAt) {
       const next = this.getNextPhase(this.session.cycle, this.session.phaseIndex);
       if (!next) {
         this.completeSession();
-        return;
+        return false;
       }
 
+      const nextPhaseStartAt = this.session.phaseEndsAt;
       this.session.cycle = next.cycle;
       this.renderCycleDots(this.session.totalCycles, this.session.cycle);
-      this.enterPhase(next.phaseIndex);
+      this.enterPhase(next.phaseIndex, nextPhaseStartAt, false);
     }
 
-    this.updateDisplay();
+    return this.session.active;
   }
 
-  enterPhase(phaseIndex) {
+  enterPhase(phaseIndex, phaseStartAt = Date.now(), shouldUpdateDisplay = true) {
     const phase = this.phases[phaseIndex];
     const seconds = this.session.durations[phase.key];
 
     this.session.phaseIndex = phaseIndex;
-    this.session.phaseDurationMs = seconds * 1000;
-    this.session.phaseEndsAt = Date.now() + this.session.phaseDurationMs;
+    this.session.phaseEndsAt = phaseStartAt + (seconds * 1000);
 
-    this.phaseLabel.textContent = phase.label;
-    this.phaseHint.textContent = phase.hint;
+    this.setText(this.phaseLabel, phase.label);
+    this.setText(this.phaseHint, phase.hint);
     this.setOrbPhaseClass(phase.className, Math.max(0.4, seconds));
 
-    this.updateDisplay();
+    if (shouldUpdateDisplay) {
+      this.updateDisplay(phaseStartAt);
+    }
   }
 
   findFirstPhaseIndex(durations) {
@@ -436,16 +467,15 @@ class BreathingApp {
     return null;
   }
 
-  updateDisplay() {
+  updateDisplay(now = Date.now()) {
     if (!this.session.active) return;
 
-    const now = Date.now();
     const phaseSeconds = Math.max(0, Math.ceil((this.session.phaseEndsAt - now) / 1000));
     const sessionSeconds = Math.max(0, Math.ceil((this.session.sessionEndsAt - now) / 1000));
 
-    this.phaseTime.textContent = String(phaseSeconds).padStart(2, '0');
-    this.sessionRemaining.textContent = this.formatDuration(sessionSeconds);
-    this.cycleProgress.textContent = `${this.session.cycle} / ${this.session.totalCycles}`;
+    this.setText(this.phaseTime, String(phaseSeconds).padStart(2, '0'));
+    this.setText(this.sessionRemaining, this.formatDuration(sessionSeconds));
+    this.setText(this.cycleProgress, `${this.session.cycle} / ${this.session.totalCycles}`);
   }
 
   formatDuration(totalSeconds) {
@@ -473,6 +503,69 @@ class BreathingApp {
     } else {
       this.controlsIdle.style.display = 'flex';
       this.controlsActive.style.display = 'none';
+    }
+  }
+
+  isSettingsOpen() {
+    return this.settingsBackdrop.classList.contains('active');
+  }
+
+  handleKeyDown(e) {
+    if (!this.isSettingsOpen()) return;
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      this.closeSettings();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      this.trapSettingsFocus(e);
+    }
+  }
+
+  trapSettingsFocus(e) {
+    const focusable = this.getSettingsFocusableElements();
+    if (focusable.length === 0) {
+      e.preventDefault();
+      this.settingsPanel.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const activeElement = document.activeElement;
+
+    if (e.shiftKey && activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  getSettingsFocusableElements() {
+    if (!this.settingsPanel) return [];
+
+    return [...this.settingsPanel.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    )].filter((element) => element.offsetParent !== null);
+  }
+
+  handleVisibility(visible) {
+    if (!visible) return;
+    if (!this.session.active || this.session.paused) return;
+
+    const now = Date.now();
+    if (!this.advanceSessionToNow(now)) return;
+    this.updateDisplay(now);
+  }
+
+  setText(element, value) {
+    if (!element) return;
+    if (element.textContent !== value) {
+      element.textContent = value;
     }
   }
 }
