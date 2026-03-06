@@ -12,12 +12,8 @@
 <body>
   <div class="app-container">
     <main class="breathing-main" role="main" aria-label="Breathing Meditation">
-      <div class="breath-display" id="breathDisplay">
-        <svg class="breath-ring-svg" viewBox="0 0 320 320" aria-hidden="true">
-          <circle class="breath-ring-bg" cx="160" cy="160" r="152" />
-          <circle class="breath-ring-fill" id="breathRingFill" cx="160" cy="160" r="152" />
-        </svg>
-        <div class="breath-content">
+      <div class="breath-ring" id="breathRing">
+        <div class="breath-orb phase-ready" id="breathOrb">
           <div class="phase-label" id="phaseLabel">Ready</div>
           <div class="phase-time" id="phaseTime">--</div>
           <div class="cycle-dots" id="cycleDots"></div>

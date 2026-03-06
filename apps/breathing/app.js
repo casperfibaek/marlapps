@@ -2,7 +2,6 @@ class BreathingApp {
   constructor() {
     this.storageKey = 'marlapps-breathing';
     this.tickInterval = null;
-    this.RING_CIRCUMFERENCE = 2 * Math.PI * 152; // matches SVG r=152
 
     this.techniques = {
       box: {
@@ -62,8 +61,7 @@ class BreathingApp {
   }
 
   initElements() {
-    this.breathDisplay = document.getElementById('breathDisplay');
-    this.breathRingFill = document.getElementById('breathRingFill');
+    this.breathOrb = document.getElementById('breathOrb');
     this.phaseLabel = document.getElementById('phaseLabel');
     this.phaseTime = document.getElementById('phaseTime');
     this.phaseHint = document.getElementById('phaseHint');
@@ -84,10 +82,6 @@ class BreathingApp {
     this.settingsToggle = document.getElementById('settingsToggle');
     this.settingsBackdrop = document.getElementById('settingsBackdrop');
     this.settingsClose = document.getElementById('settingsClose');
-
-    // Set initial ring dasharray
-    this.breathRingFill.style.strokeDasharray = `${this.RING_CIRCUMFERENCE} ${this.RING_CIRCUMFERENCE}`;
-    this.breathRingFill.style.strokeDashoffset = this.RING_CIRCUMFERENCE;
   }
 
   attachEventListeners() {
@@ -235,7 +229,6 @@ class BreathingApp {
   }
 
   renderCycleDots(totalCycles, currentCycle) {
-    // Cap dots at 12 to avoid clutter
     const maxDots = Math.min(totalCycles, 12);
     this.cycleDots.innerHTML = '';
     for (let i = 1; i <= maxDots; i++) {
@@ -247,15 +240,10 @@ class BreathingApp {
     }
   }
 
-  updateRingProgress() {
-    if (!this.session.active || this.session.paused) return;
-
-    const now = Date.now();
-    const remaining = Math.max(0, this.session.phaseEndsAt - now);
-    const total = this.session.phaseDurationMs;
-    const progress = total > 0 ? 1 - (remaining / total) : 0;
-    const offset = this.RING_CIRCUMFERENCE * (1 - progress);
-    this.breathRingFill.style.strokeDashoffset = offset;
+  setOrbPhaseClass(className, durationSeconds) {
+    this.breathOrb.classList.remove('phase-ready', 'phase-inhale', 'phase-hold-in', 'phase-exhale', 'phase-hold-out');
+    this.breathOrb.classList.add(className);
+    this.breathOrb.style.setProperty('--phase-duration', `${durationSeconds}s`);
   }
 
   startSession() {
@@ -310,7 +298,6 @@ class BreathingApp {
 
     this.clearTicker();
     this.phaseHint.textContent = 'Paused. Resume when you are ready.';
-    this.breathDisplay.classList.remove('active');
     this.updateControls();
   }
 
@@ -322,7 +309,12 @@ class BreathingApp {
     this.session.sessionEndsAt = now + this.session.sessionRemainingMs;
     this.session.paused = false;
 
-    this.breathDisplay.classList.add('active');
+    // Restore the current phase hint immediately
+    const phase = this.phases[this.session.phaseIndex];
+    if (phase) {
+      this.phaseHint.textContent = phase.hint;
+    }
+
     this.startTicker();
     this.updateControls();
     this.updateDisplay();
@@ -342,11 +334,10 @@ class BreathingApp {
     this.phaseLabel.textContent = 'Complete';
     this.phaseTime.textContent = '00';
     this.phaseHint.textContent = 'Session complete. Great focus.';
-    this.breathDisplay.classList.remove('active', 'phase-inhale', 'phase-hold-in', 'phase-exhale', 'phase-hold-out');
-    this.breathRingFill.style.strokeDashoffset = 0; // full ring
+    this.setOrbPhaseClass('phase-ready', 0.5);
     this.cycleProgress.textContent = `${totalCycles} / ${totalCycles}`;
     this.sessionRemaining.textContent = '00:00';
-    this.renderCycleDots(totalCycles, totalCycles + 1); // all completed
+    this.renderCycleDots(totalCycles, totalCycles + 1);
 
     this.session = this.createIdleSession();
     this.updateControls();
@@ -357,8 +348,7 @@ class BreathingApp {
     this.phaseTime.textContent = '--';
     const technique = this.techniques[this.techniqueSelect.value] || this.techniques.box;
     this.phaseHint.textContent = technique.hint;
-    this.breathDisplay.classList.remove('active', 'phase-inhale', 'phase-hold-in', 'phase-exhale', 'phase-hold-out');
-    this.breathRingFill.style.strokeDashoffset = this.RING_CIRCUMFERENCE;
+    this.setOrbPhaseClass('phase-ready', 0.4);
 
     const cycles = this.coerceInt(this.cyclesInput.value, 1, 60, this.data.cycles);
     this.cycleProgress.textContent = `0 / ${cycles}`;
@@ -399,7 +389,6 @@ class BreathingApp {
     }
 
     this.updateDisplay();
-    this.updateRingProgress();
   }
 
   enterPhase(phaseIndex) {
@@ -412,13 +401,9 @@ class BreathingApp {
 
     this.phaseLabel.textContent = phase.label;
     this.phaseHint.textContent = phase.hint;
-
-    // Update display phase class
-    this.breathDisplay.classList.remove('phase-inhale', 'phase-hold-in', 'phase-exhale', 'phase-hold-out');
-    this.breathDisplay.classList.add('active', phase.className);
+    this.setOrbPhaseClass(phase.className, Math.max(0.4, seconds));
 
     this.updateDisplay();
-    this.updateRingProgress();
   }
 
   findFirstPhaseIndex(durations) {
@@ -475,7 +460,6 @@ class BreathingApp {
       this.controlsActive.style.display = 'flex';
 
       if (this.session.paused) {
-        // Show resume icon (play) instead of pause
         this.pauseBtn.classList.remove('btn-pause-action');
         this.pauseBtn.classList.add('btn-resume-action');
         this.pauseBtn.setAttribute('aria-label', 'Resume session');
