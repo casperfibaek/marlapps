@@ -11,72 +11,96 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- <header class="app-header">
-      <h1>Breathing Meditation</h1>
-      <p>Guided breathing techniques with a focus on box breathing.</p>
-    </header> -->
-
-    <section class="breath-stage" aria-live="polite">
-      <div class="breath-ring">
-        <div class="breath-orb phase-ready" id="breathOrb">
-          <span class="phase-label" id="phaseLabel">Ready</span>
-          <span class="phase-time" id="phaseTime">--</span>
+    <main class="breathing-main" role="main" aria-label="Breathing Meditation">
+      <div class="breath-display" id="breathDisplay">
+        <svg class="breath-ring-svg" viewBox="0 0 320 320" aria-hidden="true">
+          <circle class="breath-ring-bg" cx="160" cy="160" r="152" />
+          <circle class="breath-ring-fill" id="breathRingFill" cx="160" cy="160" r="152" />
+        </svg>
+        <div class="breath-content">
+          <div class="phase-label" id="phaseLabel">Ready</div>
+          <div class="phase-time" id="phaseTime">--</div>
+          <div class="cycle-dots" id="cycleDots"></div>
         </div>
       </div>
+
       <p class="phase-hint" id="phaseHint">Select a technique and press Start.</p>
-    </section>
 
-    <section class="control-row" aria-label="Breathing controls">
-      <button class="btn btn-primary" id="startBtn">Start</button>
-      <button class="btn btn-secondary" id="pauseBtn" disabled>Pause</button>
-      <button class="btn btn-secondary" id="resetBtn">Reset</button>
-    </section>
-
-    <section class="session-panel" aria-label="Session settings">
-      <div class="setting-row">
-        <label for="techniqueSelect">Technique</label>
-        <select id="techniqueSelect">
-          <option value="box">Box breathing (4-4-4-4)</option>
-          <option value="balanced">Balanced breathing (5-5-5-5)</option>
-          <option value="four-seven-eight">4-7-8 breathing</option>
-        </select>
+      <div class="controls" role="group" aria-label="Breathing controls">
+        <div class="controls-idle" id="controlsIdle">
+          <button type="button" class="btn btn-icon btn-start" id="startBtn" aria-label="Start breathing session">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+          </button>
+        </div>
+        <div class="controls-active" id="controlsActive" style="display:none">
+          <button type="button" class="btn btn-icon btn-pause-action" id="pauseBtn" aria-label="Pause session">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          </button>
+          <button type="button" class="btn btn-icon btn-stop-action" id="resetBtn" aria-label="Stop session">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>
+          </button>
+        </div>
       </div>
 
-      <div class="setting-row">
-        <label for="cyclesInput">Cycles</label>
-        <input type="number" id="cyclesInput" min="1" max="60" value="8">
+      <div class="quick-actions">
+        <button type="button" class="btn-settings" id="settingsToggle" aria-label="Open settings">Settings</button>
       </div>
 
-      <div class="duration-grid" aria-label="Phase durations in seconds">
-        <label>
-          Inhale
-          <input type="number" id="inhaleInput" min="1" max="30" value="4">
-        </label>
-        <label>
-          Hold (in)
-          <input type="number" id="holdInInput" min="0" max="30" value="4">
-        </label>
-        <label>
-          Exhale
-          <input type="number" id="exhaleInput" min="1" max="30" value="4">
-        </label>
-        <label>
-          Hold (out)
-          <input type="number" id="holdOutInput" min="0" max="30" value="4">
-        </label>
+      <div class="stats-row" aria-label="Session progress">
+        <div class="stat-item">
+          <span class="stat-label">Cycle</span>
+          <strong class="stat-value" id="cycleProgress">0 / 0</strong>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Remaining</span>
+          <strong class="stat-value" id="sessionRemaining">00:00</strong>
+        </div>
       </div>
-    </section>
+    </main>
+  </div>
 
-    <section class="stats-panel" aria-label="Session progress">
-      <div class="stat-card">
-        <span class="stat-label">Cycle</span>
-        <strong class="stat-value" id="cycleProgress">0 / 0</strong>
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsBackdrop" role="dialog" aria-modal="true" aria-label="Breathing Settings">
+    <div class="modal-content" id="settingsPanel">
+      <div class="modal-header">
+        <h3>Breathing Settings</h3>
+        <button type="button" class="modal-close" id="settingsClose" aria-label="Close settings">&times;</button>
       </div>
-      <div class="stat-card">
-        <span class="stat-label">Session remaining</span>
-        <strong class="stat-value" id="sessionRemaining">00:00</strong>
+      <div class="modal-body">
+        <div class="setting-item">
+          <label for="techniqueSelect">Technique</label>
+          <select id="techniqueSelect">
+            <option value="box">Box breathing (4-4-4-4)</option>
+            <option value="balanced">Balanced breathing (5-5-5-5)</option>
+            <option value="four-seven-eight">4-7-8 breathing</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label for="cyclesInput">Cycles</label>
+          <input type="number" id="cyclesInput" min="1" max="60" value="8">
+        </div>
+
+        <div class="duration-grid">
+          <div class="setting-item">
+            <label for="inhaleInput">Inhale</label>
+            <input type="number" id="inhaleInput" min="1" max="30" value="4">
+          </div>
+          <div class="setting-item">
+            <label for="holdInInput">Hold (in)</label>
+            <input type="number" id="holdInInput" min="0" max="30" value="4">
+          </div>
+          <div class="setting-item">
+            <label for="exhaleInput">Exhale</label>
+            <input type="number" id="exhaleInput" min="1" max="30" value="4">
+          </div>
+          <div class="setting-item">
+            <label for="holdOutInput">Hold (out)</label>
+            <input type="number" id="holdOutInput" min="0" max="30" value="4">
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
   </div>
 
   <script src="app.js"></script>

@@ -2,6 +2,7 @@ class BreathingApp {
   constructor() {
     this.storageKey = 'marlapps-breathing';
     this.tickInterval = null;
+    this.RING_CIRCUMFERENCE = 2 * Math.PI * 152; // matches SVG r=152
 
     this.techniques = {
       box: {
@@ -52,6 +53,7 @@ class BreathingApp {
       totalCycles: 0,
       phaseIndex: -1,
       phaseEndsAt: 0,
+      phaseDurationMs: 0,
       sessionEndsAt: 0,
       phaseRemainingMs: 0,
       sessionRemainingMs: 0,
@@ -60,13 +62,17 @@ class BreathingApp {
   }
 
   initElements() {
-    this.breathOrb = document.getElementById('breathOrb');
+    this.breathDisplay = document.getElementById('breathDisplay');
+    this.breathRingFill = document.getElementById('breathRingFill');
     this.phaseLabel = document.getElementById('phaseLabel');
     this.phaseTime = document.getElementById('phaseTime');
     this.phaseHint = document.getElementById('phaseHint');
+    this.cycleDots = document.getElementById('cycleDots');
     this.startBtn = document.getElementById('startBtn');
     this.pauseBtn = document.getElementById('pauseBtn');
     this.resetBtn = document.getElementById('resetBtn');
+    this.controlsIdle = document.getElementById('controlsIdle');
+    this.controlsActive = document.getElementById('controlsActive');
     this.techniqueSelect = document.getElementById('techniqueSelect');
     this.cyclesInput = document.getElementById('cyclesInput');
     this.inhaleInput = document.getElementById('inhaleInput');
@@ -75,15 +81,18 @@ class BreathingApp {
     this.holdOutInput = document.getElementById('holdOutInput');
     this.cycleProgress = document.getElementById('cycleProgress');
     this.sessionRemaining = document.getElementById('sessionRemaining');
+    this.settingsToggle = document.getElementById('settingsToggle');
+    this.settingsBackdrop = document.getElementById('settingsBackdrop');
+    this.settingsClose = document.getElementById('settingsClose');
+
+    // Set initial ring dasharray
+    this.breathRingFill.style.strokeDasharray = `${this.RING_CIRCUMFERENCE} ${this.RING_CIRCUMFERENCE}`;
+    this.breathRingFill.style.strokeDashoffset = this.RING_CIRCUMFERENCE;
   }
 
   attachEventListeners() {
     this.startBtn.addEventListener('click', () => {
-      if (this.session.paused) {
-        this.resumeSession();
-      } else {
-        this.startSession();
-      }
+      this.startSession();
     });
 
     this.pauseBtn.addEventListener('click', () => {
@@ -96,6 +105,13 @@ class BreathingApp {
     });
 
     this.resetBtn.addEventListener('click', () => this.resetSession());
+
+    // Settings modal
+    this.settingsToggle.addEventListener('click', () => this.openSettings());
+    this.settingsClose.addEventListener('click', () => this.closeSettings());
+    this.settingsBackdrop.addEventListener('click', (e) => {
+      if (e.target === this.settingsBackdrop) this.closeSettings();
+    });
 
     this.techniqueSelect.addEventListener('change', () => {
       this.data.technique = this.techniqueSelect.value;
@@ -114,6 +130,14 @@ class BreathingApp {
     [this.cyclesInput, this.inhaleInput, this.holdInInput, this.exhaleInput, this.holdOutInput].forEach(input => {
       input.addEventListener('change', onDurationChange);
     });
+  }
+
+  openSettings() {
+    this.settingsBackdrop.classList.add('active');
+  }
+
+  closeSettings() {
+    this.settingsBackdrop.classList.remove('active');
   }
 
   syncThemeWithParent() {
@@ -210,6 +234,30 @@ class BreathingApp {
     return Object.values(durations).some((value) => value > 0);
   }
 
+  renderCycleDots(totalCycles, currentCycle) {
+    // Cap dots at 12 to avoid clutter
+    const maxDots = Math.min(totalCycles, 12);
+    this.cycleDots.innerHTML = '';
+    for (let i = 1; i <= maxDots; i++) {
+      const dot = document.createElement('span');
+      dot.className = 'cycle-dot';
+      if (i < currentCycle) dot.classList.add('completed');
+      else if (i === currentCycle) dot.classList.add('current');
+      this.cycleDots.appendChild(dot);
+    }
+  }
+
+  updateRingProgress() {
+    if (!this.session.active || this.session.paused) return;
+
+    const now = Date.now();
+    const remaining = Math.max(0, this.session.phaseEndsAt - now);
+    const total = this.session.phaseDurationMs;
+    const progress = total > 0 ? 1 - (remaining / total) : 0;
+    const offset = this.RING_CIRCUMFERENCE * (1 - progress);
+    this.breathRingFill.style.strokeDashoffset = offset;
+  }
+
   startSession() {
     const durations = this.readDurationsFromInputs();
     const totalCycles = this.coerceInt(this.cyclesInput.value, 1, 60, this.data.cycles);
@@ -245,6 +293,7 @@ class BreathingApp {
       return;
     }
 
+    this.renderCycleDots(totalCycles, 1);
     this.enterPhase(initialPhaseIndex);
     this.startTicker();
     this.updateControls();
@@ -261,6 +310,7 @@ class BreathingApp {
 
     this.clearTicker();
     this.phaseHint.textContent = 'Paused. Resume when you are ready.';
+    this.breathDisplay.classList.remove('active');
     this.updateControls();
   }
 
@@ -272,6 +322,7 @@ class BreathingApp {
     this.session.sessionEndsAt = now + this.session.sessionRemainingMs;
     this.session.paused = false;
 
+    this.breathDisplay.classList.add('active');
     this.startTicker();
     this.updateControls();
     this.updateDisplay();
@@ -291,9 +342,11 @@ class BreathingApp {
     this.phaseLabel.textContent = 'Complete';
     this.phaseTime.textContent = '00';
     this.phaseHint.textContent = 'Session complete. Great focus.';
-    this.setOrbPhaseClass('phase-ready', 0.5);
+    this.breathDisplay.classList.remove('active', 'phase-inhale', 'phase-hold-in', 'phase-exhale', 'phase-hold-out');
+    this.breathRingFill.style.strokeDashoffset = 0; // full ring
     this.cycleProgress.textContent = `${totalCycles} / ${totalCycles}`;
     this.sessionRemaining.textContent = '00:00';
+    this.renderCycleDots(totalCycles, totalCycles + 1); // all completed
 
     this.session = this.createIdleSession();
     this.updateControls();
@@ -304,12 +357,15 @@ class BreathingApp {
     this.phaseTime.textContent = '--';
     const technique = this.techniques[this.techniqueSelect.value] || this.techniques.box;
     this.phaseHint.textContent = technique.hint;
-    this.setOrbPhaseClass('phase-ready', 0.4);
-    this.cycleProgress.textContent = `0 / ${this.coerceInt(this.cyclesInput.value, 1, 60, this.data.cycles)}`;
+    this.breathDisplay.classList.remove('active', 'phase-inhale', 'phase-hold-in', 'phase-exhale', 'phase-hold-out');
+    this.breathRingFill.style.strokeDashoffset = this.RING_CIRCUMFERENCE;
+
+    const cycles = this.coerceInt(this.cyclesInput.value, 1, 60, this.data.cycles);
+    this.cycleProgress.textContent = `0 / ${cycles}`;
+    this.renderCycleDots(cycles, 0);
 
     const durations = this.readDurationsFromInputs();
-    const totalSeconds = (durations.inhale + durations.holdIn + durations.exhale + durations.holdOut)
-      * this.coerceInt(this.cyclesInput.value, 1, 60, this.data.cycles);
+    const totalSeconds = (durations.inhale + durations.holdIn + durations.exhale + durations.holdOut) * cycles;
     this.sessionRemaining.textContent = this.formatDuration(totalSeconds);
   }
 
@@ -338,10 +394,12 @@ class BreathingApp {
       }
 
       this.session.cycle = next.cycle;
+      this.renderCycleDots(this.session.totalCycles, this.session.cycle);
       this.enterPhase(next.phaseIndex);
     }
 
     this.updateDisplay();
+    this.updateRingProgress();
   }
 
   enterPhase(phaseIndex) {
@@ -349,12 +407,18 @@ class BreathingApp {
     const seconds = this.session.durations[phase.key];
 
     this.session.phaseIndex = phaseIndex;
-    this.session.phaseEndsAt = Date.now() + seconds * 1000;
+    this.session.phaseDurationMs = seconds * 1000;
+    this.session.phaseEndsAt = Date.now() + this.session.phaseDurationMs;
 
     this.phaseLabel.textContent = phase.label;
     this.phaseHint.textContent = phase.hint;
-    this.setOrbPhaseClass(phase.className, Math.max(0.4, seconds));
+
+    // Update display phase class
+    this.breathDisplay.classList.remove('phase-inhale', 'phase-hold-in', 'phase-exhale', 'phase-hold-out');
+    this.breathDisplay.classList.add('active', phase.className);
+
     this.updateDisplay();
+    this.updateRingProgress();
   }
 
   findFirstPhaseIndex(durations) {
@@ -387,12 +451,6 @@ class BreathingApp {
     return null;
   }
 
-  setOrbPhaseClass(className, durationSeconds) {
-    this.breathOrb.classList.remove('phase-ready', 'phase-inhale', 'phase-hold-in', 'phase-exhale', 'phase-hold-out');
-    this.breathOrb.classList.add(className);
-    this.breathOrb.style.setProperty('--phase-duration', `${durationSeconds}s`);
-  }
-
   updateDisplay() {
     if (!this.session.active) return;
 
@@ -412,26 +470,26 @@ class BreathingApp {
   }
 
   updateControls() {
-    if (this.session.active && !this.session.paused) {
-      this.startBtn.disabled = true;
-      this.startBtn.textContent = 'Start';
-      this.pauseBtn.disabled = false;
-      this.pauseBtn.textContent = 'Pause';
-      return;
-    }
+    if (this.session.active) {
+      this.controlsIdle.style.display = 'none';
+      this.controlsActive.style.display = 'flex';
 
-    if (this.session.active && this.session.paused) {
-      this.startBtn.disabled = false;
-      this.startBtn.textContent = 'Resume';
-      this.pauseBtn.disabled = true;
-      this.pauseBtn.textContent = 'Pause';
-      return;
+      if (this.session.paused) {
+        // Show resume icon (play) instead of pause
+        this.pauseBtn.classList.remove('btn-pause-action');
+        this.pauseBtn.classList.add('btn-resume-action');
+        this.pauseBtn.setAttribute('aria-label', 'Resume session');
+        this.pauseBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>';
+      } else {
+        this.pauseBtn.classList.remove('btn-resume-action');
+        this.pauseBtn.classList.add('btn-pause-action');
+        this.pauseBtn.setAttribute('aria-label', 'Pause session');
+        this.pauseBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+      }
+    } else {
+      this.controlsIdle.style.display = 'flex';
+      this.controlsActive.style.display = 'none';
     }
-
-    this.startBtn.disabled = false;
-    this.startBtn.textContent = 'Start';
-    this.pauseBtn.disabled = true;
-    this.pauseBtn.textContent = 'Pause';
   }
 }
 
