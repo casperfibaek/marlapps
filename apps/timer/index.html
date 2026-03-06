@@ -17,7 +17,7 @@
           <div class="countdown-ring-inner" id="countdownDisplay">
             <div class="countdown-label" id="countdownLabel">Timer</div>
             <div class="countdown-timer" id="countdownTimer">00:00</div>
-            <p class="countdown-subtitle" id="countdownSubtitle">Set a timer</p>
+            <button type="button" class="countdown-edit-btn" id="countdownEditBtn" data-open-set-time>Set time</button>
           </div>
         </div>
       </section>
@@ -29,9 +29,7 @@
       </div>
 
       <div class="controls-state" aria-live="polite">
-        <div class="controls-group controls-group-single" id="countdownControlsEmpty">
-          <button type="button" class="btn btn-primary btn-wide" data-open-set-time>Set time</button>
-        </div>
+        <div class="controls-group controls-group-single" id="countdownControlsEmpty"></div>
 
         <div class="controls-group controls-group-single" id="countdownControlsReady" hidden>
           <button type="button" class="btn btn-primary btn-wide" id="countdownStartBtn">Start</button>
@@ -51,7 +49,6 @@
 
         <div class="controls-group" id="countdownControlsPaused" hidden>
           <button type="button" class="btn btn-primary" id="countdownResumeBtn">Resume</button>
-          <button type="button" class="btn btn-outline" data-open-set-time>Set time</button>
           <button type="button" class="btn btn-outline" data-countdown-reset>Reset</button>
         </div>
 
@@ -62,7 +59,6 @@
       </div>
 
       <div class="secondary-actions" role="group" aria-label="Secondary timer actions">
-        <button type="button" class="btn-settings" id="openSetTimeSecondaryBtn" hidden>Set time</button>
         <button type="button" class="btn-settings" id="modesToggle">Modes</button>
       </div>
     </main>

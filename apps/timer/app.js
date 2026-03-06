@@ -318,7 +318,8 @@ class TimerApp {
     this.countdownRing = document.getElementById('countdownRing');
     this.countdownLabel = document.getElementById('countdownLabel');
     this.countdownTimerEl = document.getElementById('countdownTimer');
-    this.countdownSubtitle = document.getElementById('countdownSubtitle');
+    this.countdownEditBtn = document.getElementById('countdownEditBtn');
+    this.countdownControlsState = document.querySelector('.controls-state');
     this.countdownControlsEmpty = document.getElementById('countdownControlsEmpty');
     this.countdownControlsReady = document.getElementById('countdownControlsReady');
     this.countdownControlsRunning = document.getElementById('countdownControlsRunning');
@@ -337,7 +338,6 @@ class TimerApp {
     this.countdownAdd60Btn = document.getElementById('countdownAdd60Btn');
     this.countdownRepeatBtn = document.getElementById('countdownRepeatBtn');
     this.openSetTimeButtons = document.querySelectorAll('[data-open-set-time]');
-    this.openSetTimeSecondaryBtn = document.getElementById('openSetTimeSecondaryBtn');
     this.countdownResetButtons = document.querySelectorAll('[data-countdown-reset]');
     this.presetButtons = document.querySelectorAll('.preset-btn');
     this.modesToggle = document.getElementById('modesToggle');
@@ -391,7 +391,6 @@ class TimerApp {
     this.openSetTimeButtons.forEach(button => {
       button.addEventListener('click', () => this.openSetTime());
     });
-    this.openSetTimeSecondaryBtn.addEventListener('click', () => this.openSetTime());
     this.modesToggle.addEventListener('click', () => this.openModes());
 
     this.setTimeClose.addEventListener('click', () => this.closeModal('setTime'));
@@ -1069,7 +1068,7 @@ class TimerApp {
   }
 
   prefillSetTimeInputs() {
-    const sourceSeconds = this.countdownState.paused
+    const sourceSeconds = (this.countdownState.running || this.countdownState.paused)
       ? this.countdownState.timeRemaining
       : this.countdownState.totalTime;
 
@@ -1313,21 +1312,19 @@ class TimerApp {
     this.countdownRing.classList.toggle('done', viewState === 'finished');
 
     if (viewState === 'running') {
-      this.countdownLabel.textContent = 'Counting down';
-      this.countdownSubtitle.textContent = `${progress}% complete`;
+      this.countdownLabel.textContent = 'Running';
     } else if (viewState === 'paused') {
       this.countdownLabel.textContent = 'Paused';
-      this.countdownSubtitle.textContent = `${this.formatTime(this.countdownState.timeRemaining)} remaining`;
     } else if (viewState === 'finished') {
-      this.countdownLabel.textContent = 'Finished';
-      this.countdownSubtitle.textContent = 'Repeat last or set a new timer';
+      this.countdownLabel.textContent = 'Done';
     } else if (viewState === 'ready') {
       this.countdownLabel.textContent = 'Ready';
-      this.countdownSubtitle.textContent = `${this.formatShortDuration(this.countdownState.totalTime)} timer`;
     } else {
       this.countdownLabel.textContent = 'Timer';
-      this.countdownSubtitle.textContent = 'Set a timer';
     }
+
+    this.countdownEditBtn.textContent = viewState === 'empty' ? 'Set time' : 'Edit';
+    this.countdownEditBtn.setAttribute('aria-label', viewState === 'empty' ? 'Set timer' : 'Edit timer');
 
     this.updateCountdownControls(viewState);
     this.updateDocumentTitle();
@@ -1339,7 +1336,7 @@ class TimerApp {
       group.hidden = !isActive;
     });
 
-    this.openSetTimeSecondaryBtn.hidden = !(viewState === 'ready' || viewState === 'finished');
+    this.countdownControlsState.classList.toggle('is-empty', viewState === 'empty');
     this.countdownStartBtn.disabled = viewState !== 'ready';
     this.countdownPauseBtn.disabled = viewState !== 'running';
     this.countdownResumeBtn.disabled = viewState !== 'paused';
