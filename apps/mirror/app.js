@@ -1,23 +1,35 @@
-// Mirror App - Webcam mirror application
+import { MAX_PHOTOS, deletePhotoById, loadPhotos, savePhoto } from './storage.js';
 
 class MirrorApp {
   constructor() {
-    this.migrateStorage();
     this.stream = null;
     this.facingMode = 'user';
-    this.photos = this.loadPhotos();
+    this.photos = [];
+    this.photoObjectUrls = new Map();
     this.currentFilter = 'none';
     this.zoom = 1;
     this.brightness = 1;
     this.contrast = 1;
     this.isMirrored = true;
     this.fillMode = false;
+    this.storageStatusTimer = null;
 
     this.initElements();
     this.initEventListeners();
     this.updateFlipButtonState();
     this.syncThemeWithParent();
     this.renderGallery();
+  }
+
+  async init() {
+    try {
+      const storedPhotos = await loadPhotos();
+      this.replacePhotoModels(storedPhotos);
+      this.renderGallery();
+    } catch (error) {
+      console.error('Failed to load saved photos:', error);
+      this.showStorageStatus('Saved photos could not be loaded.', 'error');
+    }
   }
 
   initElements() {
@@ -34,6 +46,7 @@ class MirrorApp {
     this.gallerySection = document.getElementById('gallerySection');
     this.galleryGrid = document.getElementById('galleryGrid');
     this.photoCount = document.getElementById('photoCount');
+    this.storageStatus = document.getElementById('storageStatus');
     this.zoomSlider = document.getElementById('zoomSlider');
     this.zoomValue = document.getElementById('zoomValue');
     this.brightnessSlider = document.getElementById('brightnessSlider');
@@ -59,10 +72,9 @@ class MirrorApp {
         this.applyTheme(savedTheme);
       }
     } catch (e) {
-      // Fail silently
+      // Fail silently.
     }
 
-    // Listen for theme changes from parent
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'theme-change') {
         this.applyTheme(event.data.theme);
@@ -80,70 +92,63 @@ class MirrorApp {
     this.captureBtn.addEventListener('click', () => this.capturePhoto());
     this.flipBtn.addEventListener('click', () => this.flipCamera());
 
-    // Fill/contain toggle
     this.fillToggleBtn.addEventListener('click', () => {
       this.fillMode = !this.fillMode;
       this.updateFillMode();
     });
 
-    // Toggle controls panel
     this.controlsToggle.addEventListener('click', () => {
       this.controlPanel.classList.toggle('hidden');
     });
 
-    // Filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        this.currentFilter = e.target.dataset.filter;
+    document.querySelectorAll('.filter-btn').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        document.querySelectorAll('.filter-btn').forEach(filterBtn => filterBtn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        this.currentFilter = event.currentTarget.dataset.filter;
         this.applyFilters();
       });
     });
 
-    // Sliders
-    this.zoomSlider.addEventListener('input', (e) => {
-      this.zoom = parseFloat(e.target.value);
+    this.zoomSlider.addEventListener('input', (event) => {
+      this.zoom = Number.parseFloat(event.target.value);
       this.zoomValue.textContent = `${this.zoom.toFixed(1)}x`;
       this.applyFilters();
     });
 
-    this.brightnessSlider.addEventListener('input', (e) => {
-      this.brightness = parseFloat(e.target.value);
+    this.brightnessSlider.addEventListener('input', (event) => {
+      this.brightness = Number.parseFloat(event.target.value);
       this.brightnessValue.textContent = `${Math.round(this.brightness * 100)}%`;
       this.applyFilters();
     });
 
-    this.contrastSlider.addEventListener('input', (e) => {
-      this.contrast = parseFloat(e.target.value);
+    this.contrastSlider.addEventListener('input', (event) => {
+      this.contrast = Number.parseFloat(event.target.value);
       this.contrastValue.textContent = `${Math.round(this.contrast * 100)}%`;
       this.applyFilters();
     });
 
     this.resetFiltersBtn.addEventListener('click', () => this.resetFilters());
 
-    // Gallery event delegation
-    this.galleryGrid.addEventListener('click', (e) => {
-      const item = e.target.closest('.gallery-item');
+    this.galleryGrid.addEventListener('click', (event) => {
+      const item = event.target.closest('.gallery-item');
       if (!item) return;
       const photoId = item.dataset.photoId;
 
-      if (e.target.closest('.gallery-item-delete')) {
+      if (event.target.closest('.gallery-item-delete')) {
         this.confirmDelete(photoId);
-      } else if (e.target.closest('.gallery-item-download')) {
+      } else if (event.target.closest('.gallery-item-download')) {
         this.downloadPhoto(photoId);
-      } else if (e.target.closest('img')) {
+      } else if (event.target.closest('img')) {
         this.openLightbox(photoId);
       }
     });
 
-    // Lightbox close
     this.lightboxClose.addEventListener('click', () => this.closeLightbox());
-    this.lightbox.addEventListener('click', (e) => {
-      if (e.target === this.lightbox) this.closeLightbox();
+    this.lightbox.addEventListener('click', (event) => {
+      if (event.target === this.lightbox) this.closeLightbox();
     });
 
-    // Confirm dialog
     this.confirmNo.addEventListener('click', () => this.closeConfirmDialog());
   }
 
@@ -165,7 +170,6 @@ class MirrorApp {
       this.updateFlipButtonState();
       this.applyFilters();
       return true;
-
     } catch (error) {
       console.error('Error accessing camera:', error);
       this.showError(error);
@@ -251,6 +255,8 @@ class MirrorApp {
       case 'invert':
         filterStr += ' invert(100%)';
         break;
+      default:
+        break;
     }
 
     return filterStr;
@@ -276,31 +282,21 @@ class MirrorApp {
     this.contrastSlider.value = 1;
     this.contrastValue.textContent = '100%';
 
-    document.querySelectorAll('.filter-btn').forEach(btn => {
+    document.querySelectorAll('.filter-btn').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.filter === 'none');
     });
 
     this.applyFilters();
   }
 
-  capturePhoto() {
+  async capturePhoto() {
     if (!this.stream) return;
 
-    const maxPhotos = 20;
-    if (this.photos.length >= maxPhotos) {
-      this.photos.pop();
-    }
-
-    // Set canvas size to video size
     this.canvas.width = this.videoElement.videoWidth;
     this.canvas.height = this.videoElement.videoHeight;
 
     const ctx = this.canvas.getContext('2d');
-
-    // Apply filters to the draw operation
     ctx.filter = this.buildFilterString();
-
-    // Apply horizontal mirroring if enabled, plus zoom
     ctx.save();
 
     const scaleX = this.isMirrored ? -1 : 1;
@@ -308,13 +304,10 @@ class MirrorApp {
       ctx.translate(this.canvas.width, 0);
     }
 
-    // Calculate zoom crop
     const zoomWidth = this.canvas.width * this.zoom;
     const zoomHeight = this.canvas.height * this.zoom;
     const offsetX = (zoomWidth - this.canvas.width) / 2;
     const offsetY = (zoomHeight - this.canvas.height) / 2;
-
-    // When mirrored, the coordinate system is flipped so offset direction reverses
     const drawX = this.isMirrored ? offsetX : -offsetX;
 
     ctx.scale(scaleX, 1);
@@ -329,66 +322,85 @@ class MirrorApp {
     ctx.restore();
     ctx.filter = 'none';
 
-    // Convert to data URL (JPEG for smaller size)
-    const dataUrl = this.canvas.toDataURL('image/jpeg', 0.85);
+    const blob = await this.canvasToBlob('image/jpeg', 0.85);
+    if (!blob) {
+      this.showStorageStatus('Photo not saved. Image encoding failed.', 'error');
+      return;
+    }
 
-    // Save photo
-    const photo = {
+    const record = {
       id: Date.now().toString(),
-      dataUrl: dataUrl,
+      blob,
       timestamp: new Date().toISOString()
     };
 
-    this.photos.unshift(photo);
-    this.savePhotos();
-    this.renderGallery();
+    try {
+      const { removedIds } = await savePhoto(record, { limit: MAX_PHOTOS });
+      this.photos.unshift(this.createPhotoModel(record));
+      removedIds.forEach(photoId => this.removePhotoFromMemory(photoId));
+      this.photos = this.photos.slice(0, MAX_PHOTOS);
+      this.showStorageStatus('');
+      this.renderGallery();
+    } catch (error) {
+      console.error('Failed to save photo:', error);
+      const message = this.isQuotaError(error)
+        ? 'Photo not saved. Browser storage is full.'
+        : 'Photo not saved. Please try again.';
+      this.showStorageStatus(message, 'error');
+      return;
+    }
 
-    // Visual feedback - white flash
     this.flashOverlay.classList.add('flash');
     this.flashOverlay.addEventListener('animationend', () => {
       this.flashOverlay.classList.remove('flash');
     }, { once: true });
   }
 
-  migrateStorage() {
-    const old = localStorage.getItem('marlapps-mirror-photos');
-    if (old) {
-      localStorage.setItem('marlapps-mirror', old);
-      localStorage.removeItem('marlapps-mirror-photos');
-    }
+  canvasToBlob(type, quality) {
+    return new Promise((resolve) => {
+      this.canvas.toBlob((blob) => resolve(blob), type, quality);
+    });
   }
 
-  loadPhotos() {
-    const saved = localStorage.getItem('marlapps-mirror');
-    if (!saved) return [];
+  replacePhotoModels(records) {
+    const nextIds = new Set(records.map(record => record.id));
+    this.photoObjectUrls.forEach((url, photoId) => {
+      if (!nextIds.has(photoId)) {
+        URL.revokeObjectURL(url);
+        this.photoObjectUrls.delete(photoId);
+      }
+    });
 
-    try {
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-
-      return parsed
-        .map(photo => {
-          if (!photo || typeof photo !== 'object') return null;
-          if (typeof photo.id !== 'string' || typeof photo.dataUrl !== 'string') return null;
-
-          return {
-            id: photo.id,
-            dataUrl: photo.dataUrl,
-            timestamp: typeof photo.timestamp === 'string' ? photo.timestamp : new Date().toISOString()
-          };
-        })
-        .filter(Boolean);
-    } catch {
-      return [];
-    }
+    this.photos = records.map(record => this.createPhotoModel(record));
   }
 
-  savePhotos() {
-    // Limit to 20 photos
-    if (this.photos.length > 20) {
-      this.photos = this.photos.slice(0, 20);
+  createPhotoModel(record) {
+    const existingUrl = this.photoObjectUrls.get(record.id);
+    if (existingUrl) {
+      URL.revokeObjectURL(existingUrl);
     }
-    localStorage.setItem('marlapps-mirror', JSON.stringify(this.photos));
+
+    const objectUrl = URL.createObjectURL(record.blob);
+    this.photoObjectUrls.set(record.id, objectUrl);
+
+    return {
+      id: record.id,
+      blob: record.blob,
+      timestamp: record.timestamp,
+      objectUrl
+    };
+  }
+
+  revokePhotoUrl(photoId) {
+    const objectUrl = this.photoObjectUrls.get(photoId);
+    if (!objectUrl) return;
+    URL.revokeObjectURL(objectUrl);
+    this.photoObjectUrls.delete(photoId);
+  }
+
+  removePhotoFromMemory(photoId) {
+    this.revokePhotoUrl(photoId);
+    this.photos = this.photos.filter(photo => photo.id !== photoId);
   }
 
   confirmDelete(photoId) {
@@ -405,26 +417,32 @@ class MirrorApp {
     this.pendingDeleteId = null;
   }
 
-  deletePhoto(photoId) {
-    this.photos = this.photos.filter(p => p.id !== photoId);
-    this.savePhotos();
-    this.renderGallery();
+  async deletePhoto(photoId) {
+    try {
+      await deletePhotoById(photoId);
+      this.removePhotoFromMemory(photoId);
+      this.renderGallery();
+      this.showStorageStatus('');
+    } catch (error) {
+      console.error('Failed to delete photo:', error);
+      this.showStorageStatus('Photo could not be deleted.', 'error');
+    }
   }
 
   downloadPhoto(photoId) {
-    const photo = this.photos.find(p => p.id === photoId);
+    const photo = this.photos.find(item => item.id === photoId);
     if (!photo) return;
 
     const link = document.createElement('a');
-    link.href = photo.dataUrl;
+    link.href = photo.objectUrl;
     link.download = `mirror-${photoId}.jpg`;
     link.click();
   }
 
   openLightbox(photoId) {
-    const photo = this.photos.find(p => p.id === photoId);
+    const photo = this.photos.find(item => item.id === photoId);
     if (!photo) return;
-    this.lightboxImg.src = photo.dataUrl;
+    this.lightboxImg.src = photo.objectUrl;
     this.lightbox.classList.add('visible');
   }
 
@@ -434,25 +452,52 @@ class MirrorApp {
   }
 
   renderGallery() {
-    const maxPhotos = 20;
-    this.photoCount.textContent = `${this.photos.length}/${maxPhotos}`;
+    this.photoCount.textContent = `${this.photos.length}/${MAX_PHOTOS}`;
+    const hasStatusMessage = Boolean(this.storageStatus && this.storageStatus.textContent);
 
     if (this.photos.length === 0) {
-      this.gallerySection.classList.add('empty');
+      this.gallerySection.classList.toggle('empty', !hasStatusMessage);
       this.galleryGrid.innerHTML = '';
       return;
     }
 
     this.gallerySection.classList.remove('empty');
-    this.galleryGrid.innerHTML = this.photos.map(photo => {
-      return `
-        <div class="gallery-item" data-photo-id="${photo.id}">
-          <img src="${photo.dataUrl}" alt="Captured photo">
-          <button class="gallery-item-delete" title="Delete">&times;</button>
-          <button class="gallery-item-download" title="Download">⬇</button>
-        </div>
-      `;
-    }).join('');
+    this.galleryGrid.innerHTML = this.photos.map(photo => `
+      <div class="gallery-item" data-photo-id="${photo.id}">
+        <img src="${photo.objectUrl}" alt="Captured photo">
+        <button class="gallery-item-delete" title="Delete">&times;</button>
+        <button class="gallery-item-download" title="Download">⬇</button>
+      </div>
+    `).join('');
+  }
+
+  showStorageStatus(message, variant = '') {
+    if (!this.storageStatus) return;
+
+    clearTimeout(this.storageStatusTimer);
+    this.storageStatus.textContent = message || '';
+
+    if (variant) {
+      this.storageStatus.dataset.variant = variant;
+    } else {
+      delete this.storageStatus.dataset.variant;
+    }
+
+    if (message) {
+      this.gallerySection.classList.remove('empty');
+    } else if (this.photos.length === 0) {
+      this.gallerySection.classList.add('empty');
+    }
+
+    if (!message) return;
+
+    this.storageStatusTimer = setTimeout(() => {
+      this.storageStatus.textContent = '';
+      delete this.storageStatus.dataset.variant;
+      if (this.photos.length === 0) {
+        this.gallerySection.classList.add('empty');
+      }
+    }, 4000);
   }
 
   showError(error) {
@@ -473,23 +518,40 @@ class MirrorApp {
 
     this.errorMessage.textContent = message;
   }
+
+  isQuotaError(error) {
+    const message = String(error && error.message ? error.message : error || '').toLowerCase();
+    return error && error.name === 'QuotaExceededError'
+      || message.includes('quota')
+      || message.includes('storage');
+  }
+
+  releasePhotoUrls() {
+    this.photoObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+    this.photoObjectUrls.clear();
+  }
+
+  destroy() {
+    clearTimeout(this.storageStatusTimer);
+    this.stopCamera();
+    this.closeLightbox();
+    this.releasePhotoUrls();
+  }
 }
 
-// Initialize the app and store reference for cleanup
 let mirrorAppInstance = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   mirrorAppInstance = new MirrorApp();
+  await mirrorAppInstance.init();
 });
 
-// Cleanup on page unload to release camera resources
 window.addEventListener('beforeunload', () => {
-  if (mirrorAppInstance && mirrorAppInstance.stream) {
-    mirrorAppInstance.stopCamera();
+  if (mirrorAppInstance) {
+    mirrorAppInstance.destroy();
   }
 });
 
-// Pause/resume camera when page visibility changes (mobile optimization)
 document.addEventListener('visibilitychange', () => {
   if (!mirrorAppInstance) return;
 
@@ -498,10 +560,8 @@ document.addEventListener('visibilitychange', () => {
       mirrorAppInstance.wasRunning = true;
       mirrorAppInstance.stopCamera();
     }
-  } else {
-    if (mirrorAppInstance.wasRunning) {
-      mirrorAppInstance.wasRunning = false;
-      mirrorAppInstance.startCamera();
-    }
+  } else if (mirrorAppInstance.wasRunning) {
+    mirrorAppInstance.wasRunning = false;
+    mirrorAppInstance.startCamera();
   }
 });

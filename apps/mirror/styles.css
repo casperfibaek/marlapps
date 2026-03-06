@@ -294,6 +294,21 @@
   gap: var(--space-3);
 }
 
+.storage-status {
+  margin: 0 0 var(--space-3);
+  min-height: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--app-text-tertiary);
+}
+
+.storage-status[data-variant="error"] {
+  color: var(--app-danger);
+}
+
+.storage-status:empty {
+  display: none;
+}
+
 .gallery-item {
   position: relative;
   aspect-ratio: 1;

@@ -12,14 +12,14 @@
 <body>
   <div class="app-container">
     <!-- Tab Navigation -->
-    <nav class="tab-bar" role="tablist">
-      <button type="button" class="tab active" data-tab="timer" role="tab" aria-selected="true" aria-controls="timer-tab">Timer</button>
-      <button type="button" class="tab" data-tab="alarm" role="tab" aria-selected="false" aria-controls="alarm-tab">Alarm</button>
-      <button type="button" class="tab" data-tab="intervals" role="tab" aria-selected="false" aria-controls="intervals-tab">Intervals</button>
+    <nav class="tab-bar" role="tablist" aria-label="Timer sections">
+      <button type="button" class="tab active" id="timer-tab-btn" data-tab="timer" role="tab" aria-selected="true" aria-controls="timer-tab" tabindex="0">Timer</button>
+      <button type="button" class="tab" id="alarm-tab-btn" data-tab="alarm" role="tab" aria-selected="false" aria-controls="alarm-tab" tabindex="-1">Alarm</button>
+      <button type="button" class="tab" id="intervals-tab-btn" data-tab="intervals" role="tab" aria-selected="false" aria-controls="intervals-tab" tabindex="-1">Intervals</button>
     </nav>
 
     <!-- Alarm Tab -->
-    <section class="tab-content" id="alarm-tab" role="tabpanel" aria-labelledby="alarm-tab-btn">
+    <section class="tab-content" id="alarm-tab" role="tabpanel" aria-labelledby="alarm-tab-btn" hidden>
       <div class="alarm-form">
         <div class="alarm-input-row">
           <input
@@ -54,7 +54,7 @@
     </section>
 
     <!-- Intervals Tab -->
-    <section class="tab-content" id="intervals-tab" role="tabpanel" aria-labelledby="intervals-tab-btn">
+    <section class="tab-content" id="intervals-tab" role="tabpanel" aria-labelledby="intervals-tab-btn" hidden>
       <div class="interval-display" id="intervalDisplay">
         <div class="interval-phase" id="intervalPhase">Ready</div>
         <div class="interval-timer" id="intervalTimer">00:00</div>

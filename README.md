@@ -1,6 +1,6 @@
 # MarlApps
 
-A personal productivity suite that runs entirely in your browser. No server, no accounts, no tracking — just offline-first PWA apps with localStorage persistence.
+A personal productivity suite that runs entirely in your browser. No server, no accounts, no tracking — just offline-first PWA apps with browser-local persistence.
 
 ## Project Structure
 
@@ -41,6 +41,7 @@ marlapps/
       styles.css          App styles (imports app-common.css)
       app.js              App logic
       icon.svg            App icon
+      storage.js          Optional storage adapter for launcher export/import/reset
 ```
 
 ## How the Launcher Works
@@ -52,6 +53,8 @@ marlapps/
 5. If an app declares `background.mode = "keep-alive"` in its manifest, the launcher keeps that iframe alive when returning Home so timers/audio continue
 6. The launcher sends lifecycle updates to apps via `postMessage` (`theme-change`, `app-visibility`)
 7. The launcher supports `?app={id}` URL parameters for direct deep-linking (used by PWA shortcuts)
+
+The iframe is a trusted embedding and lifecycle boundary, not a security boundary. Apps share origin and can access the same browser storage.
 
 ## Adding a New App
 
@@ -83,6 +86,10 @@ Optional assets (images/audio/fonts/etc.) can be added in this folder structure 
   "categories": ["Tools"],
   "order": 7,
   "storageKeys": ["marlapps-my-app"],
+  "storage": {
+    "adapter": "storage.js",
+    "backends": ["indexedDB"]
+  },
   "background": {
     "mode": "keep-alive"
   },
@@ -101,7 +108,8 @@ Optional assets (images/audio/fonts/etc.) can be added in this folder structure 
 | `entry` | Entry HTML file (always `index.html`) |
 | `categories` | Array of categories for filtering (e.g. `["Tools", "Planning"]`) |
 | `order` | Sort position in the launcher (lower = first) |
-| `storageKeys` | Array of localStorage keys your app uses |
+| `storageKeys` | Array of localStorage keys your app uses when launcher fallback handling is sufficient |
+| `storage` | Optional manifest metadata for app-owned export/import/reset logic, for example `{ "adapter": "storage.js", "backends": ["indexedDB"] }` |
 | `background` | Optional. Use `{ "mode": "keep-alive" }` for apps that must keep running after Home (timers/audio/etc.) |
 | `version` | Semver version string |
 | `author` | Author name |
@@ -283,22 +291,21 @@ When the user changes themes in the launcher, it sends a `postMessage` to the if
 | Futuristic | `futuristic` | Cyan-on-black sci-fi theme |
 | Amalfi | `amalfi` | Warm terracotta/parchment theme |
 
-## localStorage Convention
+## Storage Convention
 
-App storage keys:
+Apps can use launcher-managed `localStorage` keys or an app-owned storage adapter declared in `manifest.json`.
+
+Launcher-managed localStorage keys:
 
 | App | Key |
 |-----|-----|
 | Breathing | `marlapps-breathing` |
-| Habits | `marlapps-habits` |
 | Kanban Board | `marlapps-kanban-board` |
-| Mirror | `marlapps-mirror` |
-| Notes | `marlapps-notes` |
 | Pomodoro Timer | `marlapps-pomodoro-timer` |
 | Soundscape | `marlapps-soundscape` |
 | Timer | `marlapps-timer` |
 | Todo List | `marlapps-todo-list` |
-| Weight Tracker | `marlapps-weight-tracker` |
+| Tracker | `marlapps-tracker` |
 
 Global keys:
 - `marlapps-theme` — current theme name
@@ -308,6 +315,10 @@ Global keys:
 - `pwa-installed` — PWA install completed flag
 - `pwa-install-dismissed` — timestamp of install prompt dismissal
 
+Apps with custom storage adapters:
+- `Mirror` stores captures in IndexedDB and uses `storage.js` for launcher backup/import/reset.
+- `Notes` stores notes and notebooks in IndexedDB and uses `storage.js` for launcher backup/import/reset.
+
 Legacy migration keys that may still exist before each app runs migration:
 - `todoList`
 - `kanbanBoard`
@@ -315,7 +326,7 @@ Legacy migration keys that may still exist before each app runs migration:
 - `pomodoroState`
 - `marlapps-mirror-photos`
 
-The `storageKeys` field in your app's `manifest.json` tells the settings manager which keys to include in export/import and which to delete when the user clears your app's data.
+If your app needs IndexedDB or another backend, declare a `storage.adapter` module in the manifest and let that module own export/import/reset behavior.
 
 ## Build Script
 

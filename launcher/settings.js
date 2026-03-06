@@ -8,7 +8,15 @@ class SettingsManager {
     this.isOpen = false;
 
     this.appStorageMap = {};
-    this.storageKeys = ['marlapps-recents', 'marlapps-theme'];
+    this.storageAdapterCache = new Map();
+    this.launcherStorageKeys = [
+      'marlapps-recents',
+      'marlapps-theme',
+      'marlapps-active-app',
+      'marlapps-auto-update-check'
+    ];
+    this.nonNamespacedStorageKeys = ['pwa-installed', 'pwa-install-dismissed'];
+    this.managedLocalStorageKeys = [];
   }
 
   init() {
@@ -36,20 +44,34 @@ class SettingsManager {
   }
 
   buildStorageMaps() {
-    const uniqueKeys = new Set(this.storageKeys);
+    const uniqueKeys = new Set([
+      ...this.launcherStorageKeys,
+      ...this.nonNamespacedStorageKeys
+    ]);
+    this.appStorageMap = {};
 
     for (const app of this.appLoader.apps) {
-      if (app.storageKeys && app.storageKeys.length) {
-        this.appStorageMap[app.id] = {
-          name: app.name,
-          keys: app.storageKeys,
-          folder: app.folder
-        };
-        app.storageKeys.forEach(key => uniqueKeys.add(key));
-      }
+      const localStorageKeys = this.getAppLocalStorageKeys(app);
+      const legacyStorageKeys = this.getAppLegacyStorageKeys(app);
+      const managedLocalStorageKeys = [...new Set([...localStorageKeys, ...legacyStorageKeys])];
+      const hasAdapter = this.hasStorageAdapter(app);
+
+      if (!hasAdapter && managedLocalStorageKeys.length === 0) continue;
+
+      this.appStorageMap[app.id] = {
+        app,
+        id: app.id,
+        name: app.name,
+        folder: app.folder,
+        hasAdapter,
+        localStorageKeys,
+        managedLocalStorageKeys
+      };
+
+      managedLocalStorageKeys.forEach(key => uniqueKeys.add(key));
     }
 
-    this.storageKeys = [...uniqueKeys];
+    this.managedLocalStorageKeys = [...uniqueKeys];
   }
 
   populateDeleteDropdown() {
@@ -61,14 +83,12 @@ class SettingsManager {
       select.remove(1);
     }
 
-    for (const app of this.appLoader.apps) {
-      if (app.storageKeys && app.storageKeys.length) {
-        const option = document.createElement('option');
-        option.value = app.id;
-        option.textContent = app.name;
-        select.appendChild(option);
-      }
-    }
+    this.getManagedApps().forEach((appInfo) => {
+      const option = document.createElement('option');
+      option.value = appInfo.id;
+      option.textContent = appInfo.name;
+      select.appendChild(option);
+    });
   }
 
   bindEvents() {
@@ -249,10 +269,38 @@ class SettingsManager {
       .slice(0, 20);
   }
 
-  getImportableAppKeys() {
-    return new Set(
-      this.storageKeys.filter(key => key !== 'marlapps-theme' && key !== 'marlapps-recents')
-    );
+  getManagedApps() {
+    return Object.values(this.appStorageMap);
+  }
+
+  getStorageConfig(app) {
+    return app && app.storage && typeof app.storage === 'object' && !Array.isArray(app.storage)
+      ? app.storage
+      : {};
+  }
+
+  hasStorageAdapter(app) {
+    const storage = this.getStorageConfig(app);
+    return typeof storage.adapter === 'string' && storage.adapter.trim().length > 0;
+  }
+
+  getAppLocalStorageKeys(app) {
+    return [...new Set(
+      (Array.isArray(app && app.storageKeys) ? app.storageKeys : [])
+        .filter(key => typeof key === 'string' && key.trim())
+    )];
+  }
+
+  getAppLegacyStorageKeys(app) {
+    const storage = this.getStorageConfig(app);
+    return [...new Set(
+      (Array.isArray(storage.legacyKeys) ? storage.legacyKeys : [])
+        .filter(key => typeof key === 'string' && key.trim())
+    )];
+  }
+
+  isPlainObject(value) {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   }
 
   normalizeImportedAppValue(value) {
@@ -262,18 +310,239 @@ class SettingsManager {
       try {
         normalized = JSON.parse(normalized);
       } catch {
-        return undefined;
+        return normalized;
       }
-    }
-
-    if (!normalized || typeof normalized !== 'object') {
-      return undefined;
     }
 
     return normalized;
   }
 
-  exportData() {
+  readStoredValue(key) {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return undefined;
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw;
+    }
+  }
+
+  buildLocalStorageBackup(keys) {
+    const values = {};
+
+    keys.forEach((key) => {
+      const value = this.readStoredValue(key);
+      if (value !== undefined) {
+        values[key] = value;
+      }
+    });
+
+    if (Object.keys(values).length === 0) return null;
+
+    return {
+      schemaVersion: 1,
+      kind: 'localStorage',
+      keys: values
+    };
+  }
+
+  async getStorageAdapter(appInfo) {
+    if (!appInfo || !appInfo.hasAdapter) return null;
+
+    const cacheKey = appInfo.id;
+    if (this.storageAdapterCache.has(cacheKey)) {
+      return this.storageAdapterCache.get(cacheKey);
+    }
+
+    const storage = this.getStorageConfig(appInfo.app);
+    const moduleUrl = new URL(`./apps/${appInfo.folder}/${storage.adapter}`, window.location.href).href;
+
+    const adapterPromise = import(moduleUrl).then((module) => {
+      const adapter = module && module.default && typeof module.default === 'object'
+        ? { ...module, ...module.default }
+        : module;
+
+      if (typeof adapter.exportBackup !== 'function'
+        || typeof adapter.importBackup !== 'function'
+        || typeof adapter.clearStorage !== 'function') {
+        throw new Error(`Storage adapter for ${appInfo.id} is missing required methods.`);
+      }
+
+      return adapter;
+    });
+
+    this.storageAdapterCache.set(cacheKey, adapterPromise);
+    return adapterPromise;
+  }
+
+  async exportAppBackup(appInfo) {
+    if (appInfo.hasAdapter) {
+      const adapter = await this.getStorageAdapter(appInfo);
+      return adapter.exportBackup();
+    }
+
+    return this.buildLocalStorageBackup(appInfo.localStorageKeys);
+  }
+
+  normalizeAppsPayload(appsPayload) {
+    const appPayloads = new Map();
+    let skippedEntries = 0;
+
+    if (!this.isPlainObject(appsPayload)) {
+      return { appPayloads, skippedEntries };
+    }
+
+    Object.entries(appsPayload).forEach(([appId, payload]) => {
+      const appInfo = this.appStorageMap[appId];
+      if (!appInfo || !this.isPlainObject(payload)) {
+        skippedEntries++;
+        return;
+      }
+      appPayloads.set(appId, payload);
+    });
+
+    return { appPayloads, skippedEntries };
+  }
+
+  buildLegacyImportPayloads(appData) {
+    const appPayloads = new Map();
+    let skippedEntries = 0;
+    const keyToApp = new Map();
+
+    this.getManagedApps().forEach((appInfo) => {
+      appInfo.managedLocalStorageKeys.forEach((key) => {
+        if (!keyToApp.has(key)) {
+          keyToApp.set(key, appInfo);
+        }
+      });
+    });
+
+    if (!this.isPlainObject(appData)) {
+      return { appPayloads, skippedEntries };
+    }
+
+    Object.entries(appData).forEach(([key, rawValue]) => {
+      const appInfo = keyToApp.get(key);
+      if (!appInfo) {
+        skippedEntries++;
+        return;
+      }
+
+      const normalized = this.normalizeImportedAppValue(rawValue);
+      if (normalized === undefined) {
+        skippedEntries++;
+        return;
+      }
+
+      if (!appPayloads.has(appInfo.id)) {
+        appPayloads.set(appInfo.id, {
+          schemaVersion: 1,
+          kind: 'localStorage',
+          keys: {}
+        });
+      }
+
+      appPayloads.get(appInfo.id).keys[key] = normalized;
+    });
+
+    return { appPayloads, skippedEntries };
+  }
+
+  buildImportPlan(data) {
+    const normalizedApps = this.normalizeAppsPayload(data.apps);
+    const legacyApps = this.buildLegacyImportPayloads(data.appData);
+    const appPayloads = new Map(legacyApps.appPayloads);
+
+    normalizedApps.appPayloads.forEach((payload, appId) => {
+      appPayloads.set(appId, payload);
+    });
+
+    return {
+      appPayloads,
+      skippedEntries: normalizedApps.skippedEntries + legacyApps.skippedEntries
+    };
+  }
+
+  clearLauncherLocalStorage() {
+    this.managedLocalStorageKeys.forEach((key) => {
+      localStorage.removeItem(key);
+    });
+
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('marlapps-')) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    this.nonNamespacedStorageKeys.forEach((key) => {
+      localStorage.removeItem(key);
+    });
+  }
+
+  discardAppRuntime(appId) {
+    const launcher = this.launcher || window.launcher;
+    if (!launcher || typeof launcher.discardAppInstance !== 'function') {
+      return false;
+    }
+
+    try {
+      return launcher.discardAppInstance(appId);
+    } catch (error) {
+      console.warn(`Failed to discard app runtime for ${appId}:`, error);
+      return false;
+    }
+  }
+
+  discardAllAppRuntimes() {
+    const launcher = this.launcher || window.launcher;
+    if (!launcher || typeof launcher.discardAllAppInstances !== 'function') {
+      return false;
+    }
+
+    try {
+      launcher.discardAllAppInstances();
+      return true;
+    } catch (error) {
+      console.warn('Failed to discard app runtimes:', error);
+      return false;
+    }
+  }
+
+  async clearAppStorage(appInfo, options = {}) {
+    if (!appInfo) return;
+
+    const { clearCachedFiles = false } = options;
+
+    this.discardAppRuntime(appInfo.id);
+
+    if (appInfo.hasAdapter) {
+      const adapter = await this.getStorageAdapter(appInfo);
+      await adapter.clearStorage();
+    }
+
+    appInfo.managedLocalStorageKeys.forEach((key) => {
+      localStorage.removeItem(key);
+    });
+
+    if (clearCachedFiles) {
+      await this.clearCachedAppFiles(appInfo.folder);
+    }
+  }
+
+  async clearAllManagedData(options = {}) {
+    const { clearCachedFiles = false } = options;
+
+    this.discardAllAppRuntimes();
+
+    for (const appInfo of this.getManagedApps()) {
+      await this.clearAppStorage(appInfo, { clearCachedFiles });
+    }
+
+    this.clearLauncherLocalStorage();
+  }
+
+  async exportData() {
     let recents = [];
     try {
       const parsedRecents = JSON.parse(localStorage.getItem('marlapps-recents') || '[]');
@@ -282,24 +551,25 @@ class SettingsManager {
 
     const data = {
       version: '2.0.0',
+      schemaVersion: 2,
       exportedAt: new Date().toISOString(),
       theme: this.themeManager.getTheme(),
       recents,
-      appData: {}
+      apps: {}
     };
 
-    this.storageKeys.forEach(key => {
-      if (key === 'marlapps-theme' || key === 'marlapps-recents') return;
-
-      const value = localStorage.getItem(key);
-      if (value) {
-        try {
-          data.appData[key] = JSON.parse(value);
-        } catch {
-          data.appData[key] = value;
+    try {
+      for (const appInfo of this.getManagedApps()) {
+        const payload = await this.exportAppBackup(appInfo);
+        if (payload) {
+          data.apps[appInfo.id] = payload;
         }
       }
-    });
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert(`Failed to export data: ${error.message}`);
+      return;
+    }
 
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: 'application/json'
@@ -334,27 +604,12 @@ class SettingsManager {
         throw new Error('Invalid export timestamp');
       }
 
-      if (data.appData && (typeof data.appData !== 'object' || Array.isArray(data.appData))) {
+      if (data.appData && !this.isPlainObject(data.appData)) {
         throw new Error('Invalid app data payload');
       }
 
-      const importableKeys = this.getImportableAppKeys();
-      const importedEntries = [];
-      let skippedEntries = 0;
-
-      if (data.appData) {
-        for (const [key, rawValue] of Object.entries(data.appData)) {
-          if (!importableKeys.has(key)) {
-            skippedEntries++;
-            continue;
-          }
-          const normalized = this.normalizeImportedAppValue(rawValue);
-          if (normalized === undefined) {
-            skippedEntries++;
-            continue;
-          }
-          importedEntries.push([key, normalized]);
-        }
+      if (data.apps && !this.isPlainObject(data.apps)) {
+        throw new Error('Invalid app backup payload');
       }
 
       const safeRecents = this.sanitizeRecents(data.recents);
@@ -363,23 +618,30 @@ class SettingsManager {
         this.themeManager.supportedThemes.includes(data.theme)
         ? data.theme
         : null;
+      const { appPayloads, skippedEntries } = this.buildImportPlan(data);
 
       const changes = [];
       if (safeTheme) changes.push(`Theme: ${safeTheme}`);
       if (hasRecentsPayload) changes.push(`Recent apps: ${safeRecents.length}`);
-      if (importedEntries.length > 0) changes.push(`App data entries: ${importedEntries.length}`);
+      if (appPayloads.size > 0) changes.push(`Apps with backup data: ${appPayloads.size}`);
       if (skippedEntries > 0) changes.push(`Skipped invalid entries: ${skippedEntries}`);
+
+      if (!safeTheme && !hasRecentsPayload && appPayloads.size === 0) {
+        throw new Error('Backup file does not contain any supported MarlApps data');
+      }
 
       const message = [
         `Import data from ${exportedAt.toLocaleDateString()}?`,
         '',
-        'This will overwrite your current data:',
+        'This will replace your current MarlApps data:',
         ...changes.map(c => `• ${c}`),
         '',
         'This action cannot be undone.'
       ].join('\n');
 
       if (!confirm(message)) return;
+
+      await this.clearAllManagedData();
 
       if (safeTheme) {
         this.themeManager.apply(safeTheme);
@@ -389,9 +651,24 @@ class SettingsManager {
         localStorage.setItem('marlapps-recents', JSON.stringify(safeRecents));
       }
 
-      importedEntries.forEach(([key, value]) => {
-        localStorage.setItem(key, JSON.stringify(value));
-      });
+      for (const [appId, payload] of appPayloads.entries()) {
+        const appInfo = this.appStorageMap[appId];
+        if (!appInfo) continue;
+
+        if (appInfo.hasAdapter) {
+          const adapter = await this.getStorageAdapter(appInfo);
+          await adapter.importBackup(payload);
+          continue;
+        }
+
+        if (payload.kind !== 'localStorage' || !this.isPlainObject(payload.keys)) {
+          throw new Error(`Unsupported backup payload for ${appInfo.name}`);
+        }
+
+        Object.entries(payload.keys).forEach(([key, value]) => {
+          localStorage.setItem(key, JSON.stringify(value));
+        });
+      }
 
       const importMessage = skippedEntries > 0
         ? `Data imported (${skippedEntries} invalid entries skipped). Reloading...`
@@ -439,29 +716,19 @@ class SettingsManager {
     return removedCount;
   }
 
-  invalidateAppRuntime(appId) {
-    const launcher = this.launcher || window.launcher;
-    if (!launcher || typeof launcher.invalidateAppInstance !== 'function') {
-      return false;
-    }
-
-    try {
-      return launcher.invalidateAppInstance(appId);
-    } catch (error) {
-      console.warn(`Failed to invalidate app runtime for ${appId}:`, error);
-      return false;
-    }
-  }
-
   async deleteAppData(appId) {
     const appInfo = this.appStorageMap[appId];
     if (!appInfo) return;
 
     if (!confirm(`Delete all data for ${appInfo.name}? This cannot be undone.`)) return;
 
-    appInfo.keys.forEach(key => localStorage.removeItem(key));
-    await this.clearCachedAppFiles(appInfo.folder);
-    this.invalidateAppRuntime(appId);
+    try {
+      await this.clearAppStorage(appInfo, { clearCachedFiles: true });
+    } catch (error) {
+      console.error(`Failed to delete data for ${appInfo.name}:`, error);
+      alert(`Failed to delete ${appInfo.name} data: ${error.message}`);
+      return;
+    }
 
     const select = document.getElementById('deleteAppSelect');
     if (select) select.value = '';
@@ -469,7 +736,7 @@ class SettingsManager {
     this.showNotification(`${appInfo.name} data and cached files deleted.`);
   }
 
-  resetData() {
+  async resetData() {
     const message = [
       'Are you sure you want to reset all local data?',
       '',
@@ -484,15 +751,13 @@ class SettingsManager {
     if (!confirm(message)) return;
     if (!confirm('This is your last chance. Delete ALL data?')) return;
 
-    this.storageKeys.forEach(key => localStorage.removeItem(key));
-
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('marlapps-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    localStorage.removeItem('pwa-installed');
-    localStorage.removeItem('pwa-install-dismissed');
+    try {
+      await this.clearAllManagedData({ clearCachedFiles: true });
+    } catch (error) {
+      console.error('Reset failed:', error);
+      alert(`Failed to reset data: ${error.message}`);
+      return;
+    }
 
     this.showNotification('All data has been reset. Reloading...');
     setTimeout(() => location.reload(), 1500);

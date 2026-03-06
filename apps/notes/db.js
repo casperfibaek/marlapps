@@ -4,8 +4,77 @@ const DB_NAME = 'marlapps-notes';
 const NOTES_STORE = 'notes';
 const NOTEBOOKS_STORE = 'notebooks';
 const DB_VERSION = 2;
+const EMPTY_NOTE_HTML = '<p><br></p>';
 
 let dbInstance = null;
+
+function generateId(prefix) {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeTimestamp(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return Date.now();
+}
+
+function normalizeStoredNote(note) {
+  if (!note || typeof note !== 'object') return null;
+
+  return {
+    id: typeof note.id === 'string' && note.id ? note.id : generateId('note'),
+    title: typeof note.title === 'string' ? note.title : 'Untitled Note',
+    contentHtml: typeof note.contentHtml === 'string' ? note.contentHtml : EMPTY_NOTE_HTML,
+    contentPlainText: typeof note.contentPlainText === 'string' ? note.contentPlainText : '',
+    createdAt: normalizeTimestamp(note.createdAt),
+    updatedAt: normalizeTimestamp(note.updatedAt),
+    version: typeof note.version === 'number' && Number.isFinite(note.version) ? note.version : 1,
+    notebookId: typeof note.notebookId === 'string' && note.notebookId ? note.notebookId : null,
+    order: typeof note.order === 'number' && Number.isFinite(note.order) ? note.order : undefined
+  };
+}
+
+function normalizeStoredNotebook(notebook, fallbackOrder = 0) {
+  if (!notebook || typeof notebook !== 'object') return null;
+
+  return {
+    id: typeof notebook.id === 'string' && notebook.id ? notebook.id : generateId('notebook'),
+    name: typeof notebook.name === 'string' ? notebook.name : 'Unnamed',
+    color: typeof notebook.color === 'string' ? notebook.color : null,
+    order: typeof notebook.order === 'number' && Number.isFinite(notebook.order) ? notebook.order : fallbackOrder,
+    createdAt: normalizeTimestamp(notebook.createdAt),
+    updatedAt: normalizeTimestamp(notebook.updatedAt)
+  };
+}
+
+function normalizeLegacyNote(note) {
+  if (!note || typeof note !== 'object' || typeof note.id !== 'string') return null;
+
+  const title = typeof note.title === 'string' ? note.title : 'Untitled Note';
+  const content = typeof note.content === 'string' ? note.content : '';
+  const contentHtml = content
+    ? content.split('\n').map(line => `<p>${line || '<br>'}</p>`).join('')
+    : EMPTY_NOTE_HTML;
+
+  return {
+    id: note.id,
+    title,
+    contentHtml,
+    contentPlainText: content,
+    createdAt: normalizeTimestamp(note.createdAt),
+    updatedAt: normalizeTimestamp(note.updatedAt),
+    version: 1,
+    notebookId: null
+  };
+}
 
 export async function openDB() {
   if (dbInstance) return dbInstance;
@@ -88,27 +157,9 @@ async function migrateFromLocalStorage(db) {
   const store = tx.objectStore(NOTES_STORE);
 
   for (const note of oldNotes) {
-    if (!note || typeof note !== 'object' || typeof note.id !== 'string') continue;
-
-    const title = typeof note.title === 'string' ? note.title : 'Untitled Note';
-    const content = typeof note.content === 'string' ? note.content : '';
-    const contentHtml = content
-      ? content.split('\n').map(line => `<p>${line || '<br>'}</p>`).join('')
-      : '<p><br></p>';
-    const contentPlainText = content;
-    const createdAt = typeof note.createdAt === 'string' ? new Date(note.createdAt).getTime() : Date.now();
-    const updatedAt = typeof note.updatedAt === 'string' ? new Date(note.updatedAt).getTime() : Date.now();
-
-    store.put({
-      id: note.id,
-      title,
-      contentHtml,
-      contentPlainText,
-      createdAt,
-      updatedAt,
-      version: 1,
-      notebookId: null
-    });
+    const normalized = normalizeLegacyNote(note);
+    if (!normalized) continue;
+    store.put(normalized);
   }
 
   await new Promise((resolve, reject) => {
@@ -237,3 +288,64 @@ export async function deleteNotebook(id) {
     tx.onerror = () => reject(tx.error);
   });
 }
+
+export async function exportAllData() {
+  const [notes, notebooks] = await Promise.all([
+    getAllNotes(),
+    getAllNotebooks()
+  ]);
+
+  return {
+    notes: notes.map(note => normalizeStoredNote(note)).filter(Boolean),
+    notebooks: notebooks.map((notebook, index) => normalizeStoredNotebook(notebook, index)).filter(Boolean)
+  };
+}
+
+export async function replaceAllData(data = {}) {
+  const db = await openDB();
+  const notes = Array.isArray(data.notes)
+    ? data.notes.map(note => normalizeStoredNote(note)).filter(Boolean)
+    : [];
+  const notebooks = Array.isArray(data.notebooks)
+    ? data.notebooks.map((notebook, index) => normalizeStoredNotebook(notebook, index)).filter(Boolean)
+    : [];
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([NOTES_STORE, NOTEBOOKS_STORE], 'readwrite');
+    const notesStore = tx.objectStore(NOTES_STORE);
+    const notebooksStore = tx.objectStore(NOTEBOOKS_STORE);
+
+    notesStore.clear();
+    notebooksStore.clear();
+
+    notebooks.forEach((notebook) => {
+      notebooksStore.put(notebook);
+    });
+
+    notes.forEach((note) => {
+      notesStore.put(note);
+    });
+
+    tx.oncomplete = () => {
+      localStorage.removeItem('marlapps-notes');
+      resolve();
+    };
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function deleteDatabase() {
+  if (dbInstance) {
+    dbInstance.close();
+    dbInstance = null;
+  }
+
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('Notes database deletion is blocked by another open tab.'));
+  });
+}
+
+export { DB_NAME, NOTES_STORE, NOTEBOOKS_STORE, normalizeLegacyNote };

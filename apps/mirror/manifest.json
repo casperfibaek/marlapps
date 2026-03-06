@@ -7,7 +7,11 @@
   "entry": "index.html",
   "categories": ["Tools"],
   "order": 6,
-  "storageKeys": ["marlapps-mirror"],
+  "storage": {
+    "adapter": "storage.js",
+    "backends": ["indexedDB"],
+    "legacyKeys": ["marlapps-mirror", "marlapps-mirror-photos"]
+  },
   "version": "2.0.0",
   "author": "MarlApps"
 }

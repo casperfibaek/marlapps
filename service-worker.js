@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v149';
+const CACHE_NAME = 'marlapps-v152';
 const urlsToCache = [
   './',
   './index.html',
@@ -61,6 +61,7 @@ const urlsToCache = [
   './apps/notes/index.html',
   './apps/notes/manifest.json',
   './apps/notes/search.js',
+  './apps/notes/storage.js',
   './apps/notes/styles.css',
 
   './apps/tracker/app.js',
@@ -74,6 +75,7 @@ const urlsToCache = [
   './apps/mirror/icon.svg',
   './apps/mirror/index.html',
   './apps/mirror/manifest.json',
+  './apps/mirror/storage.js',
   './apps/mirror/styles.css',
 
   './apps/timer/app.js',
@@ -118,6 +120,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   // Always fetch version.json from network — never serve from cache
   if (event.request.url.endsWith('/version.json')) {
     event.respondWith(
@@ -150,7 +157,10 @@ self.addEventListener('fetch', (event) => {
 
           return response;
         }).catch(() => {
-          return caches.match('./index.html');
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html').then((fallback) => fallback || Response.error());
+          }
+          return Response.error();
         });
       })
   );

@@ -67,6 +67,10 @@ class BackgroundAppHost {
     return this.frames.has(appId);
   }
 
+  getAppIds() {
+    return [...this.frames.keys()];
+  }
+
   forEachFrame(cb) {
     this.frames.forEach((iframe, appId) => cb(iframe, appId));
   }
@@ -673,12 +677,65 @@ class Launcher {
     return true;
   }
 
+  discardAppInstance(appId) {
+    const app = this.appLoader.getAppById(appId);
+    if (!app) return false;
+
+    let removed = false;
+    const removedBackgroundFrame = this.backgroundHost.discardFrame(appId);
+    if (removedBackgroundFrame) {
+      this.backgroundActivity.delete(appId);
+      this.clearAppStatus(appId);
+      removed = true;
+    }
+
+    if (this.currentApp && this.currentApp.id === appId) {
+      const workspace = document.getElementById('appWorkspace');
+      const content = document.getElementById('workspaceContent');
+      const mainContent = document.getElementById('mainContent');
+      const iframe = content && content.querySelector('.app-iframe');
+
+      if (iframe) {
+        this.notifyAppVisibility(iframe, false, 'app-discarded');
+      }
+
+      if (content) content.innerHTML = '';
+      if (workspace) workspace.classList.add('hidden');
+      if (mainContent) mainContent.classList.remove('hidden');
+
+      this.backgroundActivity.delete(appId);
+      this.clearAppStatus(appId);
+      this.currentApp = null;
+      document.body.classList.remove('app-open');
+      document.title = 'MarlApps';
+      this.clearPersistedActiveApp();
+      this.clearAppQueryParam();
+      removed = true;
+    }
+
+    if (removed) {
+      this.refreshBackgroundIndicators();
+    }
+
+    return removed;
+  }
+
+  discardAllAppInstances() {
+    const appIds = new Set();
+    if (this.currentApp && this.currentApp.id) {
+      appIds.add(this.currentApp.id);
+    }
+    this.backgroundHost.getAppIds().forEach(appId => appIds.add(appId));
+    appIds.forEach(appId => this.discardAppInstance(appId));
+  }
+
   createAppIframe(app) {
     const iframe = document.createElement('iframe');
     iframe.src = this.appLoader.getAppEntryUrl(app);
     iframe.className = 'app-iframe';
     iframe.dataset.appId = app.id;
     iframe.title = app.name;
+    // This iframe is a trusted embedding and lifecycle boundary, not a security boundary.
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads');
     this.backgroundActivity.set(app.id, false);
     return iframe;
@@ -833,17 +890,6 @@ class Launcher {
   syncThemeToIframe(iframe) {
     const theme = this.themeManager.getTheme();
 
-    // Direct DOM access (same-origin iframes)
-    try {
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (iframeDoc) {
-        iframeDoc.documentElement.setAttribute('data-theme', theme);
-      }
-    } catch (e) {
-      // Cross-origin or sandbox restriction
-    }
-
-    // postMessage fallback
     try {
       if (iframe.contentWindow) {
         iframe.contentWindow.postMessage({ type: 'theme-change', theme }, window.location.origin);

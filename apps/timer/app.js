@@ -8,6 +8,7 @@ class TimerApp {
     this.ringingTimeout = null;
     this.beepAudioCtx = null;
     this.lastAlarmCheckAt = Date.now();
+    this.alarmFreshnessWindowMs = 90 * 1000;
     this.notificationPermissionRequested = false;
     this.lastCompletedCountdown = 0;
     this.lastRuntimeSaveAt = 0;
@@ -406,6 +407,7 @@ class TimerApp {
     // Tab switching
     this.tabs.forEach(tab => {
       tab.addEventListener('click', () => this.switchTab(tab.dataset.tab));
+      tab.addEventListener('keydown', (event) => this.handleTabKeydown(event));
     });
 
     // Alarm
@@ -464,14 +466,45 @@ class TimerApp {
 
   // ===== Tab Switching =====
 
+  handleTabKeydown(event) {
+    const tabs = Array.from(this.tabs);
+    const currentIndex = tabs.indexOf(event.currentTarget);
+    if (currentIndex === -1) return;
+
+    let nextIndex = currentIndex;
+
+    if (event.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % tabs.length;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = tabs.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextTab = tabs[nextIndex];
+    if (!nextTab) return;
+    this.switchTab(nextTab.dataset.tab);
+    nextTab.focus();
+  }
+
   switchTab(tabId, options = {}) {
     const { persist = true } = options;
     this.tabs.forEach(t => {
       const isActive = t.dataset.tab === tabId;
       t.classList.toggle('active', isActive);
       t.setAttribute('aria-selected', String(isActive));
+      t.tabIndex = isActive ? 0 : -1;
     });
-    this.tabContents.forEach(tc => tc.classList.toggle('active', tc.id === `${tabId}-tab`));
+    this.tabContents.forEach((tc) => {
+      const isActive = tc.id === `${tabId}-tab`;
+      tc.classList.toggle('active', isActive);
+      tc.hidden = !isActive;
+    });
     this.data.activeTab = tabId;
     if (persist) this.saveData();
   }
@@ -662,6 +695,15 @@ class TimerApp {
 
         // Check day filter
         if (alarm.days.length > 0 && !alarm.days.includes(candidateDay)) continue;
+
+        const isFresh = nowMs - candidate.getTime() <= this.alarmFreshnessWindowMs;
+        if (!isFresh) {
+          if (alarm.days.length === 0) {
+            alarm.enabled = false;
+            didChange = true;
+          }
+          continue;
+        }
 
         alarm.lastTriggered = candidateDateStr;
         didChange = true;
