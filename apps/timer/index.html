@@ -11,120 +11,183 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Tab Navigation -->
-    <nav class="tab-bar" role="tablist" aria-label="Timer sections">
-      <button type="button" class="tab active" id="timer-tab-btn" data-tab="timer" role="tab" aria-selected="true" aria-controls="timer-tab" tabindex="0">Timer</button>
-      <button type="button" class="tab" id="alarm-tab-btn" data-tab="alarm" role="tab" aria-selected="false" aria-controls="alarm-tab" tabindex="-1">Alarm</button>
-      <button type="button" class="tab" id="intervals-tab-btn" data-tab="intervals" role="tab" aria-selected="false" aria-controls="intervals-tab" tabindex="-1">Intervals</button>
-    </nav>
-
-    <!-- Alarm Tab -->
-    <section class="tab-content" id="alarm-tab" role="tabpanel" aria-labelledby="alarm-tab-btn" hidden>
-      <div class="alarm-form">
-        <div class="alarm-input-row">
-          <input
-            type="text"
-            id="alarmTime"
-            class="alarm-time-input"
-            inputmode="numeric"
-            maxlength="5"
-            placeholder="HH:MM"
-            aria-label="Alarm time in 24-hour format"
-            autocomplete="off"
-          >
-          <input type="text" id="alarmLabel" placeholder="Label (optional)" class="alarm-label-input">
-        </div>
-        <div class="alarm-days">
-          <button type="button" class="day-btn" data-day="1">Mo</button>
-          <button type="button" class="day-btn" data-day="2">Tu</button>
-          <button type="button" class="day-btn" data-day="3">We</button>
-          <button type="button" class="day-btn" data-day="4">Th</button>
-          <button type="button" class="day-btn" data-day="5">Fr</button>
-          <button type="button" class="day-btn" data-day="6">Sa</button>
-          <button type="button" class="day-btn" data-day="0">Su</button>
-        </div>
-        <button type="button" class="btn btn-primary" id="addAlarmBtn">Add Alarm</button>
-      </div>
-      <div class="alarm-list" id="alarmList"></div>
-      <div class="empty-state" id="alarmEmpty">
-        <div class="empty-icon">&#9200;</div>
-        <h2>No Alarms</h2>
-        <p>Set a time above to create an alarm</p>
-      </div>
-    </section>
-
-    <!-- Intervals Tab -->
-    <section class="tab-content" id="intervals-tab" role="tabpanel" aria-labelledby="intervals-tab-btn" hidden>
-      <div class="interval-display" id="intervalDisplay">
-        <div class="interval-phase" id="intervalPhase">Ready</div>
-        <div class="interval-timer" id="intervalTimer">00:00</div>
-        <div class="interval-progress" id="intervalProgress">Round 0 / 0</div>
-      </div>
-      <div class="controls">
-        <button type="button" class="btn btn-primary" id="intervalStartBtn">Start</button>
-        <button type="button" class="btn btn-secondary" id="intervalPauseBtn" disabled>Pause</button>
-        <button type="button" class="btn btn-secondary" id="intervalResetBtn">Reset</button>
-      </div>
-      <div class="interval-settings">
-        <h3>Interval Settings</h3>
-        <div class="setting-item">
-          <label for="intervalWork">Work (seconds)</label>
-          <input type="number" id="intervalWork" min="5" max="3600" value="30">
-        </div>
-        <div class="setting-item">
-          <label for="intervalRest">Rest (seconds)</label>
-          <input type="number" id="intervalRest" min="5" max="3600" value="10">
-        </div>
-        <div class="setting-item">
-          <label for="intervalRounds">Rounds</label>
-          <input type="number" id="intervalRounds" min="1" max="99" value="8">
-        </div>
-      </div>
-    </section>
-
-    <!-- Timer (Countdown) Tab -->
-    <section class="tab-content active" id="timer-tab" role="tabpanel" aria-labelledby="timer-tab-btn">
-      <div class="countdown-display" id="countdownDisplay">
+    <main class="timer-main" role="main" aria-label="Timer">
+      <section class="countdown-stage">
         <div class="countdown-ring" id="countdownRing" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <div class="countdown-timer" id="countdownTimer">00:00</div>
+          <div class="countdown-ring-inner" id="countdownDisplay">
+            <div class="countdown-label" id="countdownLabel">Timer</div>
+            <div class="countdown-timer" id="countdownTimer">00:00</div>
+            <p class="countdown-subtitle" id="countdownSubtitle">Set a timer</p>
+          </div>
         </div>
-        <div class="countdown-subtitle" id="countdownSubtitle">Ready</div>
-      </div>
-      <div class="custom-time-row">
-        <input type="number" id="customMinutes" min="0" max="1440" placeholder="Min" class="custom-time-input">
-        <span class="time-separator">:</span>
-        <input type="number" id="customSeconds" min="0" max="59" placeholder="Sec" class="custom-time-input">
-        <button type="button" class="btn btn-primary" id="customSetBtn">Set</button>
-      </div>
-      <div class="countdown-actions">
-        <button type="button" class="btn btn-secondary" id="countdownAdd60Btn">+1 min</button>
-        <button type="button" class="btn btn-secondary" id="countdownAdd300Btn">+5 min</button>
-        <button type="button" class="btn btn-secondary" id="countdownRepeatBtn" disabled>Repeat</button>
-      </div>
-      <div class="preset-grid">
+      </section>
+
+      <div class="preset-row" role="group" aria-label="Countdown presets">
         <button type="button" class="preset-btn" data-seconds="60">1 min</button>
         <button type="button" class="preset-btn" data-seconds="300">5 min</button>
         <button type="button" class="preset-btn" data-seconds="600">10 min</button>
       </div>
-      <div class="recent-timers">
-        <div class="recent-title">Recent timers</div>
-        <div class="recent-list" id="recentTimerList"></div>
-      </div>
-      <div class="controls">
-        <button type="button" class="btn btn-primary" id="countdownStartBtn">Start</button>
-        <button type="button" class="btn btn-secondary" id="countdownPauseBtn" disabled>Pause</button>
-        <button type="button" class="btn btn-secondary" id="countdownResetBtn">Reset</button>
-      </div>
-    </section>
 
-    <!-- Alarm Ringing Modal -->
-    <div class="modal" id="alarmModal" role="dialog" aria-modal="true" aria-label="Alarm ringing">
-      <div class="modal-content alarm-modal-content">
-        <div class="alarm-ringing-icon" aria-hidden="true">&#128276;</div>
-        <h2 id="alarmModalLabel">Alarm</h2>
-        <p id="alarmModalTime"></p>
-        <button type="button" class="btn btn-primary" id="dismissAlarmBtn">Dismiss</button>
+      <div class="controls-state" aria-live="polite">
+        <div class="controls-group controls-group-single" id="countdownControlsEmpty">
+          <button type="button" class="btn btn-primary btn-wide" data-open-set-time>Set time</button>
+        </div>
+
+        <div class="controls-group controls-group-single" id="countdownControlsReady" hidden>
+          <button type="button" class="btn btn-primary btn-wide" id="countdownStartBtn">Start</button>
+        </div>
+
+        <div class="controls-group controls-group-icons" id="countdownControlsRunning" hidden>
+          <button type="button" class="btn btn-icon btn-pause-action" id="countdownPauseBtn" aria-label="Pause timer">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          </button>
+          <button type="button" class="btn btn-icon btn-add-action" id="countdownAdd60Btn" aria-label="Add one minute">
+            <span class="btn-icon-text">+1</span>
+          </button>
+          <button type="button" class="btn btn-icon btn-stop-action" data-countdown-reset aria-label="Reset timer">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>
+          </button>
+        </div>
+
+        <div class="controls-group" id="countdownControlsPaused" hidden>
+          <button type="button" class="btn btn-primary" id="countdownResumeBtn">Resume</button>
+          <button type="button" class="btn btn-outline" data-open-set-time>Set time</button>
+          <button type="button" class="btn btn-outline" data-countdown-reset>Reset</button>
+        </div>
+
+        <div class="controls-group" id="countdownControlsFinished" hidden>
+          <button type="button" class="btn btn-primary" id="countdownRepeatBtn">Repeat last</button>
+          <button type="button" class="btn btn-outline" data-countdown-reset>Reset</button>
+        </div>
       </div>
+
+      <div class="secondary-actions" role="group" aria-label="Secondary timer actions">
+        <button type="button" class="btn-settings" id="openSetTimeSecondaryBtn" hidden>Set time</button>
+        <button type="button" class="btn-settings" id="modesToggle">Modes</button>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="setTimeBackdrop" role="dialog" aria-modal="true" aria-labelledby="setTimeTitle" aria-hidden="true">
+    <div class="modal-content" id="setTimePanel" tabindex="-1">
+      <div class="modal-header">
+        <h3 id="setTimeTitle">Set timer</h3>
+        <button type="button" class="modal-close" id="setTimeClose" aria-label="Close set timer">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="time-input-grid">
+          <div class="time-input-card">
+            <label for="customMinutes">Minutes</label>
+            <input type="number" id="customMinutes" min="0" max="1440" inputmode="numeric" placeholder="0">
+          </div>
+          <div class="time-input-card">
+            <label for="customSeconds">Seconds</label>
+            <input type="number" id="customSeconds" min="0" max="59" inputmode="numeric" placeholder="00">
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-block" id="customSetBtn">Apply timer</button>
+        <div class="recent-timers">
+          <div class="recent-title">Recent timers</div>
+          <div class="recent-list" id="recentTimerList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modesBackdrop" role="dialog" aria-modal="true" aria-labelledby="modesTitle" aria-hidden="true">
+    <div class="modal-content modal-content-wide" id="modesPanel" tabindex="-1">
+      <div class="modal-header">
+        <h3 id="modesTitle">Modes</h3>
+        <button type="button" class="modal-close" id="modesClose" aria-label="Close modes">&times;</button>
+      </div>
+      <div class="modal-body modes-body">
+        <div class="mode-switch" role="tablist" aria-label="Timer modes">
+          <button type="button" class="mode-pill active" id="alarmViewBtn" data-view="alarm" role="tab" aria-selected="true" aria-controls="alarm-view" tabindex="0">Alarm</button>
+          <button type="button" class="mode-pill" id="intervalsViewBtn" data-view="intervals" role="tab" aria-selected="false" aria-controls="intervals-view" tabindex="-1">Intervals</button>
+        </div>
+
+        <section class="mode-view active" id="alarm-view" role="tabpanel" aria-labelledby="alarmViewBtn">
+          <div class="mode-card">
+            <div class="alarm-form">
+              <div class="alarm-input-grid">
+                <div class="setting-item">
+                  <label for="alarmTime">Time</label>
+                  <input
+                    type="text"
+                    id="alarmTime"
+                    class="alarm-time-input"
+                    inputmode="numeric"
+                    maxlength="5"
+                    placeholder="HH:MM"
+                    aria-label="Alarm time in 24-hour format"
+                    autocomplete="off"
+                  >
+                </div>
+                <div class="setting-item">
+                  <label for="alarmLabel">Label</label>
+                  <input type="text" id="alarmLabel" placeholder="Optional label" class="alarm-label-input">
+                </div>
+              </div>
+              <div class="alarm-days" aria-label="Repeat days">
+                <button type="button" class="day-btn" data-day="1">Mo</button>
+                <button type="button" class="day-btn" data-day="2">Tu</button>
+                <button type="button" class="day-btn" data-day="3">We</button>
+                <button type="button" class="day-btn" data-day="4">Th</button>
+                <button type="button" class="day-btn" data-day="5">Fr</button>
+                <button type="button" class="day-btn" data-day="6">Sa</button>
+                <button type="button" class="day-btn" data-day="0">Su</button>
+              </div>
+              <button type="button" class="btn btn-primary" id="addAlarmBtn">Add alarm</button>
+            </div>
+          </div>
+          <div class="alarm-list" id="alarmList"></div>
+          <div class="empty-state" id="alarmEmpty">
+            <div class="empty-icon" aria-hidden="true">&#9200;</div>
+            <h2>No alarms</h2>
+            <p>Choose a time to add your first alarm.</p>
+          </div>
+        </section>
+
+        <section class="mode-view" id="intervals-view" role="tabpanel" aria-labelledby="intervalsViewBtn" hidden>
+          <div class="interval-display" id="intervalDisplay">
+            <div class="interval-phase" id="intervalPhase">Ready</div>
+            <div class="interval-timer" id="intervalTimer">00:00</div>
+            <div class="interval-progress" id="intervalProgress">Round 0 / 0</div>
+          </div>
+
+          <div class="controls-group interval-controls">
+            <button type="button" class="btn btn-primary" id="intervalStartBtn">Start</button>
+            <button type="button" class="btn btn-outline" id="intervalPauseBtn" disabled>Pause</button>
+            <button type="button" class="btn btn-outline" id="intervalResetBtn">Reset</button>
+          </div>
+
+          <div class="mode-card">
+            <div class="interval-settings">
+              <div class="setting-item">
+                <label for="intervalWork">Work (seconds)</label>
+                <input type="number" id="intervalWork" min="5" max="3600" value="30">
+              </div>
+              <div class="setting-item">
+                <label for="intervalRest">Rest (seconds)</label>
+                <input type="number" id="intervalRest" min="5" max="3600" value="10">
+              </div>
+              <div class="setting-item">
+                <label for="intervalRounds">Rounds</label>
+                <input type="number" id="intervalRounds" min="1" max="99" value="8">
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop modal-alert" id="alarmModal" role="alertdialog" aria-modal="true" aria-label="Alarm ringing" aria-hidden="true">
+    <div class="modal-content alarm-modal-content" id="alarmModalPanel" tabindex="-1">
+      <div class="alarm-ringing-icon" aria-hidden="true">&#128276;</div>
+      <h2 id="alarmModalLabel">Alarm</h2>
+      <p id="alarmModalTime"></p>
+      <button type="button" class="btn btn-primary btn-block" id="dismissAlarmBtn">Dismiss</button>
     </div>
   </div>
 
