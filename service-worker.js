@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marlapps-v144';
+const CACHE_NAME = 'marlapps-v146';
 const urlsToCache = [
   './',
   './index.html',
@@ -63,23 +63,18 @@ const urlsToCache = [
   './apps/notes/search.js',
   './apps/notes/styles.css',
 
-  './apps/habits/app.js',
-  './apps/habits/icon.svg',
-  './apps/habits/index.html',
-  './apps/habits/manifest.json',
-  './apps/habits/styles.css',
+  './apps/tracker/app.js',
+  './apps/tracker/chart.js',
+  './apps/tracker/icon.svg',
+  './apps/tracker/index.html',
+  './apps/tracker/manifest.json',
+  './apps/tracker/styles.css',
 
   './apps/mirror/app.js',
   './apps/mirror/icon.svg',
   './apps/mirror/index.html',
   './apps/mirror/manifest.json',
   './apps/mirror/styles.css',
-
-  './apps/weight-tracker/app.js',
-  './apps/weight-tracker/icon.svg',
-  './apps/weight-tracker/index.html',
-  './apps/weight-tracker/manifest.json',
-  './apps/weight-tracker/styles.css',
 
   './apps/timer/app.js',
   './apps/timer/icon.svg',

@@ -1,0 +1,13 @@
+{
+  "id": "tracker",
+  "name": "Tracker",
+  "shortName": "Tracker",
+  "description": "Track anything over time — habits, weight, water, and more",
+  "icon": "icon.svg",
+  "entry": "index.html",
+  "categories": ["Tracking"],
+  "order": 5,
+  "storageKeys": ["marlapps-tracker"],
+  "version": "2.0.0",
+  "author": "MarlApps"
+}

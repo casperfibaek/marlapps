@@ -118,13 +118,13 @@
       ]
     },
     {
-      "name": "Habit Tracker",
-      "short_name": "Habits",
-      "description": "Daily habit tracking with streaks",
-      "url": "./index.html?app=habits",
+      "name": "Tracker",
+      "short_name": "Tracker",
+      "description": "Track anything over time — habits, weight, water, and more",
+      "url": "./index.html?app=tracker",
       "icons": [
         {
-          "src": "./apps/habits/icon.svg",
+          "src": "./apps/tracker/icon.svg",
           "sizes": "any",
           "type": "image/svg+xml"
         }
@@ -138,19 +138,6 @@
       "icons": [
         {
           "src": "./apps/mirror/icon.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
-        }
-      ]
-    },
-    {
-      "name": "Weight Tracker",
-      "short_name": "Weight",
-      "description": "Track your weight over time with charts and averages",
-      "url": "./index.html?app=weight-tracker",
-      "icons": [
-        {
-          "src": "./apps/weight-tracker/icon.svg",
           "sizes": "any",
           "type": "image/svg+xml"
         }

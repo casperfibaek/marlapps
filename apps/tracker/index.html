@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1ABC9C">
+  <title>Tracker - MarlApps</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <script src="../../themes/theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container" id="app">
+    <!-- List View -->
+    <div class="view" id="listView">
+      <header class="app-header">
+        <h1 class="app-title">Tracker</h1>
+        <button id="addTrackerBtn" class="btn btn-primary">+ New Tracker</button>
+      </header>
+
+      <main class="app-main">
+        <div class="tracker-list" id="trackerList"></div>
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📊</div>
+          <h2>No trackers yet</h2>
+          <p>Create your first tracker to start logging data</p>
+        </div>
+      </main>
+    </div>
+
+    <!-- Detail View -->
+    <div class="view hidden" id="detailView">
+      <header class="app-header">
+        <button id="backBtn" class="back-btn" aria-label="Go back">&larr;</button>
+        <h1 class="app-title detail-title" id="detailTitle"></h1>
+        <div class="header-actions">
+          <button id="editTrackerBtn" class="btn btn-secondary">Edit</button>
+          <button id="deleteTrackerBtn" class="btn btn-danger">Delete</button>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <!-- Quick entry -->
+        <section class="quick-entry" id="quickEntry"></section>
+
+        <!-- Numeric chart -->
+        <section class="chart-section hidden" id="chartSection">
+          <div class="chart-header">
+            <h2 class="section-title">Progress</h2>
+            <div class="chart-range-btns">
+              <button class="range-btn active" data-range="30">1M</button>
+              <button class="range-btn" data-range="90">3M</button>
+              <button class="range-btn" data-range="180">6M</button>
+              <button class="range-btn" data-range="365">1Y</button>
+              <button class="range-btn" data-range="0">All</button>
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="trackerChart"></canvas>
+            <div class="chart-empty" id="chartEmpty">
+              <p>Log at least 2 entries to see your chart</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Boolean calendar -->
+        <section class="calendar-section hidden" id="calendarSection">
+          <div class="date-navigation">
+            <button id="prevWeekBtn" class="nav-btn" aria-label="Previous week">&larr;</button>
+            <span id="weekDisplay" class="week-display"></span>
+            <button id="nextWeekBtn" class="nav-btn" aria-label="Next week">&rarr;</button>
+            <button id="todayBtn" class="btn btn-secondary">Today</button>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </section>
+
+        <!-- Stats -->
+        <section class="stats-section">
+          <h2 class="section-title">Stats</h2>
+          <div class="stats-grid" id="statsGrid"></div>
+        </section>
+
+        <!-- Entry history -->
+        <section class="entries-section">
+          <h2 class="section-title">Log</h2>
+          <div class="entries-list" id="entriesList"></div>
+          <div class="entries-empty hidden" id="entriesEmpty">
+            <p>No entries yet</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- New/Edit Tracker Modal -->
+  <div class="modal" id="trackerModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">New Tracker</h2>
+        <button class="close-btn" id="modalCloseBtn" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="trackerName">Name</label>
+          <input type="text" id="trackerName" class="form-input" placeholder="e.g. Weight, Water, Exercise" maxlength="50" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <div class="type-toggle">
+            <button class="type-btn active" data-type="numeric">Numeric</button>
+            <button class="type-btn" data-type="boolean">Yes / No</button>
+          </div>
+        </div>
+        <div class="form-group" id="unitGroup">
+          <label for="trackerUnit">Unit</label>
+          <input type="text" id="trackerUnit" class="form-input" placeholder="e.g. kg, lbs, L, cups" maxlength="20" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Color</label>
+          <div class="color-options">
+            <button class="color-option selected" data-color="#1ABC9C" style="background: #1ABC9C;" aria-label="Teal"></button>
+            <button class="color-option" data-color="#4A90E2" style="background: #4A90E2;" aria-label="Blue"></button>
+            <button class="color-option" data-color="#2ECC71" style="background: #2ECC71;" aria-label="Green"></button>
+            <button class="color-option" data-color="#E74C3C" style="background: #E74C3C;" aria-label="Red"></button>
+            <button class="color-option" data-color="#F39C12" style="background: #F39C12;" aria-label="Orange"></button>
+            <button class="color-option" data-color="#9B59B6" style="background: #9B59B6;" aria-label="Purple"></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modalCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="modalSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Modal (for numeric edit) -->
+  <div class="modal" id="entryModal" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="entryModalTitle">Edit Entry</h2>
+        <button class="close-btn" id="entryModalCloseBtn" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="entryDate">Date</label>
+          <input type="date" id="entryDate" class="form-input">
+        </div>
+        <div class="form-group" id="entryValueGroup">
+          <label for="entryValue">Value</label>
+          <input type="number" id="entryValue" class="form-input" step="any" placeholder="Enter value">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="entryModalCancelBtn">Cancel</button>
+        <button class="btn btn-danger hidden" id="entryModalDeleteBtn">Delete</button>
+        <button class="btn btn-primary" id="entryModalSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

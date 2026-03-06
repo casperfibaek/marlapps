@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "lastUpdated": "2026-03-05T13:44:52.416Z",
+  "lastUpdated": "2026-03-06T08:44:25.439Z",
   "apps": [
     {
       "id": "pomodoro-timer",
@@ -31,8 +31,8 @@
       "order": 4
     },
     {
-      "id": "habits",
-      "folder": "habits",
+      "id": "tracker",
+      "folder": "tracker",
       "pinned": false,
       "hidden": false,
       "order": 5
@@ -43,13 +43,6 @@
       "pinned": false,
       "hidden": false,
       "order": 6
-    },
-    {
-      "id": "weight-tracker",
-      "folder": "weight-tracker",
-      "pinned": false,
-      "hidden": false,
-      "order": 7
     },
     {
       "id": "timer",
